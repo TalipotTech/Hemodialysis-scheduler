@@ -1,0 +1,134 @@
+<div class="dashboard-container">
+  <div class="header">
+    <h1>
+      <mat-icon>build</mat-icon>
+      Technician Dashboard - Read-Only View
+    </h1>
+    <button mat-button (click)="logout()">
+      <mat-icon>logout</mat-icon>
+      Logout
+    </button>
+  </div>
+
+  <div class="welcome-card">
+    <mat-card>
+      <mat-card-content>
+        <h2>Welcome, {{ userName }}!</h2>
+        <p>View dialysis schedules, patient data, and equipment status</p>
+        <mat-chip class="warning-chip">
+          <mat-icon>lock</mat-icon>
+          READ-ONLY ACCESS - Cannot create or modify records
+        </mat-chip>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner></mat-spinner>
+    <p>Loading dashboard data...</p>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="stats-grid" *ngIf="!loading">
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-icon">
+          <mat-icon>people</mat-icon>
+        </div>
+        <div class="stat-info">
+          <h3>{{ totalPatients }}</h3>
+          <p>Total Patients</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-icon active">
+          <mat-icon>person</mat-icon>
+        </div>
+        <div class="stat-info">
+          <h3>{{ activePatients }}</h3>
+          <p>Active Patients</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card">
+      <mat-card-content>
+        <div class="stat-icon today">
+          <mat-icon>event_note</mat-icon>
+        </div>
+        <div class="stat-info">
+          <h3>{{ todaySessions }}</h3>
+          <p>Today's Sessions</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Action Cards -->
+  <div class="action-cards" *ngIf="!loading">
+    <mat-card class="action-card" (click)="navigateToSchedule()">
+      <mat-card-content>
+        <mat-icon>calendar_view_day</mat-icon>
+        <h3>View Schedule</h3>
+        <p>View daily dialysis schedule and bed assignments</p>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="action-card" (click)="navigateToPatients()">
+      <mat-card-content>
+        <mat-icon>people</mat-icon>
+        <h3>View Patients</h3>
+        <p>View patient list and treatment information</p>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="action-card info-card">
+      <mat-card-content>
+        <mat-icon>info</mat-icon>
+        <h3>Access Level</h3>
+        <p>VIEW ONLY - Cannot create/update patients or sessions</p>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Today's Schedule -->
+  <div class="schedule-section" *ngIf="!loading && todaySchedule.length > 0">
+    <h2>
+      <mat-icon>today</mat-icon>
+      Today's Active Sessions
+    </h2>
+    <div class="schedule-list">
+      <mat-card *ngFor="let session of todaySchedule" class="schedule-item">
+        <mat-card-content>
+          <div class="schedule-info">
+            <div class="schedule-header">
+              <h4>{{ session.patientName }}</h4>
+              <mat-chip>{{ session.slotName }}</mat-chip>
+            </div>
+            <p>
+              <mat-icon>bed</mat-icon>
+              Bed {{ session.bedNumber }}
+            </p>
+            <button mat-button color="primary" (click)="navigateToPatientHistory(session.patientId)">
+              <mat-icon>visibility</mat-icon>
+              View Details (Read-Only)
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+
+  <div *ngIf="!loading && todaySchedule.length === 0" class="no-sessions">
+    <mat-card>
+      <mat-card-content>
+        <mat-icon>event_busy</mat-icon>
+        <p>No active sessions scheduled for today</p>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

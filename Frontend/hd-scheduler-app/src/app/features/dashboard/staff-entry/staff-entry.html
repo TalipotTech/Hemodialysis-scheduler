@@ -1,0 +1,39 @@
+<div class="dashboard-container">
+  <div class="header">
+    <button mat-icon-button (click)="goBack()" class="back-button">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <h1>Staff Dashboard</h1>
+    <button mat-button (click)="logout()">
+      <mat-icon>logout</mat-icon>
+      Logout
+    </button>
+  </div>
+
+  <div class="welcome-card">
+    <mat-card>
+      <mat-card-content>
+        <h2>Welcome, {{ userName }}!</h2>
+        <p>Role: <strong>{{ userRole }}</strong></p>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <div class="action-cards">
+    <mat-card class="action-card" (click)="navigateToPatients()">
+      <mat-card-content>
+        <mat-icon>people</mat-icon>
+        <h3>Patient Management</h3>
+        <p>View, add, and manage patient records</p>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="action-card" (click)="navigateToSchedule()">
+      <mat-card-content>
+        <mat-icon>calendar_month</mat-icon>
+        <h3>Daily Schedule</h3>
+        <p>View and manage HD schedule</p>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

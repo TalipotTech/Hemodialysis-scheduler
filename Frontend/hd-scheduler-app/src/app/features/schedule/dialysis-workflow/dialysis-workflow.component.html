@@ -1,0 +1,492 @@
+<div class="workflow-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>
+        <div class="header-row">
+          <div class="header-left">
+            <button mat-icon-button (click)="goHome()" matTooltip="Home">
+              <mat-icon>home</mat-icon>
+            </button>
+            <button mat-icon-button (click)="goBack()" matTooltip="Back">
+              <mat-icon>arrow_back</mat-icon>
+            </button>
+            <h2>Dialysis Session Workflow</h2>
+          </div>
+          @if (phaseStatus) {
+            <mat-chip [highlighted]="true" [color]="getPhaseChipColor(phaseStatus.sessionPhase)">
+              <mat-icon>timeline</mat-icon>
+              {{ phaseStatus.sessionPhase.replace('_', '-') }}
+            </mat-chip>
+          }
+        </div>
+      </mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      @if (loading) {
+        <div class="loading-container">
+          <mat-spinner></mat-spinner>
+          <p>Loading session data...</p>
+        </div>
+      }
+
+      @if (!loading && phaseStatus) {
+        <mat-stepper [linear]="true" [selectedIndex]="getStepIndex()" #stepper>
+          <!-- STEP 1: PRE-DIALYSIS -->
+          <mat-step [completed]="phaseStatus.isPreDialysisLocked">
+            <ng-template matStepLabel>
+              <div class="step-label">
+                <mat-icon>assignment</mat-icon>
+                <span>Pre-Dialysis Assessment</span>
+                @if (phaseStatus.isPreDialysisLocked) {
+                  <mat-icon class="lock-icon" matTooltip="Phase completed and locked">lock</mat-icon>
+                }
+              </div>
+            </ng-template>
+
+            <div class="step-content">
+              <h3>Initial Patient Assessment</h3>
+              
+              @if (phaseStatus.isPreDialysisLocked) {
+                <div class="phase-locked-message">
+                  <mat-icon>check_circle</mat-icon>
+                  <p>Pre-Dialysis phase completed at {{ formatDateTime(phaseStatus.preDialysisCompletedAt) }}</p>
+                  <p class="locked-note">This phase is locked and cannot be edited.</p>
+                </div>
+              }
+
+              <form [formGroup]="preDialysisForm">
+                <div class="form-grid">
+                  <!-- Weight -->
+                  <mat-form-field appearance="outline">
+                    <mat-label>Pre-Weight (kg)</mat-label>
+                    <input matInput type="number" formControlName="preWeight" 
+                           [readonly]="phaseStatus.isPreDialysisLocked"
+                           placeholder="Enter patient weight">
+                    <mat-icon matPrefix>monitor_weight</mat-icon>
+                    @if (preDialysisForm.get('preWeight')?.hasError('required')) {
+                      <mat-error>Weight is required</mat-error>
+                    }
+                    @if (preDialysisForm.get('preWeight')?.hasError('min') || preDialysisForm.get('preWeight')?.hasError('max')) {
+                      <mat-error>Weight must be between 20-250 kg</mat-error>
+                    }
+                  </mat-form-field>
+
+                  <!-- Systolic BP -->
+                  <mat-form-field appearance="outline">
+                    <mat-label>Systolic BP (mmHg)</mat-label>
+                    <input matInput type="number" formControlName="preSBP" 
+                           [readonly]="phaseStatus.isPreDialysisLocked"
+                           placeholder="Enter systolic BP">
+                    <mat-icon matPrefix>favorite</mat-icon>
+                    @if (preDialysisForm.get('preSBP')?.hasError('required')) {
+                      <mat-error>Systolic BP is required</mat-error>
+                    }
+                    @if (preDialysisForm.get('preSBP')?.hasError('min') || preDialysisForm.get('preSBP')?.hasError('max')) {
+                      <mat-error>BP must be between 60-250 mmHg</mat-error>
+                    }
+                  </mat-form-field>
+
+                  <!-- Diastolic BP -->
+                  <mat-form-field appearance="outline">
+                    <mat-label>Diastolic BP (mmHg)</mat-label>
+                    <input matInput type="number" formControlName="preDBP" 
+                           [readonly]="phaseStatus.isPreDialysisLocked"
+                           placeholder="Enter diastolic BP">
+                    <mat-icon matPrefix>favorite</mat-icon>
+                    @if (preDialysisForm.get('preDBP')?.hasError('required')) {
+                      <mat-error>Diastolic BP is required</mat-error>
+                    }
+                    @if (preDialysisForm.get('preDBP')?.hasError('min') || preDialysisForm.get('preDBP')?.hasError('max')) {
+                      <mat-error>BP must be between 40-150 mmHg</mat-error>
+                    }
+                  </mat-form-field>
+
+                  <!-- Heart Rate -->
+                  <mat-form-field appearance="outline">
+                    <mat-label>Heart Rate (bpm)</mat-label>
+                    <input matInput type="number" formControlName="preHR" 
+                           [readonly]="phaseStatus.isPreDialysisLocked"
+                           placeholder="Enter heart rate">
+                    <mat-icon matPrefix>ecg_heart</mat-icon>
+                    @if (preDialysisForm.get('preHR')?.hasError('min') || preDialysisForm.get('preHR')?.hasError('max')) {
+                      <mat-error>Heart rate must be between 40-200 bpm</mat-error>
+                    }
+                  </mat-form-field>
+
+                  <!-- Temperature -->
+                  <mat-form-field appearance="outline">
+                    <mat-label>Temperature (°C)</mat-label>
+                    <input matInput type="number" step="0.1" formControlName="preTemp" 
+                           [readonly]="phaseStatus.isPreDialysisLocked"
+                           placeholder="Enter temperature">
+                    <mat-icon matPrefix>thermostat</mat-icon>
+                    @if (preDialysisForm.get('preTemp')?.hasError('min') || preDialysisForm.get('preTemp')?.hasError('max')) {
+                      <mat-error>Temperature must be between 35-42°C</mat-error>
+                    }
+                  </mat-form-field>
+
+                  <!-- Access Site -->
+                  <mat-form-field appearance="outline">
+                    <mat-label>Access Site</mat-label>
+                    <input matInput formControlName="accessSite" 
+                           [readonly]="phaseStatus.isPreDialysisLocked"
+                           placeholder="e.g., Left AVF, Right CVC">
+                    <mat-icon matPrefix>medical_services</mat-icon>
+                  </mat-form-field>
+                </div>
+
+                <!-- Assessment Notes -->
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Pre-Assessment Notes</mat-label>
+                  <textarea matInput formControlName="preAssessmentNotes" 
+                            [readonly]="phaseStatus.isPreDialysisLocked"
+                            rows="4"
+                            placeholder="Enter any pre-dialysis observations, patient complaints, or special notes"></textarea>
+                  <mat-icon matPrefix>notes</mat-icon>
+                </mat-form-field>
+              </form>
+
+              <!-- Save Status Indicator -->
+              @if (!phaseStatus.isPreDialysisLocked) {
+                <div class="save-status">
+                  @if (preSaveStatus === 'saving') {
+                    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+                    <p><mat-icon>cloud_upload</mat-icon> Auto-saving...</p>
+                  }
+                  @if (preSaveStatus === 'saved') {
+                    <p class="saved"><mat-icon>cloud_done</mat-icon> Saved at {{ formatDateTime(preLastSaved) }}</p>
+                  }
+                </div>
+              }
+
+              <!-- Action Buttons -->
+              @if (!phaseStatus.isPreDialysisLocked) {
+                <div class="action-buttons">
+                  <button mat-raised-button color="primary" 
+                          (click)="savePreDialysis()"
+                          [disabled]="saving || preDialysisForm.invalid">
+                    <mat-icon>save</mat-icon>
+                    Save Pre-Dialysis Data
+                  </button>
+                  
+                  <button mat-raised-button color="accent" 
+                          (click)="completePreDialysis()"
+                          [disabled]="saving || preDialysisForm.invalid">
+                    <mat-icon>arrow_forward</mat-icon>
+                    Complete & Start Treatment
+                  </button>
+                </div>
+              }
+            </div>
+          </mat-step>
+
+          <!-- STEP 2: INTRA-DIALYSIS -->
+          <mat-step [completed]="phaseStatus.isIntraDialysisLocked">
+            <ng-template matStepLabel>
+              <div class="step-label">
+                <mat-icon>monitor_heart</mat-icon>
+                <span>Intra-Dialysis Monitoring</span>
+                @if (phaseStatus.isIntraDialysisLocked) {
+                  <mat-icon class="lock-icon" matTooltip="Phase completed and locked">lock</mat-icon>
+                }
+              </div>
+            </ng-template>
+
+            <div class="step-content">
+              <h3>Treatment Monitoring</h3>
+              
+              @if (phaseStatus.sessionPhase === 'PRE_DIALYSIS') {
+                <div class="phase-pending-message">
+                  <mat-icon>info</mat-icon>
+                  <p>Please complete Pre-Dialysis assessment before starting treatment monitoring.</p>
+                </div>
+              }
+
+              @if (phaseStatus.sessionPhase === 'INTRA_DIALYSIS') {
+                <div class="intra-dialysis-info">
+                  <p>
+                    <mat-icon>info</mat-icon>
+                    Treatment started at {{ formatDateTime(phaseStatus.intraDialysisStartedAt) }}
+                  </p>
+                  <p class="info-note">Record vital signs regularly during treatment using the monitoring system.</p>
+                </div>
+
+                <div class="monitoring-actions">
+                  <button mat-raised-button color="primary" (click)="goToMonitoring()">
+                    <mat-icon>add_circle</mat-icon>
+                    Record Vital Signs
+                  </button>
+                  
+                  <button mat-raised-button color="accent" 
+                          (click)="startPostDialysis()"
+                          [disabled]="saving">
+                    <mat-icon>stop_circle</mat-icon>
+                    End Treatment & Start Post-Dialysis
+                  </button>
+                </div>
+              }
+
+              @if (phaseStatus.isIntraDialysisLocked) {
+                <div class="phase-locked-message">
+                  <mat-icon>check_circle</mat-icon>
+                  <p>Treatment completed. Post-Dialysis phase started at {{ formatDateTime(phaseStatus.postDialysisStartedAt) }}</p>
+                </div>
+              }
+            </div>
+          </mat-step>
+
+          <!-- STEP 3: POST-DIALYSIS -->
+          <mat-step [completed]="phaseStatus.sessionPhase === 'COMPLETED'">
+            <ng-template matStepLabel>
+              <div class="step-label">
+                <mat-icon>assignment_turned_in</mat-icon>
+                <span>Post-Dialysis Assessment</span>
+                @if (phaseStatus.sessionPhase === 'COMPLETED') {
+                  <mat-icon class="lock-icon" matTooltip="Session completed">check_circle</mat-icon>
+                }
+              </div>
+            </ng-template>
+
+            <div class="step-content">
+              <h3>Post-Treatment Assessment & Discharge</h3>
+              
+              @if (phaseStatus.sessionPhase !== 'POST_DIALYSIS' && phaseStatus.sessionPhase !== 'COMPLETED') {
+                <div class="phase-pending-message">
+                  <mat-icon>info</mat-icon>
+                  <p>Please complete treatment monitoring before post-dialysis assessment.</p>
+                </div>
+              }
+
+              @if (phaseStatus.sessionPhase === 'POST_DIALYSIS' || phaseStatus.sessionPhase === 'COMPLETED') {
+                @if (phaseStatus.sessionPhase === 'COMPLETED') {
+                  <div class="phase-completed-message">
+                    <mat-icon>check_circle</mat-icon>
+                    <p>Session completed successfully! Patient has been discharged.</p>
+                  </div>
+                }
+
+                <form [formGroup]="postDialysisForm">
+                  <div class="form-grid">
+                    <!-- Post-Weight -->
+                    <mat-form-field appearance="outline">
+                      <mat-label>Post-Weight (kg)</mat-label>
+                      <input matInput type="number" formControlName="postDialysisWeight" 
+                             [readonly]="phaseStatus.sessionPhase === 'COMPLETED'"
+                             placeholder="Enter post-treatment weight">
+                      <mat-icon matPrefix>monitor_weight</mat-icon>
+                      @if (postDialysisForm.get('postDialysisWeight')?.hasError('required')) {
+                        <mat-error>Post-weight is required</mat-error>
+                      }
+                    </mat-form-field>
+
+                    <!-- Post Systolic BP -->
+                    <mat-form-field appearance="outline">
+                      <mat-label>Systolic BP (mmHg)</mat-label>
+                      <input matInput type="number" formControlName="postDialysisSBP" 
+                             [readonly]="phaseStatus.sessionPhase === 'COMPLETED'"
+                             placeholder="Enter systolic BP">
+                      <mat-icon matPrefix>favorite</mat-icon>
+                      @if (postDialysisForm.get('postDialysisSBP')?.hasError('required')) {
+                        <mat-error>Systolic BP is required</mat-error>
+                      }
+                    </mat-form-field>
+
+                    <!-- Post Diastolic BP -->
+                    <mat-form-field appearance="outline">
+                      <mat-label>Diastolic BP (mmHg)</mat-label>
+                      <input matInput type="number" formControlName="postDialysisDBP" 
+                             [readonly]="phaseStatus.sessionPhase === 'COMPLETED'"
+                             placeholder="Enter diastolic BP">
+                      <mat-icon matPrefix>favorite</mat-icon>
+                      @if (postDialysisForm.get('postDialysisDBP')?.hasError('required')) {
+                        <mat-error>Diastolic BP is required</mat-error>
+                      }
+                    </mat-form-field>
+
+                    <!-- Post Heart Rate -->
+                    <mat-form-field appearance="outline">
+                      <mat-label>Heart Rate (bpm)</mat-label>
+                      <input matInput type="number" formControlName="postDialysisHR" 
+                             [readonly]="phaseStatus.sessionPhase === 'COMPLETED'"
+                             placeholder="Enter heart rate">
+                      <mat-icon matPrefix>ecg_heart</mat-icon>
+                      @if (postDialysisForm.get('postDialysisHR')?.hasError('required')) {
+                        <mat-error>Heart rate is required</mat-error>
+                      }
+                    </mat-form-field>
+
+                    <!-- Access Bleeding Time -->
+                    <mat-form-field appearance="outline">
+                      <mat-label>Access Bleeding Time (min)</mat-label>
+                      <input matInput type="number" formControlName="accessBleedingTime" 
+                             [readonly]="phaseStatus.sessionPhase === 'COMPLETED'"
+                             placeholder="Time until bleeding stopped">
+                      <mat-icon matPrefix>timer</mat-icon>
+                      @if (postDialysisForm.get('accessBleedingTime')?.hasError('required')) {
+                        <mat-error>Bleeding time is required</mat-error>
+                      }
+                    </mat-form-field>
+
+                    <!-- Total Fluid Removed -->
+                    <mat-form-field appearance="outline">
+                      <mat-label>Total Fluid Removed (L)</mat-label>
+                      <input matInput type="number" step="0.1" formControlName="totalFluidRemoved" 
+                             [readonly]="phaseStatus.sessionPhase === 'COMPLETED'"
+                             placeholder="Total UF removed">
+                      <mat-icon matPrefix>water_drop</mat-icon>
+                      @if (postDialysisForm.get('totalFluidRemoved')?.hasError('required')) {
+                        <mat-error>Fluid removed is required</mat-error>
+                      }
+                    </mat-form-field>
+
+                    <!-- Post-Access Status -->
+                    <mat-form-field appearance="outline">
+                      <mat-label>Access Status</mat-label>
+                      <input matInput formControlName="postAccessStatus" 
+                             [readonly]="phaseStatus.sessionPhase === 'COMPLETED'"
+                             placeholder="e.g., Good, Patent, No complications">
+                      <mat-icon matPrefix>medical_services</mat-icon>
+                      @if (postDialysisForm.get('postAccessStatus')?.hasError('required')) {
+                        <mat-error>Access status is required</mat-error>
+                      }
+                    </mat-form-field>
+
+                  </div>
+
+                  <!-- Post-Dialysis Medications Section -->
+                  <div class="medications-section">
+                    <h4>
+                      <mat-icon>medication</mat-icon>
+                      Post-Dialysis Medications
+                    </h4>
+                    
+                    @if (medications.length === 0 && phaseStatus.sessionPhase !== 'COMPLETED') {
+                      <p class="no-medications">No medications added yet. Click "Add Medication" to add one.</p>
+                    }
+
+                    @for (med of medications; track $index) {
+                      <div class="medication-card" [class.readonly]="phaseStatus.sessionPhase === 'COMPLETED'">
+                        <div class="medication-header">
+                          <span class="medication-number">Medication {{ $index + 1 }}</span>
+                          @if (phaseStatus.sessionPhase !== 'COMPLETED') {
+                            <button mat-icon-button 
+                                    color="warn" 
+                                    (click)="removeMedication($index)"
+                                    matTooltip="Remove medication">
+                              <mat-icon>delete</mat-icon>
+                            </button>
+                          }
+                        </div>
+                        
+                        <div class="medication-fields">
+                          <mat-form-field appearance="outline">
+                            <mat-label>Medication Type</mat-label>
+                            <mat-select [(ngModel)]="med.medicationType" 
+                                        [disabled]="phaseStatus.sessionPhase === 'COMPLETED'">
+                              @for (type of medicationTypes; track type) {
+                                <mat-option [value]="type">{{ type }}</mat-option>
+                              }
+                            </mat-select>
+                            <mat-icon matPrefix>category</mat-icon>
+                          </mat-form-field>
+
+                          <mat-form-field appearance="outline">
+                            <mat-label>Medication Name</mat-label>
+                            <input matInput 
+                                   [(ngModel)]="med.medicationName" 
+                                   [readonly]="phaseStatus.sessionPhase === 'COMPLETED'"
+                                   placeholder="e.g., EPO, Iron Sucrose">
+                            <mat-icon matPrefix>medication</mat-icon>
+                          </mat-form-field>
+
+                          <mat-form-field appearance="outline">
+                            <mat-label>Dose</mat-label>
+                            <input matInput 
+                                   [(ngModel)]="med.dose" 
+                                   [readonly]="phaseStatus.sessionPhase === 'COMPLETED'"
+                                   placeholder="e.g., 4000 IU">
+                            <mat-icon matPrefix>straighten</mat-icon>
+                          </mat-form-field>
+
+                          <mat-form-field appearance="outline">
+                            <mat-label>Route</mat-label>
+                            <mat-select [(ngModel)]="med.route" 
+                                        [disabled]="phaseStatus.sessionPhase === 'COMPLETED'">
+                              @for (route of medicationRoutes; track route) {
+                                <mat-option [value]="route">{{ route }}</mat-option>
+                              }
+                            </mat-select>
+                            <mat-icon matPrefix>route</mat-icon>
+                          </mat-form-field>
+
+                          <mat-form-field appearance="outline">
+                            <mat-label>Administered At</mat-label>
+                            <input matInput 
+                                   type="time" 
+                                   [(ngModel)]="med.administeredAt" 
+                                   [readonly]="phaseStatus.sessionPhase === 'COMPLETED'">
+                            <mat-icon matPrefix>schedule</mat-icon>
+                          </mat-form-field>
+                        </div>
+                      </div>
+                    }
+
+                    @if (phaseStatus.sessionPhase !== 'COMPLETED') {
+                      <button mat-stroked-button color="primary" (click)="addMedication()" class="add-medication-btn">
+                        <mat-icon>add</mat-icon>
+                        Add Medication
+                      </button>
+                    }
+                  </div>
+
+                  <!-- Discharge Notes -->
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Discharge Notes</mat-label>
+                    <textarea matInput formControlName="dischargeNotes" 
+                              [readonly]="phaseStatus.sessionPhase === 'COMPLETED'"
+                              rows="4"
+                              placeholder="Enter discharge instructions, patient condition, follow-up notes, etc."></textarea>
+                    <mat-icon matPrefix>description</mat-icon>
+                  </mat-form-field>
+                </form>
+
+                <!-- Save Status Indicator -->
+                @if (phaseStatus.sessionPhase === 'POST_DIALYSIS') {
+                  <div class="save-status">
+                    @if (postSaveStatus === 'saving') {
+                      <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+                      <p><mat-icon>cloud_upload</mat-icon> Auto-saving...</p>
+                    }
+                    @if (postSaveStatus === 'saved') {
+                      <p class="saved"><mat-icon>cloud_done</mat-icon> Saved at {{ formatDateTime(postLastSaved) }}</p>
+                    }
+                  </div>
+                }
+
+                <!-- Action Buttons -->
+                @if (phaseStatus.sessionPhase === 'POST_DIALYSIS') {
+                  <div class="action-buttons">
+                    <button mat-raised-button color="primary" 
+                            (click)="savePostDialysis()"
+                            [disabled]="saving || postDialysisForm.invalid">
+                      <mat-icon>save</mat-icon>
+                      Save Post-Dialysis Data
+                    </button>
+                    
+                    <button mat-raised-button color="accent" 
+                            (click)="completePostDialysis()"
+                            [disabled]="saving || postDialysisForm.invalid">
+                      <mat-icon>check_circle</mat-icon>
+                      Complete & Discharge Patient
+                    </button>
+                  </div>
+                }
+              }
+            </div>
+          </mat-step>
+        </mat-stepper>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>

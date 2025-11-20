@@ -1,0 +1,17 @@
+using HDScheduler.API.Models;
+
+namespace HDScheduler.API.Repositories;
+
+public interface IPatientRepository
+{
+    // Patient CRUD - Demographics only
+    Task<List<Patient>> GetAllAsync();
+    Task<List<Patient>> GetActiveAsync(); // Get only active patients
+    Task<Patient?> GetByIdAsync(int patientId);
+    Task<Patient?> GetByMRNAsync(string mrn); // Get patient by MRN
+    Task<List<Patient>> SearchAsync(string searchTerm); // Search by name, phone, MRN
+    Task<int> CreateAsync(Patient patient);
+    Task<bool> UpdateAsync(Patient patient);
+    Task<bool> DeleteAsync(int patientId); // Soft delete
+    Task<PatientWithLatestSession?> GetPatientWithLatestSessionAsync(int patientId);
+}

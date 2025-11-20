@@ -1,0 +1,276 @@
+<div class="post-schedule-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>
+        <div class="header-row">
+          <div class="header-left">
+            <button mat-icon-button (click)="goHome()" class="home-button" matTooltip="Home">
+              <mat-icon>home</mat-icon>
+            </button>
+            <button mat-icon-button (click)="goBack()" class="back-button" matTooltip="Back">
+              <mat-icon>arrow_back</mat-icon>
+            </button>
+            <h2>Post-Dialysis Data Entry</h2>
+          </div>
+        </div>
+      </mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      @if (loading && !patient) {
+        <div class="loading-container">
+          <mat-spinner></mat-spinner>
+        </div>
+      }
+
+      @if (errorMessage) {
+        <div class="error-message">
+          <mat-icon>error</mat-icon>
+          {{ errorMessage }}
+        </div>
+      }
+
+      @if (patient) {
+        <!-- Patient Info Card -->
+        <div class="patient-info-card">
+          <div class="patient-header">
+            <mat-icon class="person-icon">person</mat-icon>
+            <div>
+              <h3 class="patient-name">{{ patient.name || 'Unknown Patient' }}</h3>
+              <p class="patient-subtitle">MRN: {{ patient.mrn || 'N/A' }} | Age: {{ patient.age }} years | {{ patient.gender || 'N/A' }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Session Summary Card -->
+        @if (sessionData) {
+          <div class="session-summary-card">
+            <div class="summary-header">
+              <mat-icon>summarize</mat-icon>
+              <h3>Session Summary</h3>
+            </div>
+            <div class="summary-grid">
+              <div class="summary-item">
+                <label>Patient:</label>
+                <span>{{ patient.name || 'N/A' }}</span>
+              </div>
+              <div class="summary-item">
+                <label>Treatment Date:</label>
+                <span>{{ sessionData.sessionDate | date:'MMM dd, yyyy' }}</span>
+              </div>
+              <div class="summary-item">
+                <label>Time Slot:</label>
+                <span>Slot {{ sessionData.slotID }} - {{ getSlotName(sessionData.slotID) }}</span>
+              </div>
+              <div class="summary-item">
+                <label>Bed Number:</label>
+                <span>{{ sessionData.bedNumber || 'N/A' }}</span>
+              </div>
+              <div class="summary-item">
+                <label>Dry Weight:</label>
+                <span>{{ sessionData.dryWeight || 'N/A' }} kg</span>
+              </div>
+              <div class="summary-item">
+                <label>Pre-Weight:</label>
+                <span>{{ sessionData.preWeight || 'N/A' }} kg</span>
+              </div>
+              <div class="summary-item">
+                <label>Duration:</label>
+                <span>{{ sessionData.prescribedDuration || 'N/A' }} hours</span>
+              </div>
+              <div class="summary-item">
+                <label>Dialyser Type:</label>
+                <span>{{ sessionData.dialyserType || 'N/A' }}</span>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- Post-Dialysis Form -->
+        <form [formGroup]="postDialysisForm" (ngSubmit)="onSubmit()">
+          
+          <!-- Post-Dialysis Assessment & Medications Section -->
+          <div class="section-card">
+            <h3 class="section-title">
+              <mat-icon>assignment_turned_in</mat-icon>
+              Post-Dialysis Assessment & Medications
+            </h3>
+
+            <!-- Post-Dialysis Vital Signs -->
+            <div class="subsection">
+              <h4 class="subsection-title">
+                <mat-icon>monitor_heart</mat-icon>
+                Post-Dialysis Vital Signs & Measurements
+              </h4>
+              
+              <div class="form-row">
+                <mat-form-field appearance="outline">
+                  <mat-label>Post-Dialysis Weight (kg)</mat-label>
+                  <input matInput type="number" formControlName="postWeight" step="0.1" placeholder="e.g., 68.0">
+                  <mat-icon matPrefix>monitor_weight</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Post-Dialysis Systolic BP (mmHg)</mat-label>
+                  <input matInput type="number" formControlName="postSBP" placeholder="e.g., 130">
+                  <mat-icon matPrefix>favorite</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Post-Dialysis Diastolic BP (mmHg)</mat-label>
+                  <input matInput type="number" formControlName="postDBP" placeholder="e.g., 78">
+                  <mat-icon matPrefix>favorite</mat-icon>
+                </mat-form-field>
+              </div>
+
+              <div class="form-row">
+                <mat-form-field appearance="outline">
+                  <mat-label>Post-Dialysis HR (bpm)</mat-label>
+                  <input matInput type="number" formControlName="postHR" placeholder="e.g., 80">
+                  <mat-icon matPrefix>ecg_heart</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Access Bleeding Time (minutes)</mat-label>
+                  <input matInput type="number" formControlName="accessBleedingTime" placeholder="e.g., 6">
+                  <mat-icon matPrefix>timer</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Total Fluid Removed (L)</mat-label>
+                  <input matInput type="number" formControlName="totalFluidRemoved" step="0.1" placeholder="e.g., 3.5">
+                  <mat-icon matPrefix>water_drop</mat-icon>
+                </mat-form-field>
+              </div>
+
+              <div class="form-row">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Post-Access Status</mat-label>
+                  <input matInput formControlName="postAccessStatus" placeholder="e.g., Site dry, dressing clean and intact">
+                  <mat-icon matPrefix>medical_services</mat-icon>
+                </mat-form-field>
+              </div>
+            </div>
+
+            <!-- Post-Dialysis Medications -->
+            <div class="subsection">
+              <h4 class="subsection-title">
+                <mat-icon>medication</mat-icon>
+                Post-Dialysis Medications
+              </h4>
+              
+              <div class="form-row">
+                <mat-form-field appearance="outline">
+                  <mat-label>Medication Type</mat-label>
+                  <mat-select formControlName="medicationType">
+                    @for (type of medicationTypes; track type) {
+                      <mat-option [value]="type">{{ type }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Medication Name</mat-label>
+                  <input matInput formControlName="medicationName">
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Dose</mat-label>
+                  <input matInput formControlName="dose" placeholder="e.g., 4000 IU">
+                </mat-form-field>
+              </div>
+
+              <div class="form-row">
+                <mat-form-field appearance="outline">
+                  <mat-label>Route</mat-label>
+                  <mat-select formControlName="route">
+                    @for (route of medicationRoutes; track route) {
+                      <mat-option [value]="route">{{ route }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Administered At</mat-label>
+                  <input matInput type="time" formControlName="administeredAt">
+                </mat-form-field>
+              </div>
+            </div>
+          </div>
+
+          <!-- Treatment Alerts Section -->
+          <div class="section-card">
+            <h3 class="section-title">
+              <mat-icon>warning</mat-icon>
+              Treatment Alerts & Final Review
+            </h3>
+
+            <div class="subsection">
+              <h4 class="subsection-title">Treatment Alerts (Optional)</h4>
+              
+              <div class="form-row">
+                <mat-form-field appearance="outline">
+                  <mat-label>Alert Type</mat-label>
+                  <mat-select formControlName="alertType">
+                    @for (type of alertTypes; track type) {
+                      <mat-option [value]="type">{{ type }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Severity</mat-label>
+                  <mat-select formControlName="severity">
+                    @for (level of severityLevels; track level) {
+                      <mat-option [value]="level">{{ level }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              </div>
+
+              <div class="form-row">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Alert Message</mat-label>
+                  <textarea matInput formControlName="alertMessage" rows="2" placeholder="Describe the alert or incident"></textarea>
+                </mat-form-field>
+              </div>
+
+              <div class="form-row">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Resolution</mat-label>
+                  <textarea matInput formControlName="resolution" rows="2" placeholder="Describe actions taken or resolution"></textarea>
+                </mat-form-field>
+              </div>
+            </div>
+
+            <!-- Additional Notes -->
+            <div class="subsection">
+              <h4 class="subsection-title">Additional Notes</h4>
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Session Notes</mat-label>
+                <textarea matInput formControlName="notes" rows="3" placeholder="Any additional notes or observations about the session"></textarea>
+              </mat-form-field>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="action-buttons">
+            <button mat-button type="button" (click)="goBack()">
+              <mat-icon>cancel</mat-icon>
+              Cancel
+            </button>
+            <button mat-raised-button color="accent" type="submit" [disabled]="loading">
+              @if (loading) {
+                <mat-spinner diameter="20"></mat-spinner>
+              }
+              @if (!loading) {
+                <mat-icon>history</mat-icon>
+              }
+              Save & View History
+            </button>
+          </div>
+        </form>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>

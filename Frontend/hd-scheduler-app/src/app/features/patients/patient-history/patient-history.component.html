@@ -1,0 +1,368 @@
+<div class="patient-history-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>
+        <div class="header-row">
+          <div class="header-left">
+            <button mat-icon-button (click)="goHome()" class="home-button" matTooltip="Home">
+              <mat-icon>home</mat-icon>
+            </button>
+            <button mat-icon-button (click)="goBack()" class="back-button" matTooltip="Back">
+              <mat-icon>arrow_back</mat-icon>
+            </button>
+            <h2>Patient Treatment History</h2>
+          </div>
+        </div>
+      </mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      @if (loading) {
+        <div class="loading-container">
+          <mat-spinner></mat-spinner>
+        </div>
+      }
+
+      @if (errorMessage && !loading) {
+        <div class="error-message">
+          <mat-icon>error</mat-icon>
+          {{ errorMessage }}
+        </div>
+      }
+
+      @if (!loading && !errorMessage && patientInfo) {
+        <!-- Patient Info Summary -->
+        <div class="patient-summary">
+          <div class="info-grid">
+            <div class="info-item">
+              <mat-icon>person</mat-icon>
+              <div>
+                <label>Patient Name</label>
+                <span>{{ patientInfo.name }}</span>
+              </div>
+            </div>
+            <div class="info-item">
+              <mat-icon>badge</mat-icon>
+              <div>
+                <label>MRN</label>
+                <span>{{ patientInfo.mrn }}</span>
+              </div>
+            </div>
+            <div class="info-item">
+              <mat-icon>calendar_today</mat-icon>
+              <div>
+                <label>Age</label>
+                <span>{{ patientInfo.age }} years</span>
+              </div>
+            </div>
+            <div class="info-item">
+              <mat-icon>wc</mat-icon>
+              <div>
+                <label>Gender</label>
+                <span>{{ patientInfo.gender }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Statistics Summary -->
+        @if (statistics) {
+          <div class="statistics-card">
+            <h3>Treatment Statistics</h3>
+            <div class="stats-grid">
+              <div class="stat-item">
+                <div class="stat-value">{{ statistics.totalSessions }}</div>
+                <div class="stat-label">Total Sessions</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value">{{ statistics.averageWeightLoss | number:'1.1-1' }} kg</div>
+                <div class="stat-label">Avg Weight Loss</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value">{{ statistics.averagePreWeight | number:'1.1-1' }} kg</div>
+                <div class="stat-label">Avg Pre-Weight</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value">{{ statistics.firstSessionDate | date:'MMM d, y' }}</div>
+                <div class="stat-label">First Session</div>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- Tabs for different views -->
+        <mat-tab-group class="history-tabs">
+          <!-- Timeline Tab -->
+          <mat-tab label="Session Timeline">
+            <div class="tab-content">
+              @if (sessions && sessions.length > 0) {
+                <div class="sessions-timeline">
+                  @for (session of sessions; track session.scheduleID) {
+                    <mat-expansion-panel class="session-panel">
+                      <mat-expansion-panel-header>
+                        <mat-panel-title>
+                          <mat-icon>event</mat-icon>
+                          <span>{{ session.sessionDate | date:'EEEE, MMMM d, y' }}</span>
+                          <mat-chip [class]="getStatusClass(session.isDischarged)">
+                            {{ session.isDischarged ? 'Completed' : 'Active' }}
+                          </mat-chip>
+                        </mat-panel-title>
+                        <mat-panel-description>
+                          {{ session.slotName }} - Bed {{ session.bedNumber }}
+                        </mat-panel-description>
+                      </mat-expansion-panel-header>
+
+                      <div class="session-details">
+                        <div class="detail-grid">
+                          <!-- Prescription Details -->
+                          <div class="detail-section">
+                            <h4><mat-icon>medication</mat-icon> Prescription & Treatment Plan</h4>
+                            <p><strong>Dry Weight:</strong> {{ session.dryWeight || 'N/A' }} kg</p>
+                            <p><strong>HD Start Date:</strong> {{ session.hdStartDate ? (session.hdStartDate | date:'MMM d, y') : 'N/A' }}</p>
+                            <p><strong>HD Cycle:</strong> {{ session.hdCycle || 'N/A' }}</p>
+                            <p><strong>Prescribed Duration:</strong> {{ session.prescribedDuration || 'N/A' }} hours</p>
+                            <p><strong>Dialyser Type:</strong> {{ session.dialyserType || 'N/A' }}</p>
+                            <p><strong>Dialyser Model:</strong> {{ session.dialyserModel || 'N/A' }}</p>
+                            <p><strong>Dialyser Reuse Count:</strong> {{ session.dialyserReuseCount || 'N/A' }}</p>
+                            <p><strong>Blood Tubing Reuse:</strong> {{ session.bloodTubingReuse || 'N/A' }}</p>
+                            <p><strong>UF Goal:</strong> {{ session.ufGoal || 'N/A' }} L</p>
+                            <p><strong>Prescribed BFR:</strong> {{ session.prescribedBFR || 'N/A' }} mL/min</p>
+                            <p><strong>Dialysate:</strong> {{ session.dialysatePrescription || 'N/A' }}</p>
+                            <p><strong>Anticoagulation Type:</strong> {{ session.anticoagulationType || 'N/A' }}</p>
+                            <p><strong>Heparin Bolus Dose:</strong> {{ session.bolusDose || 'N/A' }} mL</p>
+                            <p><strong>Heparin Infusion Rate:</strong> {{ session.heparinInfusionRate || 'N/A' }} mL/hr</p>
+                          </div>
+
+                          <!-- Access & Session Details -->
+                          <div class="detail-section">
+                            <h4><mat-icon>accessible</mat-icon> Vascular Access & Session</h4>
+                            <p><strong>Access Type:</strong> {{ session.accessType || 'N/A' }}</p>
+                            <p><strong>Access Location:</strong> {{ session.accessLocation || 'N/A' }}</p>
+                            <p><strong>Start Time:</strong> {{ session.startTime || 'N/A' }}</p>
+                            <p><strong>Access Bleeding Time:</strong> {{ session.accessBleedingTime || 'N/A' }} min</p>
+                            <p><strong>Access Status:</strong> {{ session.accessStatus || 'N/A' }}</p>
+                          </div>
+
+                          <!-- Pre-Dialysis Assessment -->
+                          <div class="detail-section">
+                            <h4><mat-icon>fact_check</mat-icon> Pre-Dialysis Assessment</h4>
+                            <p><strong>Pre-Weight:</strong> {{ session.preWeight || 'N/A' }} kg</p>
+                            <p><strong>Pre-BP (Sitting):</strong> {{ session.preBPSitting || session.bloodPressurePre || 'N/A' }}</p>
+                            <p><strong>Pre-Temperature:</strong> {{ session.preTemperature || 'N/A' }}°C</p>
+                            <p><strong>Complications:</strong> {{ session.complications || 'N/A' }}</p>
+                          </div>
+
+                          <!-- Intra-Dialytic Monitoring -->
+                          <div class="detail-section highlight-section">
+                            <h4><mat-icon>monitor_heart</mat-icon> Intra-Dialytic Monitoring</h4>
+                            <p><strong>Monitoring Time:</strong> {{ session.monitoringTime || 'N/A' }}</p>
+                            <p><strong>Blood Pressure:</strong> {{ session.bloodPressure || 'N/A' }}</p>
+                            <p><strong>Heart Rate:</strong> {{ session.heartRate || 'N/A' }} bpm</p>
+                            <p><strong>Actual BFR:</strong> {{ session.actualBFR || 'N/A' }} mL/min</p>
+                            <p><strong>Venous Pressure:</strong> {{ session.venousPressure || 'N/A' }} mmHg</p>
+                            <p><strong>Arterial Pressure:</strong> {{ session.arterialPressure || 'N/A' }} mmHg</p>
+                            <p><strong>Current UFR:</strong> {{ session.currentUFR || 'N/A' }} L/hr</p>
+                            <p><strong>Total UF Achieved:</strong> {{ session.totalUFAchieved || 'N/A' }} L</p>
+                            <p><strong>TMP Pressure:</strong> {{ session.tmpPressure || 'N/A' }} mmHg</p>
+                            <p><strong>Symptoms:</strong> {{ session.symptoms || 'N/A' }}</p>
+                            <p><strong>Interventions:</strong> {{ session.interventions || 'N/A' }}</p>
+                            <p><strong>Staff Initials:</strong> {{ session.staffInitials || 'N/A' }}</p>
+                          </div>
+
+                          <!-- Post-Dialysis Vitals -->
+                          <div class="detail-section">
+                            <h4><mat-icon>assignment_turned_in</mat-icon> Post-Dialysis</h4>
+                            <p><strong>Post-Weight:</strong> {{ session.postWeight || 'N/A' }} kg</p>
+                            <p><strong>Weight Loss:</strong> {{ (session.preWeight && session.postWeight) ? ((session.preWeight - session.postWeight) | number:'1.1-1') : 'N/A' }} kg</p>
+                            <p><strong>Post-BP:</strong> {{ (session.postSBP && session.postDBP) ? (session.postSBP + '/' + session.postDBP) : 'N/A' }}</p>
+                            <p><strong>Temperature:</strong> {{ session.preTemperature || 'N/A' }}°C</p>
+                            <p><strong>Notes:</strong> {{ session.notes || 'N/A' }}</p>
+                          </div>
+
+                          <!-- Post-Dialysis Medications -->
+                          @if (session.medicationName || session.medicationType) {
+                            <div class="detail-section highlight-section medication-section">
+                              <h4><mat-icon>local_pharmacy</mat-icon> Post-Dialysis Medications</h4>
+                              <p><strong>Medication Type:</strong> {{ session.medicationType || 'N/A' }}</p>
+                              <p><strong>Medication Name:</strong> {{ session.medicationName || 'N/A' }}</p>
+                              <p><strong>Dose:</strong> {{ session.dose || 'N/A' }}</p>
+                              <p><strong>Route:</strong> {{ session.route || 'N/A' }}</p>
+                              <p><strong>Administered At:</strong> {{ session.administeredAt || 'N/A' }}</p>
+                            </div>
+                          }
+
+                          <!-- Alerts -->
+                          @if (session.alertType || session.alertMessage) {
+                            <div class="detail-section alert-section">
+                              <h4><mat-icon>warning</mat-icon> Treatment Alerts</h4>
+                              <p><strong>Alert Type:</strong> {{ session.alertType || 'N/A' }}</p>
+                              <p><strong>Severity:</strong> 
+                                <mat-chip [color]="session.severity === 'High' ? 'warn' : 'accent'" highlighted>
+                                  {{ session.severity || 'N/A' }}
+                                </mat-chip>
+                              </p>
+                              @if (session.alertMessage) {
+                                <p><strong>Message:</strong> {{ session.alertMessage }}</p>
+                              }
+                              @if (session.resolution) {
+                                <p><strong>Resolution:</strong> {{ session.resolution }}</p>
+                              }
+                            </div>
+                          }
+
+                          <!-- Staff -->
+                          <div class="detail-section">
+                            <h4><mat-icon>people</mat-icon> Assigned Staff</h4>
+                            <p><strong>Doctor:</strong> {{ session.assignedDoctorName || 'Not Assigned' }}</p>
+                            <p><strong>Nurse:</strong> {{ session.assignedNurseName || 'Not Assigned' }}</p>
+                          </div>
+
+                          <!-- Notes -->
+                          @if (session.notes) {
+                            <div class="detail-section full-width">
+                              <h4><mat-icon>note</mat-icon> Notes</h4>
+                              <p class="notes-text">{{ session.notes }}</p>
+                            </div>
+                          }
+                        </div>
+
+                        <div class="session-actions">
+                          <button mat-raised-button color="primary" (click)="viewSessionDetails(session)">
+                            <mat-icon>visibility</mat-icon>
+                            View Full Details
+                          </button>
+                        </div>
+                      </div>
+                    </mat-expansion-panel>
+                  }
+                </div>
+              } @else {
+                <div class="empty-state">
+                  <mat-icon>event_busy</mat-icon>
+                  <p>No treatment sessions found</p>
+                </div>
+              }
+            </div>
+          </mat-tab>
+
+          <!-- Vital Trends Tab -->
+          <mat-tab label="Vital Trends">
+            <div class="tab-content">
+              @if (vitalTrends) {
+                <div class="trends-container">
+                  <!-- Weight Trends -->
+                  @if (vitalTrends.weightTrend && vitalTrends.weightTrend.length > 0) {
+                    <div class="trend-section">
+                      <h4><mat-icon>monitor_weight</mat-icon> Weight Trends</h4>
+                      <div class="trend-table">
+                        <table mat-table [dataSource]="vitalTrends.weightTrend">
+                          <ng-container matColumnDef="date">
+                            <th mat-header-cell *matHeaderCellDef>Date</th>
+                            <td mat-cell *matCellDef="let trend">{{ trend.sessionDate | date:'MMM d, y' }}</td>
+                          </ng-container>
+                          <ng-container matColumnDef="value">
+                            <th mat-header-cell *matHeaderCellDef>Weight (kg)</th>
+                            <td mat-cell *matCellDef="let trend">{{ trend.value | number:'1.1-1' }}</td>
+                          </ng-container>
+                          <ng-container matColumnDef="label">
+                            <th mat-header-cell *matHeaderCellDef>Type</th>
+                            <td mat-cell *matCellDef="let trend">{{ trend.label }}</td>
+                          </ng-container>
+                          <tr mat-header-row *matHeaderRowDef="['date', 'value', 'label']"></tr>
+                          <tr mat-row *matRowDef="let row; columns: ['date', 'value', 'label'];"></tr>
+                        </table>
+                      </div>
+                    </div>
+                  }
+
+                  <!-- Weight Loss Trends -->
+                  @if (vitalTrends.weightLossTrend && vitalTrends.weightLossTrend.length > 0) {
+                    <div class="trend-section">
+                      <h4><mat-icon>trending_down</mat-icon> Weight Loss Per Session</h4>
+                      <div class="trend-table">
+                        <table mat-table [dataSource]="vitalTrends.weightLossTrend">
+                          <ng-container matColumnDef="date">
+                            <th mat-header-cell *matHeaderCellDef>Date</th>
+                            <td mat-cell *matCellDef="let trend">{{ trend.sessionDate | date:'MMM d, y' }}</td>
+                          </ng-container>
+                          <ng-container matColumnDef="value">
+                            <th mat-header-cell *matHeaderCellDef>Weight Loss (kg)</th>
+                            <td mat-cell *matCellDef="let trend">{{ trend.value | number:'1.1-1' }}</td>
+                          </ng-container>
+                          <tr mat-header-row *matHeaderRowDef="['date', 'value']"></tr>
+                          <tr mat-row *matRowDef="let row; columns: ['date', 'value'];"></tr>
+                        </table>
+                      </div>
+                    </div>
+                  }
+
+                  <!-- Blood Pressure Trends -->
+                  @if (vitalTrends.bloodPressureTrend && vitalTrends.bloodPressureTrend.length > 0) {
+                    <div class="trend-section">
+                      <h4><mat-icon>favorite</mat-icon> Blood Pressure Trends</h4>
+                      <div class="trend-table">
+                        <table mat-table [dataSource]="vitalTrends.bloodPressureTrend">
+                          <ng-container matColumnDef="date">
+                            <th mat-header-cell *matHeaderCellDef>Date</th>
+                            <td mat-cell *matCellDef="let trend">{{ trend.sessionDate | date:'MMM d, y' }}</td>
+                          </ng-container>
+                          <ng-container matColumnDef="preBP">
+                            <th mat-header-cell *matHeaderCellDef>Pre-BP</th>
+                            <td mat-cell *matCellDef="let trend">{{ trend.preBP }}</td>
+                          </ng-container>
+                          <ng-container matColumnDef="postBP">
+                            <th mat-header-cell *matHeaderCellDef>Post-BP</th>
+                            <td mat-cell *matCellDef="let trend">{{ trend.postBP }}</td>
+                          </ng-container>
+                          <tr mat-header-row *matHeaderRowDef="['date', 'preBP', 'postBP']"></tr>
+                          <tr mat-row *matRowDef="let row; columns: ['date', 'preBP', 'postBP'];"></tr>
+                        </table>
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="empty-state">
+                  <mat-icon>show_chart</mat-icon>
+                  <p>No vital trends data available</p>
+                  <p class="note">Vital trends will appear after completing more dialysis sessions</p>
+                </div>
+              }
+            </div>
+          </mat-tab>
+
+          <!-- Medications Tab -->
+          <mat-tab label="Medications">
+            <div class="tab-content">
+              @if (medications && medications.length > 0) {
+                <div class="medications-list">
+                  <h3><mat-icon>medication</mat-icon> Medication History</h3>
+                  <p>Sessions with medications administered: {{ medications.length }}</p>
+                  
+                  @if (statistics && statistics.totalSessions > 0) {
+                    <div class="medication-stats">
+                      <p><strong>Common Medications:</strong></p>
+                      <div class="medication-chips">
+                        @for (med of statistics.commonMedications; track med) {
+                          <mat-chip>{{ med }}</mat-chip>
+                        }
+                      </div>
+                    </div>
+                  }
+
+                  <p class="note">Click on individual sessions in the Timeline tab to view detailed medication information for each session.</p>
+                </div>
+              } @else {
+                <div class="empty-state">
+                  <mat-icon>medication</mat-icon>
+                  <p>No medications recorded</p>
+                  <p class="note">Medications administered during dialysis will appear here</p>
+                </div>
+              }
+            </div>
+          </mat-tab>
+        </mat-tab-group>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>

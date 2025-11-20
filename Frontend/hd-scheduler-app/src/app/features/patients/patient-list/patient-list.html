@@ -1,0 +1,220 @@
+<div class="patient-list-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>
+        <div class="header-row">
+          <div class="header-left">
+            <button mat-icon-button (click)="goHome()" class="home-button" matTooltip="Home">
+              <mat-icon>home</mat-icon>
+            </button>
+            <button mat-icon-button (click)="goBack()" class="back-button" matTooltip="Back">
+              <mat-icon>arrow_back</mat-icon>
+            </button>
+            <h2>Patient Management</h2>
+          </div>
+          <div class="header-actions">
+            @if (isReadOnly) {
+              <mat-chip class="warning-chip">
+                <mat-icon>lock</mat-icon>
+                READ-ONLY ACCESS
+              </mat-chip>
+            }
+            <button mat-icon-button (click)="onRefresh()" matTooltip="Refresh" class="refresh-button">
+              <mat-icon>refresh</mat-icon>
+            </button>
+            @if (!isReadOnly) {
+              <button mat-raised-button color="primary" (click)="onAddPatient()">
+                <mat-icon>add</mat-icon>
+                Add New Patient
+              </button>
+            }
+          </div>
+        </div>
+      </mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      <!-- Search Bar -->
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Search Patients</mat-label>
+        <input matInput [(ngModel)]="searchTerm" (input)="onSearch()" 
+               placeholder="Search by name, MRN, or phone">
+        <mat-icon matPrefix>search</mat-icon>
+      </mat-form-field>
+
+      <!-- Loading Spinner -->
+      @if (loading) {
+        <div class="loading-container">
+          <mat-spinner></mat-spinner>
+        </div>
+      }
+
+      <!-- Error Message -->
+      @if (errorMessage && !loading) {
+        <div class="error-message">
+          <mat-icon>error</mat-icon>
+          {{ errorMessage }}
+        </div>
+      }
+
+      <!-- Patient Table -->
+      @if (!loading && !errorMessage && filteredPatients.length > 0) {
+        <div class="table-container">
+          <table mat-table [dataSource]="filteredPatients" class="patients-table">
+            
+            <!-- ID Column -->
+            <ng-container matColumnDef="id">
+              <th mat-header-cell *matHeaderCellDef>ID</th>
+              <td mat-cell *matCellDef="let patient">{{ patient.patientID }}</td>
+            </ng-container>
+
+            <!-- Name Column -->
+            <ng-container matColumnDef="name">
+              <th mat-header-cell *matHeaderCellDef>Patient Name</th>
+              <td mat-cell *matCellDef="let patient">
+                <div class="patient-name">
+                  <strong>{{ patient.name }}</strong>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- MRN Column -->
+            <ng-container matColumnDef="mrn">
+              <th mat-header-cell *matHeaderCellDef>MRN</th>
+              <td mat-cell *matCellDef="let patient">{{ patient.mrn || '-' }}</td>
+            </ng-container>
+
+            <!-- Age Column -->
+            <ng-container matColumnDef="age">
+              <th mat-header-cell *matHeaderCellDef>Age</th>
+              <td mat-cell *matCellDef="let patient">{{ patient.age }}</td>
+            </ng-container>
+
+            <!-- Gender Column -->
+            <ng-container matColumnDef="gender">
+              <th mat-header-cell *matHeaderCellDef>Gender</th>
+              <td mat-cell *matCellDef="let patient">{{ patient.gender || '-' }}</td>
+            </ng-container>
+
+            <!-- Contact Number Column -->
+            <ng-container matColumnDef="contact">
+              <th mat-header-cell *matHeaderCellDef>Contact Number</th>
+              <td mat-cell *matCellDef="let patient">{{ patient.contactNumber }}</td>
+            </ng-container>
+
+            <!-- Emergency Contact Column -->
+            <ng-container matColumnDef="emergencyContact">
+              <th mat-header-cell *matHeaderCellDef>Emergency Contact</th>
+              <td mat-cell *matCellDef="let patient">{{ patient.emergencyContact || '-' }}</td>
+            </ng-container>
+
+            <!-- Address Column -->
+            <ng-container matColumnDef="address">
+              <th mat-header-cell *matHeaderCellDef>Address</th>
+              <td mat-cell *matCellDef="let patient">
+                <div class="address-cell">{{ patient.address || '-' }}</div>
+              </td>
+            </ng-container>
+
+            <!-- Guardian Name Column -->
+            <ng-container matColumnDef="guardian">
+              <th mat-header-cell *matHeaderCellDef>Guardian Name</th>
+              <td mat-cell *matCellDef="let patient">{{ patient.guardianName || '-' }}</td>
+            </ng-container>
+
+            <!-- Status Column -->
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let patient">
+                <mat-chip [class]="getPatientStatusClass(patient)">
+                  {{ getPatientStatus(patient) }}
+                </mat-chip>
+              </td>
+            </ng-container>
+
+            <!-- Daily HD Schedule Column -->
+            <ng-container matColumnDef="schedule">
+              <th mat-header-cell *matHeaderCellDef>Daily HD Schedule</th>
+              <td mat-cell *matCellDef="let patient">
+                <div class="schedule-buttons">
+                  <button mat-raised-button color="primary" 
+                          (click)="onScheduleHD(patient)"
+                          [disabled]="patient.isDischarged">
+                    <mat-icon>event_available</mat-icon>
+                    Schedule HD
+                  </button>
+                  <button mat-raised-button color="accent" 
+                          (click)="onPostSchedule(patient)"
+                          [disabled]="!patient.scheduleID || patient.isDischarged"
+                          matTooltip="Complete post-dialysis data entry">
+                    <mat-icon>assignment_turned_in</mat-icon>
+                    Post Schedule
+                  </button>
+                  <button mat-raised-button 
+                          style="background-color: #673ab7; color: white;"
+                          (click)="onRecordVitals(patient)"
+                          [disabled]="!patient.scheduleID || patient.isDischarged"
+                          matTooltip="Record intra-dialytic vital signs">
+                    <mat-icon>monitor_heart</mat-icon>
+                    Record Vitals
+                  </button>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Actions Column -->
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Actions</th>
+              <td mat-cell *matCellDef="let patient">
+                <button mat-icon-button color="accent" 
+                        (click)="onViewHistory(patient)"
+                        matTooltip="View Treatment History">
+                  <mat-icon>history</mat-icon>
+                </button>
+                @if (!isReadOnly) {
+                  <button mat-icon-button color="primary" 
+                          (click)="onEditPatient(patient)"
+                          matTooltip="Edit Patient">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  @if (!patient.isDischarged) {
+                    <button mat-icon-button color="warn" 
+                            (click)="onDischargePatient(patient)"
+                            matTooltip="Discharge Patient">
+                      <mat-icon>logout</mat-icon>
+                    </button>
+                  }
+                }
+                @if (isReadOnly) {
+                  <button mat-icon-button color="primary" 
+                          (click)="onEditPatient(patient)"
+                          matTooltip="View Patient Details (Read-Only)">
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+                }
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+          </table>
+        </div>
+      }
+
+      <!-- Empty State -->
+      @if (!loading && !errorMessage && filteredPatients.length === 0) {
+        <div class="empty-state">
+          <mat-icon>people_outline</mat-icon>
+          <h3>No Patients Found</h3>
+          <p>{{ searchTerm ? 'Try a different search term' : 'Start by adding a new patient' }}</p>
+          @if (!searchTerm) {
+            <button mat-raised-button color="primary" (click)="onAddPatient()">
+              <mat-icon>add</mat-icon>
+              Add First Patient
+            </button>
+          }
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>

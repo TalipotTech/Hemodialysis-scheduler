@@ -1,0 +1,65 @@
+<div class="dashboard-container">
+  <div class="header">
+    <button mat-icon-button (click)="goBack()" class="back-button">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <h1>HOD Dashboard</h1>
+    <button mat-button (click)="logout()">
+      <mat-icon>logout</mat-icon>
+      Logout
+    </button>
+  </div>
+
+  <div class="dashboard-widgets">
+    <div class="welcome-card">
+      <mat-card>
+        <mat-card-content>
+          <h2>Head of Department</h2>
+          <p>Department oversight and management</p>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <div class="widget-card">
+      <app-on-duty-widget></app-on-duty-widget>
+    </div>
+
+    <div class="widget-card">
+      <app-staffing-status-widget></app-staffing-status-widget>
+    </div>
+  </div>
+
+  <div class="action-cards">
+    <mat-card class="action-card" (click)="navigateToSchedule()">
+      <mat-card-content>
+        <mat-icon>calendar_month</mat-icon>
+        <h3>HD Schedule</h3>
+        <p>Monitor daily dialysis schedule</p>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="action-card" (click)="navigateToShiftSchedule()">
+      <mat-card-content>
+        <mat-icon>calendar_view_week</mat-icon>
+        <h3>Shift Schedule</h3>
+        <p>View staff assignments by shift</p>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="action-card" (click)="navigateToStaffManagement()">
+      <mat-card-content>
+        <mat-icon>groups</mat-icon>
+        <h3>Staff Management</h3>
+        <p>Manage staff and assignments</p>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="action-card" (click)="navigateToReports()">
+      <mat-card-content>
+        <mat-icon>assessment</mat-icon>
+        <h3>Reports</h3>
+        <p>View department reports</p>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

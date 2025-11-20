@@ -1,0 +1,301 @@
+<div class="hd-session-form-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>
+        <div class="header-row">
+          <div class="header-left">
+            <button mat-icon-button (click)="goBack()" class="back-button">
+              <mat-icon>arrow_back</mat-icon>
+            </button>
+            <div>
+              <h2>HD Session Details</h2>
+              @if (patientName) {
+                <p class="patient-info">Patient: <strong>{{ patientName }}</strong></p>
+              }
+            </div>
+          </div>
+          <button mat-icon-button (click)="onCancel()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      </mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      @if (errorMessage) {
+        <div class="error-message">
+          <mat-icon>error</mat-icon>
+          {{ errorMessage }}
+        </div>
+      }
+
+      <form [formGroup]="hdSessionForm" (ngSubmit)="onSubmit()">
+        
+        <!-- Session Date -->
+        <h3>Session Information</h3>
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Session Date</mat-label>
+            <input matInput [matDatepicker]="sessionPicker" formControlName="sessionDate" required>
+            <mat-datepicker-toggle matIconSuffix [for]="sessionPicker"></mat-datepicker-toggle>
+            <mat-datepicker #sessionPicker></mat-datepicker>
+            @if (hdSessionForm.get('sessionDate')?.invalid && hdSessionForm.get('sessionDate')?.touched) {
+              <mat-error>Session date is required</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        <!-- Basic HD Information -->
+        <h3>Basic HD Information</h3>
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Dry Weight (kg)**</mat-label>
+            <input matInput type="number" formControlName="dryWeight" placeholder="Enter dry weight">
+            <mat-hint>Target weight after dialysis</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>HD Start Date**</mat-label>
+            <input matInput [matDatepicker]="hdStartPicker" formControlName="hdStartDate">
+            <mat-datepicker-toggle matIconSuffix [for]="hdStartPicker"></mat-datepicker-toggle>
+            <mat-datepicker #hdStartPicker></mat-datepicker>
+            <mat-hint>When HD treatment began</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Prescribed Duration (hours)**</mat-label>
+            <input matInput type="number" step="0.5" formControlName="prescribedDuration" placeholder="4">
+            <mat-hint>Typically 3.5 - 5 hours</mat-hint>
+          </mat-form-field>
+        </div>
+
+        <!-- Dialysis Schedule Pattern -->
+        <h3>Dialysis Schedule Pattern</h3>
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>HD Cycle (Days Pattern)</mat-label>
+            <mat-select formControlName="hdCycle" (selectionChange)="onHDCycleChange()">
+              <mat-option value="">Not Set</mat-option>
+              @for (cycle of hdCycles; track cycle.value) {
+                <mat-option [value]="cycle.value">{{ cycle.label }}</mat-option>
+              }
+            </mat-select>
+            <mat-hint>Select the weekly dialysis pattern for this patient</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Sessions Per Week</mat-label>
+            <input matInput formControlName="hdFrequency" type="number" min="1" max="7" placeholder="e.g., 3">
+            <mat-hint>Number of dialysis sessions per week</mat-hint>
+          </mat-form-field>
+        </div>
+
+        <!-- Equipment & Supplies -->
+        <h3>Equipment & Supplies</h3>
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Dialyser Type</mat-label>
+            <mat-select formControlName="dialyserType">
+              @for (type of dialyserTypes; track type) {
+                <mat-option [value]="type">{{ type }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Dialyser Reuse Count</mat-label>
+            <input matInput type="number" formControlName="dialyserReuseCount">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Blood Tubing Reuse</mat-label>
+            <input matInput type="number" formControlName="bloodTubingReuse">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>HD Unit Number</mat-label>
+            <input matInput formControlName="hdUnitNumber" placeholder="e.g., Unit 1">
+          </mat-form-field>
+        </div>
+
+        <!-- Prescription -->
+        <h3>HD Prescription</h3>
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>UF Goal (Liters)</mat-label>
+            <input matInput type="number" step="0.1" formControlName="ufGoal" placeholder="e.g., 3.5">
+            <mat-hint>Ultrafiltration target volume</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Dialysate Prescription</mat-label>
+            <mat-select formControlName="dialysatePrescription">
+              @for (type of dialysatePrescriptions; track type) {
+                <mat-option [value]="type">{{ type }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Prescribed BFR (mL/min)</mat-label>
+            <input matInput type="number" formControlName="prescribedBFR" placeholder="e.g., 400">
+            <mat-hint>Blood flow rate</mat-hint>
+          </mat-form-field>
+        </div>
+
+        <!-- Anticoagulation -->
+        <h3>Anticoagulation</h3>
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Anticoagulation Type</mat-label>
+            <mat-select formControlName="anticoagulationType">
+              @for (type of anticoagulationTypes; track type) {
+                <mat-option [value]="type">{{ type }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Heparin Dose (units)</mat-label>
+            <input matInput type="number" formControlName="heparinDose" placeholder="Enter dose">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Syringe Type</mat-label>
+            <mat-select formControlName="syringeType">
+              @for (type of syringeTypes; track type) {
+                <mat-option [value]="type">{{ type }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Bolus Dose (ml)</mat-label>
+            <input matInput type="number" step="0.1" formControlName="bolusDose" placeholder="e.g., 5.0">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Heparin Infusion Rate (ml/hr)</mat-label>
+            <input matInput type="number" step="0.1" formControlName="heparinInfusionRate" placeholder="e.g., 1.0">
+          </mat-form-field>
+        </div>
+
+        <!-- Access & Vitals -->
+        <h3>Access & Vitals</h3>
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Access Type</mat-label>
+            <mat-select formControlName="accessType">
+              @for (type of accessTypes; track type) {
+                <mat-option [value]="type">{{ type }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Blood Pressure</mat-label>
+            <input matInput formControlName="bloodPressure" placeholder="e.g., 120/80">
+          </mat-form-field>
+
+          <div class="checkbox-field">
+            <mat-checkbox formControlName="bloodTestDone">Blood Test Done</mat-checkbox>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Symptoms</mat-label>
+            <textarea matInput formControlName="symptoms" rows="3" placeholder="Enter symptoms"></textarea>
+          </mat-form-field>
+        </div>
+
+        <!-- Bed Assignment -->
+        <h3>Bed Assignment</h3>
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Slot</mat-label>
+            <mat-select formControlName="slotID" (selectionChange)="onSlotChange()" required>
+              @for (slot of slots; track slot.id) {
+                <mat-option [value]="slot.id">{{ slot.name }}</mat-option>
+              }
+            </mat-select>
+            @if (hdSessionForm.get('slotID')?.invalid && hdSessionForm.get('slotID')?.touched) {
+              <mat-error>Slot is required</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Bed Number</mat-label>
+            <mat-select formControlName="bedNumber" required>
+              @for (bed of beds; track bed) {
+                <mat-option [value]="bed">Bed {{ bed }}</mat-option>
+              }
+            </mat-select>
+            @if (hdSessionForm.get('bedNumber')?.invalid && hdSessionForm.get('bedNumber')?.touched) {
+              <mat-error>Bed number is required</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        <!-- Staff Assignments -->
+        <h3>Staff Assignments</h3>
+        @if (!hdSessionForm.get('slotID')?.value) {
+          <p class="warning-text">
+            <mat-icon>warning</mat-icon>
+            Please select a slot first to see available staff
+          </p>
+        }
+        
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Assigned Doctor</mat-label>
+            <mat-select formControlName="assignedDoctor" [disabled]="!hdSessionForm.get('slotID')?.value">
+              <mat-option [value]="null">Not Assigned</mat-option>
+              @for (doctor of filteredDoctors; track doctor.staffID) {
+                <mat-option [value]="doctor.staffID">
+                  {{ doctor.name }} 
+                  @if (doctor.staffSpecialization) {
+                    <span class="specialization">- {{ doctor.staffSpecialization }}</span>
+                  }
+                </mat-option>
+              }
+            </mat-select>
+            @if (filteredDoctors.length > 0) {
+              <mat-hint>{{ filteredDoctors.length }} doctor(s) available</mat-hint>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Assigned Nurse</mat-label>
+            <mat-select formControlName="assignedNurse" [disabled]="!hdSessionForm.get('slotID')?.value">
+              <mat-option [value]="null">Not Assigned</mat-option>
+              @for (nurse of filteredNurses; track nurse.staffID) {
+                <mat-option [value]="nurse.staffID">
+                  {{ nurse.name }}
+                  @if (nurse.staffSpecialization) {
+                    <span class="specialization">- {{ nurse.staffSpecialization }}</span>
+                  }
+                </mat-option>
+              }
+            </mat-select>
+            @if (filteredNurses.length > 0) {
+              <mat-hint>{{ filteredNurses.length }} nurse(s) available</mat-hint>
+            }
+          </mat-form-field>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <button mat-button type="button" (click)="onCancel()">Cancel</button>
+          <button mat-raised-button color="primary" type="submit" [disabled]="loading || hdSessionForm.invalid">
+            @if (loading) {
+              <mat-spinner diameter="20"></mat-spinner>
+            } @else {
+              Create HD Session
+            }
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>

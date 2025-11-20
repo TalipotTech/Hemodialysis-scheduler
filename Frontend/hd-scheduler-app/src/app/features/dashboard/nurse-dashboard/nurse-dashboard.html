@@ -1,0 +1,178 @@
+<div class="dashboard-container">
+  <div class="header">
+    <div class="header-nav">
+      <button mat-icon-button (click)="goHome()" matTooltip="Home">
+        <mat-icon>home</mat-icon>
+      </button>
+      <button mat-icon-button (click)="goBack()" matTooltip="Back">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+    </div>
+    <h1>
+      <mat-icon>local_hospital</mat-icon>
+      Nurse Dashboard
+    </h1>
+    <button mat-button (click)="logout()">
+      <mat-icon>logout</mat-icon>
+      Logout
+    </button>
+  </div>
+
+  <div class="welcome-card">
+    <mat-card>
+      <mat-card-content>
+        <h2>Welcome, {{ userName }}!</h2>
+        <p>Manage patient care and monitoring</p>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  @if (loading) {
+    <div class="loading-container">
+      <mat-spinner></mat-spinner>
+      <p>Loading dashboard data...</p>
+    </div>
+  } @else {
+    <!-- Statistics Cards -->
+    <div class="stats-grid">
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <div class="stat-icon patients">
+            <mat-icon>people</mat-icon>
+          </div>
+          <div class="stat-info">
+            <h3>{{ activePatients }}</h3>
+            <p>Active Patients</p>
+            <span class="stat-subtitle">Under care</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <div class="stat-icon sessions">
+            <mat-icon>monitor_heart</mat-icon>
+          </div>
+          <div class="stat-info">
+            <h3>{{ todaySessions }}</h3>
+            <p>Today's Sessions</p>
+            <span class="stat-subtitle">Active treatments</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <div class="stat-icon monitoring">
+            <mat-icon>assignment</mat-icon>
+          </div>
+          <div class="stat-info">
+            <h3>{{ pendingMonitoring }}</h3>
+            <p>Monitoring Required</p>
+            <span class="stat-subtitle">Update vitals</span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="section-title">
+      <mat-icon>bolt</mat-icon>
+      <h2>Quick Actions</h2>
+    </div>
+    <div class="action-cards">
+      <mat-card class="action-card" (click)="navigateToSchedule()">
+        <mat-card-content>
+          <mat-icon>update</mat-icon>
+          <h3>Update Monitoring</h3>
+          <p>Record vitals & observations</p>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="action-card" (click)="navigateToPatients()">
+        <mat-card-content>
+          <mat-icon>people</mat-icon>
+          <h3>View Patients</h3>
+          <p>Access patient records</p>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="action-card" (click)="navigateToSchedule()">
+        <mat-card-content>
+          <mat-icon>calendar_today</mat-icon>
+          <h3>View Schedule</h3>
+          <p>Today's treatment plan</p>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Assigned Beds/Patients -->
+    @if (assignedBeds.length > 0) {
+      <div class="section-title">
+        <mat-icon>bed</mat-icon>
+        <h2>Assigned Beds - Today</h2>
+      </div>
+      <mat-card class="beds-card">
+        <mat-card-content>
+          <div class="beds-grid">
+            @for (bed of assignedBeds; track bed.scheduleId) {
+              <div class="bed-item">
+                <div class="bed-header">
+                  <mat-chip class="bed-chip">Bed {{ bed.bedNumber }}</mat-chip>
+                  <mat-chip class="slot-chip">{{ bed.slotName }}</mat-chip>
+                </div>
+                <div class="bed-info" (click)="navigateToPatientHistory(bed.patientId)">
+                  <mat-icon>person</mat-icon>
+                  <div>
+                    <h4>{{ bed.patientName }}</h4>
+                    @if (bed.bloodPressure) {
+                      <p>BP: {{ bed.bloodPressure }}</p>
+                    }
+                  </div>
+                </div>
+                <div class="bed-actions">
+                  <button mat-raised-button color="accent" (click)="dischargePatient(bed.scheduleId, bed.patientName)" class="discharge-btn">
+                    <mat-icon>exit_to_app</mat-icon>
+                    Discharge
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+
+    <!-- Today's Schedule -->
+    @if (todaySchedule.length > 0) {
+      <div class="section-title">
+        <mat-icon>list</mat-icon>
+        <h2>Today's Treatment Schedule</h2>
+      </div>
+      <mat-card class="schedule-card">
+        <mat-card-content>
+          <div class="schedule-list">
+            @for (session of todaySchedule; track session.scheduleId) {
+              <div class="schedule-item">
+                <div class="schedule-info" (click)="navigateToPatientHistory(session.patientId)">
+                  <mat-icon>person</mat-icon>
+                  <div>
+                    <h4>{{ session.patientName }}</h4>
+                    <p>{{ session.slotName }} - Bed {{ session.bedNumber }}</p>
+                  </div>
+                </div>
+                <div class="schedule-actions">
+                  <mat-chip class="status-chip monitoring">Monitoring</mat-chip>
+                  <button mat-raised-button color="accent" (click)="dischargePatient(session.scheduleId, session.patientName)" class="discharge-btn">
+                    <mat-icon>exit_to_app</mat-icon>
+                    Discharge
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+</div>

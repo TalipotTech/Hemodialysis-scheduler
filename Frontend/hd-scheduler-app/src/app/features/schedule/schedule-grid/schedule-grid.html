@@ -1,0 +1,148 @@
+<div class="schedule-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>
+        <div class="header-row">
+          <div class="header-left">
+            <button mat-icon-button (click)="goBack()" class="back-button">
+              <mat-icon>arrow_back</mat-icon>
+            </button>
+            <h2>Daily HD Schedule</h2>
+          </div>
+          <div class="header-actions">
+            <mat-form-field appearance="outline" class="date-picker">
+              <mat-label>Select Date</mat-label>
+              <input matInput [matDatepicker]="picker" [(ngModel)]="selectedDate" (dateChange)="onDateChange()">
+              <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+              <mat-datepicker #picker></mat-datepicker>
+            </mat-form-field>
+            <button mat-icon-button (click)="onRefresh()" matTooltip="Refresh">
+              <mat-icon>refresh</mat-icon>
+            </button>
+          </div>
+        </div>
+      </mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      <!-- Statistics -->
+      @if (schedule && !loading) {
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-value">{{ getTotalOccupied() }}</div>
+            <div class="stat-label">Occupied Beds</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">{{ getTotalCapacity() - getTotalOccupied() }}</div>
+            <div class="stat-label">Available Beds</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">{{ getOccupancyRate() }}%</div>
+            <div class="stat-label">Occupancy Rate</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">{{ getTotalCapacity() }}</div>
+            <div class="stat-label">Total Capacity</div>
+          </div>
+        </div>
+      }
+
+      <!-- Loading Spinner -->
+      @if (loading) {
+        <div class="loading-container">
+          <mat-spinner></mat-spinner>
+        </div>
+      }
+
+      <!-- Error Message -->
+      @if (errorMessage && !loading) {
+        <div class="error-message">
+          <mat-icon>error</mat-icon>
+          {{ errorMessage }}
+        </div>
+      }
+
+      <!-- Schedule Grid -->
+      @if (!loading && !errorMessage && schedule) {
+        <div class="schedule-grid">
+          <!-- Legend with Filters -->
+          <div class="legend">
+            <div class="legend-item">
+              <div class="legend-box bed-empty"></div>
+              <mat-checkbox [(ngModel)]="showAvailable" (change)="onFilterChange()">
+                Available
+              </mat-checkbox>
+            </div>
+            <div class="legend-item">
+              <div class="legend-box bed-occupied"></div>
+              <mat-checkbox [(ngModel)]="showOccupied" (change)="onFilterChange()">
+                Occupied
+              </mat-checkbox>
+            </div>
+            <div class="legend-item">
+              <div class="legend-box bed-reserved"></div>
+              <mat-checkbox [(ngModel)]="showReserved" (change)="onFilterChange()">
+                Reserved
+              </mat-checkbox>
+            </div>
+          </div>
+
+          <!-- Schedule Table -->
+          <div class="grid-table">
+            <!-- Header Row -->
+            <div class="grid-row header-row">
+              <div class="grid-cell slot-header">Time Slot</div>
+              @for (bed of beds; track bed) {
+                <div class="grid-cell bed-header">Bed {{ bed }}</div>
+              }
+            </div>
+
+            <!-- Slot Rows -->
+            @for (slot of schedule.slots; track slot.slotID) {
+              <div class="grid-row">
+                <div class="grid-cell slot-cell">
+                  <div class="slot-name">{{ slot.slotName }}</div>
+                  <div class="slot-time">{{ slot.timeRange }}</div>
+                </div>
+                @for (bed of beds; track bed) {
+                  <div class="grid-cell bed-cell" 
+                       [class]="getBedClass(slot.slotID, bed)"
+                       [class.clickable]="getBed(slot.slotID, bed)?.status === 'occupied'"
+                       [matTooltip]="getBedTooltip(slot.slotID, bed)"
+                       (click)="onBedClick(slot.slotID, bed)">
+                    @if (getBed(slot.slotID, bed)?.patient) {
+                      <div class="bed-content">
+                        <div class="patient-name">{{ getBed(slot.slotID, bed)?.patient?.name }}</div>
+                        <div class="patient-age">Age: {{ getBed(slot.slotID, bed)?.patient?.age }}</div>
+                        <div class="bed-actions">
+                          <button mat-icon-button 
+                                  class="workflow-btn"
+                                  matTooltip="Start Workflow"
+                                  (click)="$event.stopPropagation(); navigateToWorkflow(getBed(slot.slotID, bed)?.patient?.patientId || 0, getBed(slot.slotID, bed)?.scheduleId || 0)">
+                            <mat-icon>timeline</mat-icon>
+                          </button>
+                          <mat-icon class="edit-icon">edit</mat-icon>
+                        </div>
+                      </div>
+                    } @else {
+                      <div class="bed-empty-text">—</div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Empty State -->
+      @if (!loading && !errorMessage && !schedule) {
+        <div class="empty-state">
+          <mat-icon>event_busy</mat-icon>
+          <h3>No Schedule Available</h3>
+          <p>No schedule found for the selected date</p>
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>

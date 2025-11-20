@@ -1,0 +1,915 @@
+<div class="hd-session-schedule-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>
+        <div class="header-row">
+          <div class="header-left">
+            <button mat-icon-button (click)="goHome()" class="home-button" matTooltip="Home">
+              <mat-icon>home</mat-icon>
+            </button>
+            <button mat-icon-button (click)="goBack()" class="back-button" matTooltip="Back">
+              <mat-icon>arrow_back</mat-icon>
+            </button>
+            <h2>{{ isEditMode ? 'Edit HD Treatment Session' : 'Schedule HD Treatment Session' }}</h2>
+            @if (isEditMode) {
+              <span class="edit-mode-badge">EDIT MODE - Auto-saving enabled</span>
+            }
+            @if (isEditMode && scheduleId) {
+              <button mat-raised-button color="accent" (click)="startWorkflow()" class="workflow-button" matTooltip="Start 3-phase dialysis workflow">
+                <mat-icon>timeline</mat-icon>
+                Start Workflow
+              </button>
+            }
+          </div>
+          
+          <!-- Auto-save indicator for new sessions -->
+          @if (!isEditMode && saveStatus !== 'idle') {
+            <div class="auto-save-indicator" [class.saving]="saveStatus === 'saving'" [class.saved]="saveStatus === 'saved'">
+              @if (saveStatus === 'saving') {
+                <mat-spinner diameter="16"></mat-spinner>
+                <span>Saving draft...</span>
+              }
+              @if (saveStatus === 'saved') {
+                <mat-icon>check_circle</mat-icon>
+                <span>Saved {{ lastSavedTime | date:'shortTime' }}</span>
+              }
+            </div>
+          }
+        </div>
+      </mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      @if (loading && !patient) {
+        <div class="loading-container">
+          <mat-spinner></mat-spinner>
+        </div>
+      }
+
+      @if (errorMessage) {
+        <div class="error-message">
+          <mat-icon>error</mat-icon>
+          {{ errorMessage }}
+        </div>
+      }
+
+      @if (patient) {
+        <!-- Enhanced Patient Info Card -->
+        <div class="patient-info-card">
+          <div class="patient-header">
+            <div class="patient-name-section">
+              <mat-icon class="person-icon">person</mat-icon>
+              <div>
+                <h2 class="patient-main-name">{{ patient.name || 'Unknown Patient' }}</h2>
+                <p class="patient-subtitle">MRN: {{ patient.mrn || 'N/A' }} | Age: {{ patient.age }} years | {{ patient.gender || 'N/A' }}</p>
+              </div>
+            </div>
+            <button mat-raised-button color="primary" (click)="togglePatientHistory()">
+              <mat-icon>{{ showPatientHistory ? 'visibility_off' : 'history' }}</mat-icon>
+              {{ showPatientHistory ? 'Hide' : 'View' }} History ({{ patientHistory.length }})
+            </button>
+          </div>
+          
+          <div class="patient-details-grid">
+            <div class="detail-item">
+              <span class="detail-label">Contact Number:</span>
+              <span class="detail-value">{{ patient.contactNumber || 'N/A' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">HD Cycle:</span>
+              <span class="detail-value">{{ patient.hdCycle || 'N/A' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">HD Frequency:</span>
+              <span class="detail-value">{{ patient.hdFrequency ? patient.hdFrequency + 'x/week' : 'N/A' }}</span>
+            </div>
+            @if (patient.guardianName) {
+              <div class="detail-item">
+                <span class="detail-label">Guardian:</span>
+                <span class="detail-value">{{ patient.guardianName }}</span>
+              </div>
+            }
+            @if (patient.emergencyContact) {
+              <div class="detail-item">
+                <span class="detail-label">Emergency Contact:</span>
+                <span class="detail-value">{{ patient.emergencyContact }}</span>
+              </div>
+            }
+            @if (patient.assignedDoctorName) {
+              <div class="detail-item">
+                <span class="detail-label">Assigned Doctor:</span>
+                <span class="detail-value">{{ patient.assignedDoctorName }}</span>
+              </div>
+            }
+            @if (patient.assignedNurseName) {
+              <div class="detail-item">
+                <span class="detail-label">Assigned Nurse:</span>
+                <span class="detail-value">{{ patient.assignedNurseName }}</span>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Patient History Expansion Panel -->
+        @if (showPatientHistory) {
+          <mat-expansion-panel expanded class="history-panel">
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                <mat-icon>history</mat-icon>
+                <strong>Treatment History ({{ patientHistory.length }} sessions)</strong>
+              </mat-panel-title>
+            </mat-expansion-panel-header>
+            
+            @if (patientHistory.length === 0) {
+              <div class="no-history">
+                <mat-icon>info</mat-icon>
+                <p>No previous treatment sessions found</p>
+              </div>
+            } @else {
+              <div class="history-table-container">
+                <table mat-table [dataSource]="patientHistory" class="history-table">
+                  
+                  <!-- Date Column -->
+                  <ng-container matColumnDef="date">
+                    <th mat-header-cell *matHeaderCellDef>Date</th>
+                    <td mat-cell *matCellDef="let session">{{ session.sessionDate | date:'MMM dd, yyyy' }}</td>
+                  </ng-container>
+
+                  <!-- Slot Column -->
+                  <ng-container matColumnDef="slot">
+                    <th mat-header-cell *matHeaderCellDef>Time Slot</th>
+                    <td mat-cell *matCellDef="let session">Slot {{ session.slotID }} - Bed {{ session.bedNumber }}</td>
+                  </ng-container>
+
+                  <!-- Duration Column -->
+                  <ng-container matColumnDef="duration">
+                    <th mat-header-cell *matHeaderCellDef>Duration</th>
+                    <td mat-cell *matCellDef="let session">{{ session.prescribedDuration || 'N/A' }} hrs</td>
+                  </ng-container>
+
+                  <!-- Dialyser Column -->
+                  <ng-container matColumnDef="dialyser">
+                    <th mat-header-cell *matHeaderCellDef>Dialyser</th>
+                    <td mat-cell *matCellDef="let session">
+                      {{ (session.dialyserType || session.DialyserType || 'N/A') }} - {{ (session.dialyserModel || session.DialyserModel || 'N/A') }}
+                    </td>
+                  </ng-container>
+
+                  <!-- Dry Weight Column -->
+                  <ng-container matColumnDef="dryWeight">
+                    <th mat-header-cell *matHeaderCellDef>Dry Weight</th>
+                    <td mat-cell *matCellDef="let session">
+                      {{ session.dryWeight || session.DryWeight || 'N/A' }}{{ (session.dryWeight || session.DryWeight) ? ' kg' : '' }}
+                    </td>
+                  </ng-container>
+
+                  <!-- Pre Weight Column -->
+                  <ng-container matColumnDef="preWeight">
+                    <th mat-header-cell *matHeaderCellDef>Pre Weight</th>
+                    <td mat-cell *matCellDef="let session">
+                      {{ session.preWeight || session.PreWeight || 'N/A' }}{{ (session.preWeight || session.PreWeight) ? ' kg' : '' }}
+                    </td>
+                  </ng-container>
+
+                  <!-- Post Weight Column -->
+                  <ng-container matColumnDef="postWeight">
+                    <th mat-header-cell *matHeaderCellDef>Post Weight</th>
+                    <td mat-cell *matCellDef="let session">
+                      {{ session.postWeight || session.PostWeight || 'N/A' }}{{ (session.postWeight || session.PostWeight) ? ' kg' : '' }}
+                    </td>
+                  </ng-container>
+
+                  <!-- UF Goal Column -->
+                  <ng-container matColumnDef="ufGoal">
+                    <th mat-header-cell *matHeaderCellDef>UF Goal</th>
+                    <td mat-cell *matCellDef="let session">
+                      {{ session.ufGoal || session.UFGoal || 'N/A' }}{{ (session.ufGoal || session.UFGoal) ? ' L' : '' }}
+                    </td>
+                  </ng-container>
+
+                  <!-- Access Type/Location Column -->
+                  <ng-container matColumnDef="access">
+                    <th mat-header-cell *matHeaderCellDef>Access</th>
+                    <td mat-cell *matCellDef="let session">
+                      {{ session.accessType || session.AccessType || 'N/A' }}
+                      @if (session.accessLocation || session.AccessLocation) {
+                        <br><small>{{ session.accessLocation || session.AccessLocation }}</small>
+                      }
+                    </td>
+                  </ng-container>
+
+                  <!-- BFR Column -->
+                  <ng-container matColumnDef="bfr">
+                    <th mat-header-cell *matHeaderCellDef>BFR</th>
+                    <td mat-cell *matCellDef="let session">
+                      {{ session.prescribedBFR || session.PrescribedBFR || session.actualBFR || session.ActualBFR || 'N/A' }}
+                      @if (session.prescribedBFR || session.PrescribedBFR || session.actualBFR || session.ActualBFR) {
+                        <span> mL/min</span>
+                      }
+                    </td>
+                  </ng-container>
+
+                  <!-- Heart Rate Column -->
+                  <ng-container matColumnDef="heartRate">
+                    <th mat-header-cell *matHeaderCellDef>Heart Rate</th>
+                    <td mat-cell *matCellDef="let session">
+                      {{ session.heartRate || session.HeartRate || 'N/A' }}
+                      @if (session.heartRate || session.HeartRate) {
+                        <span> bpm</span>
+                      }
+                    </td>
+                  </ng-container>
+
+                  <!-- BP Column -->
+                  <ng-container matColumnDef="bp">
+                    <th mat-header-cell *matHeaderCellDef>BP (Pre/Post)</th>
+                    <td mat-cell *matCellDef="let session">
+                      {{ session.preBPSitting || session.PreBPSitting || session.bloodPressurePre || session.BloodPressurePre || 'N/A' }}
+                      /
+                      {{ session.bloodPressurePost || session.BloodPressurePost || 'N/A' }}
+                    </td>
+                  </ng-container>
+
+                  <!-- Medications Column -->
+                  <ng-container matColumnDef="medications">
+                    <th mat-header-cell *matHeaderCellDef>Medications</th>
+                    <td mat-cell *matCellDef="let session">
+                      @if (session.medicationName || session.MedicationName) {
+                        {{ session.medicationName || session.MedicationName }}
+                        @if (session.dose || session.Dose) {
+                          <br><small>{{ session.dose || session.Dose }} {{ session.route || session.Route }}</small>
+                        }
+                      } @else {
+                        <span>N/A</span>
+                      }
+                    </td>
+                  </ng-container>
+
+                  <!-- Alerts Column -->
+                  <ng-container matColumnDef="alerts">
+                    <th mat-header-cell *matHeaderCellDef>Alerts</th>
+                    <td mat-cell *matCellDef="let session">
+                      @if (session.alertType || session.AlertType) {
+                        <mat-icon [class.warn]="(session.severity || session.Severity) === 'High'" matTooltip="{{ session.alertMessage || session.AlertMessage || '' }}">
+                          warning
+                        </mat-icon>
+                        <small>{{ session.alertType || session.AlertType }}</small>
+                      } @else {
+                        <span>None</span>
+                      }
+                    </td>
+                  </ng-container>
+
+                  <!-- Status Column -->
+                  <ng-container matColumnDef="status">
+                    <th mat-header-cell *matHeaderCellDef>Status</th>
+                    <td mat-cell *matCellDef="let session">
+                      <span class="status-badge" [class.completed]="session.isDischarged" [class.ongoing]="!session.isDischarged">
+                        {{ session.isDischarged ? 'Completed' : 'Ongoing' }}
+                      </span>
+                    </td>
+                  </ng-container>
+
+                  <!-- Actions Column -->
+                  <ng-container matColumnDef="actions">
+                    <th mat-header-cell *matHeaderCellDef>Actions</th>
+                    <td mat-cell *matCellDef="let session">
+                      <button mat-icon-button color="primary" matTooltip="View Full Details" 
+                              (click)="viewSessionDetails(session.scheduleID)">
+                        <mat-icon>visibility</mat-icon>
+                      </button>
+                    </td>
+                  </ng-container>
+
+                  <tr mat-header-row *matHeaderRowDef="['date', 'slot', 'duration', 'dialyser', 'dryWeight', 'preWeight', 'postWeight', 'ufGoal', 'access', 'bfr', 'heartRate', 'bp', 'medications', 'alerts', 'status', 'actions']"></tr>
+                  <tr mat-row *matRowDef="let row; columns: ['date', 'slot', 'duration', 'dialyser', 'dryWeight', 'preWeight', 'postWeight', 'ufGoal', 'access', 'bfr', 'heartRate', 'bp', 'medications', 'alerts', 'status', 'actions'];"></tr>
+                </table>
+              </div>
+            }
+          </mat-expansion-panel>
+        }
+
+        <form [formGroup]="sessionForm">
+          <mat-stepper #stepper>
+            
+            <!-- Step 1: HD Prescription & Treatment Plan -->
+            <mat-step label="Prescription & Treatment Plan">
+              <h3 class="step-title">
+                <mat-icon>medical_services</mat-icon>
+                HD Prescription & Treatment Details
+              </h3>
+              
+              <!-- Date, Slot & Bed Selection -->
+              <div class="section-card">
+                <h4>Select Date, Time Slot & Bed</h4>
+                
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Treatment Date*</mat-label>
+                    <input matInput [matDatepicker]="picker" formControlName="treatmentDate" required>
+                    <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+                    <mat-datepicker #picker></mat-datepicker>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Time Slot*</mat-label>
+                    <mat-select formControlName="slotID" (selectionChange)="onSlotChange()" required>
+                      @for (slot of slots; track slot.id) {
+                        <mat-option [value]="slot.id">
+                          {{ slot.name }} ({{ slot.time }})
+                        </mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                </div>
+
+                @if (selectedSlot) {
+                  <!-- Bed Assignment Mode Toggle -->
+                  <div class="bed-mode-selection">
+                    <h4><mat-icon>bed</mat-icon> Bed Assignment</h4>
+                    <mat-radio-group [(ngModel)]="bedAssignmentMode" [ngModelOptions]="{standalone: true}" (change)="onBedModeChange()" class="bed-mode-radio">
+                      <mat-radio-button value="auto" color="primary">
+                        <mat-icon>auto_mode</mat-icon> Auto-assign next available bed
+                      </mat-radio-button>
+                      <mat-radio-button value="manual" color="primary">
+                        <mat-icon>touch_app</mat-icon> Let me choose manually
+                      </mat-radio-button>
+                    </mat-radio-group>
+                  </div>
+
+                  <!-- Auto-assigned Bed Display -->
+                  @if (bedAssignmentMode === 'auto' && autoAssignedBed) {
+                    <div class="auto-assigned-bed">
+                      <mat-icon class="check-icon">check_circle</mat-icon>
+                      <div class="assigned-info">
+                        <strong>Bed {{ autoAssignedBed }}</strong> has been assigned
+                        <span class="hint">Selected with smart spacing for infection control</span>
+                      </div>
+                      <button mat-stroked-button color="accent" (click)="changeBedManually()" class="change-bed-btn">
+                        <mat-icon>swap_horiz</mat-icon> Change Bed
+                      </button>
+                    </div>
+                  }
+
+                  <!-- Manual Bed Selection Grid -->
+                  @if (bedAssignmentMode === 'manual') {
+                    <div class="bed-selection-section">
+                      <h4>Available Beds - Click to Select</h4>
+                      <div class="beds-grid">
+                        @for (bed of beds; track bed.number) {
+                          <div class="bed-item" 
+                               [class.occupied]="bed.isOccupied"
+                               [class.selected]="selectedBed === bed.number"
+                               (click)="selectBed(bed.number, bed.isOccupied)"
+                               [matTooltip]="bed.isOccupied ? 'Occupied by ' + bed.patientName : 'Available'">
+                            <mat-icon>{{ bed.isOccupied ? 'hotel' : 'bed' }}</mat-icon>
+                            <span>Bed {{ bed.number }}</span>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+                }
+              </div>
+
+              <!-- Basic HD Info -->
+              <div class="section-card">
+                <h4>Basic HD Information</h4>
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Dry Weight (kg)*</mat-label>
+                    <input matInput type="number" formControlName="dryWeight" step="0.01" required>
+                    <mat-hint>Target weight after dialysis</mat-hint>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>HD Start Date*</mat-label>
+                    <input matInput [matDatepicker]="hdStartPicker" formControlName="hdStartDate" required>
+                    <mat-datepicker-toggle matSuffix [for]="hdStartPicker"></mat-datepicker-toggle>
+                    <mat-datepicker #hdStartPicker></mat-datepicker>
+                    <mat-hint>When HD treatment began</mat-hint>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>HD Cycle (Days Pattern)</mat-label>
+                    <mat-select formControlName="hdCycle" (selectionChange)="onHDCycleChange()">
+                      <mat-option value="">Not Set</mat-option>
+                      @for (cycle of hdCycles; track cycle.value) {
+                        <mat-option [value]="cycle.value">{{ cycle.label }}</mat-option>
+                      }
+                    </mat-select>
+                    <mat-hint>Select the weekly dialysis pattern</mat-hint>
+                  </mat-form-field>
+                  
+                  @if (sessionForm.get('hdCycle')?.value === 'Custom') {
+                    <mat-form-field appearance="outline">
+                      <mat-label>Custom Days</mat-label>
+                      <input matInput formControlName="hdCustomDays" placeholder="e.g., Mon-Wed-Fri or Tue-Thu-Sat">
+                      <mat-hint>Enter the specific days for dialysis (e.g., Mon-Wed-Fri)</mat-hint>
+                    </mat-form-field>
+                  }
+                </div>
+
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Sessions Per Week</mat-label>
+                    <input matInput formControlName="hdFrequency" type="number" min="1" max="7" placeholder="e.g., 3">
+                    <mat-hint>
+                      @if (sessionForm.get('hdCycle')?.value === 'Custom') {
+                        Enter number of sessions per week manually
+                      } @else {
+                        Auto-filled based on HD Cycle
+                      }
+                    </mat-hint>
+                  </mat-form-field>
+                </div>
+
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Prescribed Duration (hours)*</mat-label>
+                    <input matInput type="number" formControlName="prescribedDuration" step="0.5" required>
+                    <mat-hint>Typically 3.5 - 5 hours</mat-hint>
+                  </mat-form-field>
+                </div>
+              </div>
+
+              <!-- Vascular Access -->
+              <div class="section-card">
+                <h4>Vascular Access</h4>
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Access Type*</mat-label>
+                    <mat-select formControlName="accessType" required>
+                      @for (type of accessTypes; track type) {
+                        <mat-option [value]="type">{{ type }}</mat-option>
+                      }
+                    </mat-select>
+                    <mat-hint>AVF/AVG/CVC</mat-hint>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Access Location</mat-label>
+                    <input matInput formControlName="accessLocation" placeholder="e.g., Left radiocephalic">
+                  </mat-form-field>
+                </div>
+              </div>
+
+              <!-- Dialyser & Prescription -->
+              <div class="section-card">
+                <h4>Dialyser & Dialysate</h4>
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Dialyser Type*</mat-label>
+                    <mat-select formControlName="dialyserType" required>
+                      @for (type of dialyserTypes; track type) {
+                        <mat-option [value]="type">{{ type }}</mat-option>
+                      }
+                    </mat-select>
+                    <mat-hint>HI/LO flux</mat-hint>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Dialyser Model</mat-label>
+                    <input matInput formControlName="dialyserModel">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Prescribed BFR (mL/min)</mat-label>
+                    <input matInput type="number" formControlName="prescribedBFR">
+                  </mat-form-field>
+                </div>
+
+                <div class="form-row">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Dialysate Prescription</mat-label>
+                    <mat-select formControlName="dialysatePrescription">
+                      @for (prescription of dialysatePrescriptions; track prescription) {
+                        <mat-option [value]="prescription">{{ prescription }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                </div>
+              </div>
+
+              <!-- Anticoagulation -->
+              <div class="section-card">
+                <h4>Anticoagulation</h4>
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Anticoagulation Type</mat-label>
+                    <mat-select formControlName="anticoagulationType">
+                      @for (type of anticoagulationTypes; track type) {
+                        <mat-option [value]="type">{{ type }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Heparin Bolus Dose (mL)</mat-label>
+                    <input matInput type="number" formControlName="heparinBolusDose" step="0.01">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Heparin Infusion Rate (mL/hr)</mat-label>
+                    <input matInput type="number" formControlName="heparinInfusionRate" step="0.01">
+                  </mat-form-field>
+                </div>
+              </div>
+
+              <div class="step-actions">
+                <button mat-button (click)="goBack()" type="button">Cancel</button>
+                <div class="right-actions">
+                  <button mat-stroked-button color="primary" (click)="saveDraftAndExit()" type="button" [disabled]="sessionForm.invalid">
+                    <mat-icon>save</mat-icon>
+                    Save Draft & Exit
+                  </button>
+                  <button mat-raised-button color="primary" matStepperNext type="button">
+                    Next <mat-icon>arrow_forward</mat-icon>
+                  </button>
+                  <button mat-raised-button color="accent" (click)="saveCurrentStep()" type="button" [disabled]="loading">
+                    <mat-icon>save</mat-icon>
+                    Save Progress
+                  </button>
+                </div>
+              </div>
+            </mat-step>
+
+            <!-- Step 2: Treatment Session Details -->
+            <mat-step label="Session Details">
+              <h3 class="step-title">
+                <mat-icon>assignment</mat-icon>
+                Treatment Session Details
+              </h3>
+
+              <div class="section-card">
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Start Time</mat-label>
+                    <input matInput type="time" formControlName="startTime">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Pre-Weight (kg)*</mat-label>
+                    <input matInput type="number" formControlName="preWeight" step="0.01" required>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>UF Goal (L)</mat-label>
+                    <input matInput type="number" formControlName="ufGoal" step="0.01">
+                  </mat-form-field>
+                </div>
+
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Pre-BP Sitting</mat-label>
+                    <input matInput formControlName="preBPSitting" placeholder="140/90">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Pre-Temperature (°C)</mat-label>
+                    <input matInput type="number" formControlName="preTemperature" step="0.1">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Dialyser Reuse Number</mat-label>
+                    <input matInput type="number" formControlName="dialyserReuseNumber" min="0" max="10">
+                    <mat-hint>Auto-loaded from previous session</mat-hint>
+                  </mat-form-field>
+                </div>
+
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Blood Tubing Reuse Number</mat-label>
+                    <input matInput type="number" formControlName="bloodTubingReuse" min="0" max="15">
+                    <mat-hint>Auto-loaded from previous session</mat-hint>
+                  </mat-form-field>
+                  
+                  <button mat-raised-button 
+                          type="button"
+                          color="accent"
+                          (click)="loadSuggestedEquipmentCounts()"
+                          style="margin-top: 8px;">
+                    <mat-icon>refresh</mat-icon>
+                    Reload Counts
+                  </button>
+                </div>
+
+                <!-- Equipment Usage Alerts -->
+                <app-equipment-usage-alert 
+                  [dialyserCount]="sessionForm.get('dialyserReuseNumber')?.value || 0"
+                  [bloodTubingCount]="sessionForm.get('bloodTubingReuse')?.value || 0"
+                  [showDetails]="true">
+                </app-equipment-usage-alert>
+
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Access Bleeding Time (min)</mat-label>
+                    <input matInput type="number" formControlName="accessBleedingTime">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Access Status</mat-label>
+                    <input matInput formControlName="accessStatus">
+                  </mat-form-field>
+                </div>
+
+                <div class="form-row">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Complications</mat-label>
+                    <textarea matInput formControlName="complications" rows="3"></textarea>
+                  </mat-form-field>
+                </div>
+              </div>
+
+              <div class="step-actions">
+                <button mat-button matStepperPrevious type="button">
+                  <mat-icon>arrow_back</mat-icon> Previous
+                </button>
+                <button mat-raised-button color="primary" matStepperNext type="button">
+                  Next <mat-icon>arrow_forward</mat-icon>
+                </button>
+                <button mat-raised-button color="accent" (click)="saveCurrentStep()" type="button" [disabled]="loading">
+                  <mat-icon>save</mat-icon>
+                  Save Progress
+                </button>
+              </div>
+            </mat-step>
+
+            <!-- Step 3: Intra-Dialytic Monitoring -->
+            <mat-step label="Monitoring">
+              <h3 class="step-title">
+                <mat-icon>monitor_heart</mat-icon>
+                Intra-Dialytic Monitoring
+              </h3>
+
+              <div class="section-card">
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Monitoring Time</mat-label>
+                    <input matInput type="time" formControlName="monitoringTime">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Blood Pressure</mat-label>
+                    <input matInput formControlName="bloodPressure" placeholder="140/90">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Heart Rate (bpm)</mat-label>
+                    <input matInput type="number" formControlName="heartRate">
+                  </mat-form-field>
+                </div>
+
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Actual BFR (mL/min)</mat-label>
+                    <input matInput type="number" formControlName="actualBFR">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Venous Pressure (mmHg)</mat-label>
+                    <input matInput type="number" formControlName="venousPressure">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Arterial Pressure (mmHg)</mat-label>
+                    <input matInput type="number" formControlName="arterialPressure">
+                  </mat-form-field>
+                </div>
+
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Current UFR (mL/hr)</mat-label>
+                    <input matInput type="number" formControlName="currentUFR">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Total UF Achieved (L)</mat-label>
+                    <input matInput type="number" formControlName="totalUFAchieved" step="0.01">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>TMP (mmHg)</mat-label>
+                    <input matInput type="number" formControlName="tmpPressure">
+                  </mat-form-field>
+                </div>
+
+                <div class="form-row">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Symptoms</mat-label>
+                    <textarea matInput formControlName="symptoms" rows="2"></textarea>
+                  </mat-form-field>
+                </div>
+
+                <div class="form-row">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Interventions</mat-label>
+                    <textarea matInput formControlName="interventions" rows="2"></textarea>
+                  </mat-form-field>
+                </div>
+
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Staff Initials</mat-label>
+                    <input matInput formControlName="staffInitials" maxlength="10">
+                  </mat-form-field>
+                </div>
+              </div>
+
+              <div class="step-actions">
+                <button mat-button matStepperPrevious type="button">
+                  <mat-icon>arrow_back</mat-icon> Previous
+                </button>
+                <button mat-button matStepperNext type="button">
+                  Next <mat-icon>arrow_forward</mat-icon>
+                </button>
+                <button mat-raised-button color="primary" (click)="saveCurrentStep()" type="button" [disabled]="loading">
+                  <mat-icon>save</mat-icon>
+                  Save Progress
+                </button>
+              </div>
+            </mat-step>
+
+            <!-- Step 4: Post-Dialysis Assessment & Medications -->
+            <mat-step label="Post-Dialysis">
+              <h3 class="step-title">
+                <mat-icon>assignment_turned_in</mat-icon>
+                Post-Dialysis Assessment & Medications
+              </h3>
+
+              <div class="section-card">
+                <h4 class="section-subtitle">Post-Dialysis Vital Signs & Measurements</h4>
+                
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Post-Dialysis Weight (kg)</mat-label>
+                    <input matInput type="number" formControlName="postWeight" step="0.1" placeholder="e.g., 68.0">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Post-Dialysis Systolic BP (mmHg)</mat-label>
+                    <input matInput type="number" formControlName="postSBP" placeholder="e.g., 130">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Post-Dialysis Diastolic BP (mmHg)</mat-label>
+                    <input matInput type="number" formControlName="postDBP" placeholder="e.g., 78">
+                  </mat-form-field>
+                </div>
+
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Post-Dialysis HR (bpm)</mat-label>
+                    <input matInput type="number" formControlName="postHR" placeholder="e.g., 80">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Total Fluid Removed (L)</mat-label>
+                    <input matInput type="number" formControlName="totalFluidRemoved" step="0.1" placeholder="e.g., 3.5">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Post-Access Status</mat-label>
+                    <input matInput formControlName="postAccessStatus" placeholder="e.g., Site clean, no bleeding">
+                  </mat-form-field>
+                </div>
+
+                <h4 class="section-subtitle">Post-Dialysis Medications</h4>
+                
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Medication Type</mat-label>
+                    <mat-select formControlName="medicationType">
+                      <mat-option value="EPO">EPO</mat-option>
+                      <mat-option value="Iron">Iron</mat-option>
+                      <mat-option value="Antibiotic">Antibiotic</mat-option>
+                      <mat-option value="Vitamin">Vitamin</mat-option>
+                      <mat-option value="Other">Other</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Medication Name</mat-label>
+                    <input matInput formControlName="medicationName">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Dose</mat-label>
+                    <input matInput formControlName="dose" placeholder="e.g., 4000 IU">
+                  </mat-form-field>
+                </div>
+
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Route</mat-label>
+                    <mat-select formControlName="route">
+                      <mat-option value="IV">IV</mat-option>
+                      <mat-option value="Oral">Oral</mat-option>
+                      <mat-option value="Subcutaneous">Subcutaneous</mat-option>
+                      <mat-option value="Intramuscular">Intramuscular</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Administered At</mat-label>
+                    <input matInput type="time" formControlName="administeredAt">
+                  </mat-form-field>
+                </div>
+              </div>
+
+              <div class="step-actions">
+                <button mat-button matStepperPrevious type="button">
+                  <mat-icon>arrow_back</mat-icon> Previous
+                </button>
+                <button mat-button matStepperNext type="button">
+                  Next <mat-icon>arrow_forward</mat-icon>
+                </button>
+                <button mat-raised-button color="primary" (click)="saveCurrentStep()" type="button" [disabled]="loading">
+                  <mat-icon>save</mat-icon>
+                  Save Progress
+                </button>
+              </div>
+            </mat-step>
+
+            <!-- Step 5: Treatment Alerts & Submit -->
+            <mat-step label="Alerts & Submit">
+              <h3 class="step-title">
+                <mat-icon>warning</mat-icon>
+                Treatment Alerts & Final Review
+              </h3>
+
+              <div class="section-card">
+                <h4 class="section-subtitle">Treatment Alerts (Optional)</h4>
+                
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Alert Type</mat-label>
+                    <mat-select formControlName="alertType">
+                      <mat-option value="Hypotension">Hypotension</mat-option>
+                      <mat-option value="Hypertension">Hypertension</mat-option>
+                      <mat-option value="Cramping">Cramping</mat-option>
+                      <mat-option value="Nausea">Nausea</mat-option>
+                      <mat-option value="Chest Pain">Chest Pain</mat-option>
+                      <mat-option value="Access Issue">Access Issue</mat-option>
+                      <mat-option value="Equipment Malfunction">Equipment Malfunction</mat-option>
+                      <mat-option value="Other">Other</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Severity</mat-label>
+                    <mat-select formControlName="severity">
+                      <mat-option value="Low">Low</mat-option>
+                      <mat-option value="Medium">Medium</mat-option>
+                      <mat-option value="High">High</mat-option>
+                      <mat-option value="Critical">Critical</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                </div>
+
+                <div class="form-row">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Alert Message</mat-label>
+                    <textarea matInput formControlName="alertMessage" rows="3" placeholder="Describe the alert or incident"></textarea>
+                  </mat-form-field>
+                </div>
+
+                <div class="form-row">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Resolution</mat-label>
+                    <textarea matInput formControlName="resolution" rows="3" placeholder="Describe actions taken or resolution"></textarea>
+                  </mat-form-field>
+                </div>
+
+                <h4 class="section-subtitle">Additional Notes</h4>
+                
+                <div class="form-row">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Session Notes</mat-label>
+                    <textarea matInput formControlName="notes" rows="4" placeholder="Any additional notes or observations about the session"></textarea>
+                  </mat-form-field>
+                </div>
+              </div>
+
+              <div class="step-actions">
+                <button mat-button matStepperPrevious type="button">
+                  <mat-icon>arrow_back</mat-icon> Previous
+                </button>
+                <button mat-raised-button color="accent" (click)="onSubmit()" type="button" [disabled]="loading || sessionForm.invalid">
+                  @if (loading) {
+                    <mat-spinner diameter="20"></mat-spinner>
+                  } @else {
+                    <mat-icon>save</mat-icon>
+                    Save HD Session
+                  }
+                </button>
+              </div>
+            </mat-step>
+
+
+          </mat-stepper>
+        </form>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>

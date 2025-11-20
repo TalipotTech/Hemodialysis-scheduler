@@ -1,0 +1,279 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using HDScheduler.API.Models;
+using HDScheduler.API.Repositories;
+using HDScheduler.API.DTOs;
+
+namespace HDScheduler.API.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize]
+public class ScheduleController : ControllerBase
+{
+    private readonly IScheduleRepository _scheduleRepository;
+    private readonly IHDScheduleRepository _hdScheduleRepository;
+    private readonly ILogger<ScheduleController> _logger;
+
+    public ScheduleController(
+        IScheduleRepository scheduleRepository,
+        IHDScheduleRepository hdScheduleRepository,
+        ILogger<ScheduleController> logger)
+    {
+        _scheduleRepository = scheduleRepository;
+        _hdScheduleRepository = hdScheduleRepository;
+        _logger = logger;
+    }
+
+    [HttpGet("daily")]
+    public async Task<ActionResult<ApiResponse<DailyScheduleResponse>>> GetDailySchedule([FromQuery] DateTime? date)
+    {
+        try
+        {
+            var scheduleDate = date ?? DateTime.Today;
+            var slots = await _scheduleRepository.GetAllSlotsAsync();
+            var assignments = await _scheduleRepository.GetAssignmentsByDateAsync(scheduleDate);
+
+            var response = new DailyScheduleResponse
+            {
+                Date = scheduleDate,
+                Slots = new List<SlotSchedule>()
+            };
+
+            // Get active HD schedules for today
+            var allActiveSchedules = await _hdScheduleRepository.GetActiveAsync();
+
+            foreach (var slot in slots)
+            {
+                var slotSchedule = new SlotSchedule
+                {
+                    SlotID = slot.SlotID,
+                    SlotName = slot.SlotName,
+                    TimeRange = $"{slot.StartTime:hh\\:mm} - {slot.EndTime:hh\\:mm}",
+                    Beds = new List<BedStatus>()
+                };
+
+                var slotAssignments = assignments.Where(a => a.SlotID == slot.SlotID).ToList();
+
+                for (int bedNum = 1; bedNum <= slot.BedCapacity; bedNum++)
+                {
+                    var assignment = slotAssignments.FirstOrDefault(a => a.BedNumber == bedNum);
+                    Patient? patient = null;
+                    
+                    // First check assignments table
+                    if (assignment != null)
+                    {
+                        patient = await _patientRepository.GetByIdAsync(assignment.PatientID);
+                    }
+                    else
+                    {
+                        // If no assignment, check if patient is assigned directly in Patients table
+                        patient = allActivePatients.FirstOrDefault(p => 
+                            p.SlotID == slot.SlotID && 
+                            p.BedNumber == bedNum && 
+                            !p.IsDischarged);
+                    }
+
+                    var bedStatus = new BedStatus
+                    {
+                        BedNumber = bedNum,
+                        Status = patient != null ? "occupied" : "available"
+                    };
+
+                    if (patient != null)
+                    {
+                        bedStatus.Patient = new PatientSummary
+                        {
+                            Id = patient.PatientID,
+                            Name = patient.Name,
+                            Age = patient.Age,
+                            BloodPressure = patient.BloodPressure
+                        };
+                    }
+
+                    slotSchedule.Beds.Add(bedStatus);
+                }
+
+                response.Slots.Add(slotSchedule);
+            }
+
+            return Ok(ApiResponse<DailyScheduleResponse>.SuccessResponse(response));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving daily schedule");
+            return StatusCode(500, ApiResponse<DailyScheduleResponse>.ErrorResponse("An error occurred while retrieving the schedule"));
+        }
+    }
+
+    [HttpGet("slot/{slotId}")]
+    public async Task<ActionResult<ApiResponse<SlotSchedule>>> GetSlotSchedule(int slotId, [FromQuery] DateTime? date)
+    {
+        try
+        {
+            var scheduleDate = date ?? DateTime.Today;
+            var slot = await _scheduleRepository.GetSlotByIdAsync(slotId);
+            
+            if (slot == null)
+            {
+                return NotFound(ApiResponse<SlotSchedule>.ErrorResponse("Slot not found"));
+            }
+
+            var assignments = await _scheduleRepository.GetActiveAssignmentsBySlotAsync(slotId, scheduleDate);
+            var allActivePatients = await _patientRepository.GetActiveAsync();
+            
+            var slotSchedule = new SlotSchedule
+            {
+                SlotID = slot.SlotID,
+                SlotName = slot.SlotName,
+                TimeRange = $"{slot.StartTime:hh\\:mm} - {slot.EndTime:hh\\:mm}",
+                Beds = new List<BedStatus>()
+            };
+
+            for (int bedNum = 1; bedNum <= slot.BedCapacity; bedNum++)
+            {
+                var assignment = assignments.FirstOrDefault(a => a.BedNumber == bedNum);
+                Patient? patient = null;
+                
+                // First check assignments table
+                if (assignment != null)
+                {
+                    patient = await _patientRepository.GetByIdAsync(assignment.PatientID);
+                }
+                else
+                {
+                    // If no assignment, check if patient is assigned directly in Patients table
+                    patient = allActivePatients.FirstOrDefault(p => 
+                        p.SlotID == slotId && 
+                        p.BedNumber == bedNum && 
+                        !p.IsDischarged);
+                }
+
+                var bedStatus = new BedStatus
+                {
+                    BedNumber = bedNum,
+                    Status = patient != null ? "occupied" : "available"
+                };
+
+                if (patient != null)
+                {
+                    bedStatus.Patient = new PatientSummary
+                    {
+                        Id = patient.PatientID,
+                        Name = patient.Name,
+                        Age = patient.Age,
+                        BloodPressure = patient.BloodPressure
+                    };
+                }
+
+                slotSchedule.Beds.Add(bedStatus);
+            }
+
+            return Ok(ApiResponse<SlotSchedule>.SuccessResponse(slotSchedule));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving slot schedule for slot {SlotId}", slotId);
+            return StatusCode(500, ApiResponse<SlotSchedule>.ErrorResponse("An error occurred while retrieving the slot schedule"));
+        }
+    }
+
+    [HttpPost("assign")]
+    [Authorize(Roles = "Admin,Doctor,Nurse")]
+    public async Task<ActionResult<ApiResponse<int>>> AssignBed([FromBody] AssignBedRequest request)
+    {
+        try
+        {
+            // Check if bed is available
+            var availability = await _scheduleRepository.GetBedAvailabilityAsync(request.SlotID, request.AssignmentDate);
+            
+            if (!availability.AvailableBedNumbers.Contains(request.BedNumber))
+            {
+                return BadRequest(ApiResponse<int>.ErrorResponse("Bed is not available"));
+            }
+
+            // Check if patient exists
+            var patient = await _patientRepository.GetByIdAsync(request.PatientID);
+            if (patient == null)
+            {
+                return NotFound(ApiResponse<int>.ErrorResponse("Patient not found"));
+            }
+
+            // Create assignment
+            var assignment = new BedAssignment
+            {
+                PatientID = request.PatientID,
+                SlotID = request.SlotID,
+                BedNumber = request.BedNumber,
+                AssignmentDate = request.AssignmentDate,
+                IsActive = true
+            };
+
+            var assignmentId = await _scheduleRepository.CreateAssignmentAsync(assignment);
+
+            // Update patient with slot and bed info
+            patient.SlotID = request.SlotID;
+            patient.BedNumber = request.BedNumber;
+            patient.IsDischarged = false;
+            await _patientRepository.UpdateAsync(patient);
+
+            return Ok(ApiResponse<int>.SuccessResponse(assignmentId, "Bed assigned successfully"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error assigning bed");
+            return StatusCode(500, ApiResponse<int>.ErrorResponse("An error occurred while assigning the bed"));
+        }
+    }
+
+    [HttpPut("discharge/{patientId}")]
+    [Authorize(Roles = "Admin,Doctor,Nurse")]
+    public async Task<ActionResult<ApiResponse<bool>>> DischargePatient(int patientId)
+    {
+        try
+        {
+            var patient = await _patientRepository.GetByIdAsync(patientId);
+            if (patient == null)
+            {
+                return NotFound(ApiResponse<bool>.ErrorResponse("Patient not found"));
+            }
+
+            // Discharge patient
+            await _patientRepository.DischargeAsync(patientId);
+            
+            // Release bed assignment
+            await _scheduleRepository.DischargeAssignmentAsync(patientId);
+
+            return Ok(ApiResponse<bool>.SuccessResponse(true, "Patient discharged successfully"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error discharging patient {PatientId}", patientId);
+            return StatusCode(500, ApiResponse<bool>.ErrorResponse("An error occurred while discharging the patient"));
+        }
+    }
+
+    [HttpGet("availability")]
+    public async Task<ActionResult<ApiResponse<List<BedAvailability>>>> GetBedAvailability([FromQuery] DateTime? date)
+    {
+        try
+        {
+            var scheduleDate = date ?? DateTime.Today;
+            var slots = await _scheduleRepository.GetAllSlotsAsync();
+            var availabilities = new List<BedAvailability>();
+
+            foreach (var slot in slots)
+            {
+                var availability = await _scheduleRepository.GetBedAvailabilityAsync(slot.SlotID, scheduleDate);
+                availabilities.Add(availability);
+            }
+
+            return Ok(ApiResponse<List<BedAvailability>>.SuccessResponse(availabilities));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving bed availability");
+            return StatusCode(500, ApiResponse<List<BedAvailability>>.ErrorResponse("An error occurred while retrieving bed availability"));
+        }
+    }
+}

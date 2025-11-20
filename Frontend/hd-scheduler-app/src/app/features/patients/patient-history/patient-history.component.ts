@@ -1,0 +1,193 @@
+import { Component, OnInit } from '@angular/core';
+import { CommonModule, Location } from '@angular/common';
+import { ActivatedRoute, Router } from '@angular/router';
+import { MatCardModule } from '@angular/material/card';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatTableModule } from '@angular/material/table';
+import { MatTabsModule } from '@angular/material/tabs';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { environment } from '../../../../environments/environment.development';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+
+@Component({
+  selector: 'app-patient-history',
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatCardModule,
+    MatButtonModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    MatExpansionModule,
+    MatChipsModule,
+    MatTableModule,
+    MatTabsModule,
+    MatSnackBarModule,
+    MatTooltipModule
+  ],
+  templateUrl: './patient-history.component.html',
+  styleUrl: './patient-history.component.scss'
+})
+export class PatientHistoryComponent implements OnInit {
+  patientId: number | null = null;
+  loading = false;
+  errorMessage = '';
+  
+  // Patient History Data
+  patientInfo: any = null;
+  sessions: any[] = [];
+  statistics: any = null;
+  vitalTrends: any = null;
+  medications: any[] = [];
+
+  constructor(
+    private route: ActivatedRoute,
+    private router: Router,
+    private location: Location,
+    private http: HttpClient,
+    private snackBar: MatSnackBar
+  ) {}
+
+  ngOnInit(): void {
+    this.route.params.subscribe(params => {
+      if (params['id']) {
+        this.patientId = +params['id'];
+        this.loadPatientHistory();
+      }
+    });
+  }
+
+  loadPatientHistory(): void {
+    if (!this.patientId) return;
+    
+    this.loading = true;
+    this.errorMessage = '';
+    
+    const token = localStorage.getItem('token');
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
+    
+    // Fetch patient history from API
+    this.http.get<any>(`${environment.apiUrl}/PatientHistory/${this.patientId}`, { headers })
+      .subscribe({
+        next: (response) => {
+          if (response.success && response.data) {
+            const data = response.data;
+            
+            // Set patient info - handle both PascalCase (from API) and camelCase
+            const pInfo = data.patientInfo || data.PatientInfo;
+            if (pInfo) {
+              this.patientInfo = {
+                name: pInfo.name || pInfo.Name,
+                mrn: pInfo.mrn || pInfo.MRN,
+                age: pInfo.age || pInfo.Age,
+                gender: pInfo.gender || pInfo.Gender
+              };
+            }
+            
+            // Set sessions - handle both cases
+            this.sessions = data.sessions || data.Sessions || [];
+            
+            // Set statistics - handle both cases
+            const stats = data.statistics || data.Statistics;
+            if (stats) {
+              this.statistics = {
+                totalSessions: stats.totalSessions || stats.TotalSessions || 0,
+                averageWeightLoss: stats.averageWeightLoss || stats.AverageWeightLoss || 0,
+                averagePreWeight: stats.averagePreWeight || stats.AveragePreWeight || 0,
+                firstSessionDate: stats.firstSessionDate || stats.FirstSessionDate
+              };
+            }
+            
+            // Load vital trends
+            this.loadVitalTrends();
+            
+            // Extract medications from sessions
+            this.extractMedications();
+            
+            this.loading = false;
+          } else {
+            this.errorMessage = 'No history data found';
+            this.loading = false;
+          }
+        },
+        error: (error) => {
+          console.error('Error loading patient history:', error);
+          
+          if (error.status === 401) {
+            this.errorMessage = 'Authentication required. Please log in again.';
+            this.snackBar.open('Session expired. Please log in again.', 'Close', { duration: 5000 });
+          } else if (error.status === 404) {
+            this.errorMessage = 'Patient not found';
+            this.snackBar.open('Patient not found', 'Close', { duration: 5000 });
+          } else {
+            this.errorMessage = error.error?.message || 'Failed to load patient history';
+            this.snackBar.open(this.errorMessage, 'Close', { duration: 5000 });
+          }
+          
+          this.loading = false;
+        }
+      });
+  }
+
+  loadVitalTrends(): void {
+    if (!this.patientId) return;
+    
+    const token = localStorage.getItem('token');
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
+    
+    // Fetch vital trends from API
+    this.http.get<any>(`${environment.apiUrl}/PatientHistory/${this.patientId}/trends`, { headers })
+      .subscribe({
+        next: (response) => {
+          if (response.success && response.data) {
+            this.vitalTrends = response.data;
+          }
+        },
+        error: (error) => {
+          console.warn('Could not load vital trends:', error);
+        }
+      });
+  }
+
+  extractMedications(): void {
+    // Extract unique medications from sessions
+    const medMap = new Map();
+    
+    this.sessions.forEach(session => {
+      if (session.medicationsCount && session.medicationsCount > 0) {
+        // Mark that this session has medications
+        medMap.set(session.scheduleID, {
+          sessionDate: session.sessionDate,
+          count: session.medicationsCount
+        });
+      }
+    });
+    
+    this.medications = Array.from(medMap.values());
+  }
+
+  goBack(): void {
+    this.location.back();
+  }
+
+  goHome(): void {
+    this.router.navigate(['/']);
+  }
+
+  viewSessionDetails(session: any): void {
+    this.router.navigate(['/patients', this.patientId, 'session', session.scheduleID]);
+  }
+
+  getStatusClass(isDischarged: boolean): string {
+    return isDischarged ? 'status-discharged' : 'status-active';
+  }
+}

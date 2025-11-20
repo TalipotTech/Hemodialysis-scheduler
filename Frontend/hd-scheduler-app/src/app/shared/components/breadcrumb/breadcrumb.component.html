@@ -1,0 +1,41 @@
+<div class="breadcrumb-container">
+  <div class="breadcrumb-actions">
+    <button 
+      *ngIf="!isDashboard()"
+      mat-icon-button 
+      class="back-button"
+      (click)="goBack()"
+      matTooltip="Go Back">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+  </div>
+
+  <nav class="breadcrumb-nav" *ngIf="breadcrumbs.length > 0">
+    <ol class="breadcrumb-list">
+      <li class="breadcrumb-item home">
+        <a (click)="goHome()" class="breadcrumb-link" matTooltip="Go to Dashboard">
+          <mat-icon class="breadcrumb-home-icon">home</mat-icon>
+        </a>
+      </li>
+
+      <li 
+        class="breadcrumb-item"
+        *ngFor="let breadcrumb of breadcrumbs; let last = last"
+        [class.active]="last">
+        
+        <mat-icon class="breadcrumb-separator">chevron_right</mat-icon>
+        
+        <a 
+          *ngIf="!last"
+          (click)="navigateTo(breadcrumb.url)"
+          class="breadcrumb-link">
+          {{ breadcrumb.label }}
+        </a>
+        
+        <span *ngIf="last" class="breadcrumb-current">
+          {{ breadcrumb.label }}
+        </span>
+      </li>
+    </ol>
+  </nav>
+</div>

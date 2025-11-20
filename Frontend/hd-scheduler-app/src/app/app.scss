@@ -1,0 +1,8 @@
+.app-content {
+  padding-top: 64px; // Height of breadcrumb header
+  min-height: 100vh;
+
+  @media (max-width: 768px) {
+    padding-top: 56px; // Smaller header on mobile
+  }
+}

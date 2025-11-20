@@ -1,0 +1,353 @@
+<div class="container">
+  <mat-card>
+    <mat-card-header>
+      <div class="header-content">
+        <button mat-icon-button (click)="goBack()" matTooltip="Go Back">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        <div class="header-title">
+          <mat-card-title>Audit Logs</mat-card-title>
+          <mat-card-subtitle>Complete system audit trail and activity monitoring</mat-card-subtitle>
+        </div>
+      </div>
+    </mat-card-header>
+
+    <mat-card-content>
+      <mat-tab-group animationDuration="300ms">
+        <!-- All Logs Tab -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="tab-icon">list_alt</mat-icon>
+            All Logs
+          </ng-template>
+          <div class="tab-content">
+            <!-- Filters -->
+            <div class="filters-container">
+              <mat-form-field appearance="outline" class="filter-field">
+                <mat-label>Search</mat-label>
+                <input matInput (keyup)="applyFilter($event)" placeholder="Search logs..." #input>
+                <mat-icon matPrefix>search</mat-icon>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="filter-field">
+                <mat-label>Action Type</mat-label>
+                <mat-select [(ngModel)]="selectedAction" (selectionChange)="filterByAction()">
+                  <mat-option value="">All Actions</mat-option>
+                  <mat-option *ngFor="let action of actions" [value]="action">
+                    {{ action }}
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="filter-field">
+                <mat-label>Start Date</mat-label>
+                <input matInput [matDatepicker]="startPicker" [(ngModel)]="startDate">
+                <mat-datepicker-toggle matSuffix [for]="startPicker"></mat-datepicker-toggle>
+                <mat-datepicker #startPicker></mat-datepicker>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="filter-field">
+                <mat-label>End Date</mat-label>
+                <input matInput [matDatepicker]="endPicker" [(ngModel)]="endDate">
+                <mat-datepicker-toggle matSuffix [for]="endPicker"></mat-datepicker-toggle>
+                <mat-datepicker #endPicker></mat-datepicker>
+              </mat-form-field>
+
+              <button mat-raised-button color="primary" (click)="filterByDateRange()" 
+                      [disabled]="!startDate || !endDate">
+                <mat-icon>filter_alt</mat-icon>
+                Apply Date Filter
+              </button>
+
+              <button mat-raised-button (click)="clearFilters()">
+                <mat-icon>clear</mat-icon>
+                Clear Filters
+              </button>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div *ngIf="allLogsLoading" class="loading-container">
+              <mat-spinner diameter="50"></mat-spinner>
+              <p>Loading audit logs...</p>
+            </div>
+
+            <!-- Data Table -->
+            <div *ngIf="!allLogsLoading" class="table-container">
+              <table mat-table [dataSource]="allLogsDataSource" matSort #allLogsSort="matSort" class="logs-table">
+                <!-- Log ID Column -->
+                <ng-container matColumnDef="logID">
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header> ID </th>
+                  <td mat-cell *matCellDef="let log"> {{ log.logID }} </td>
+                </ng-container>
+
+                <!-- Timestamp Column -->
+                <ng-container matColumnDef="createdAt">
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header> Timestamp </th>
+                  <td mat-cell *matCellDef="let log"> {{ formatDate(log.createdAt) }} </td>
+                </ng-container>
+
+                <!-- User Column -->
+                <ng-container matColumnDef="username">
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header> User </th>
+                  <td mat-cell *matCellDef="let log"> 
+                    <mat-chip class="user-chip">{{ log.username }}</mat-chip>
+                  </td>
+                </ng-container>
+
+                <!-- Action Column -->
+                <ng-container matColumnDef="action">
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header> Action </th>
+                  <td mat-cell *matCellDef="let log">
+                    <mat-chip [class]="'action-chip action-' + log.action.toLowerCase()">
+                      {{ log.action }}
+                    </mat-chip>
+                  </td>
+                </ng-container>
+
+                <!-- Entity Type Column -->
+                <ng-container matColumnDef="entityType">
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header> Entity Type </th>
+                  <td mat-cell *matCellDef="let log"> {{ log.entityType || '-' }} </td>
+                </ng-container>
+
+                <!-- Entity ID Column -->
+                <ng-container matColumnDef="entityID">
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header> Entity ID </th>
+                  <td mat-cell *matCellDef="let log"> {{ log.entityID || '-' }} </td>
+                </ng-container>
+
+                <!-- Details Column -->
+                <ng-container matColumnDef="details">
+                  <th mat-header-cell *matHeaderCellDef> Details </th>
+                  <td mat-cell *matCellDef="let log">
+                    <button mat-icon-button *ngIf="log.oldValues || log.newValues" 
+                            [matTooltip]="'Old: ' + (log.oldValues || 'N/A') + '\nNew: ' + (log.newValues || 'N/A')">
+                      <mat-icon>info</mat-icon>
+                    </button>
+                    <span *ngIf="log.ipAddress" class="ip-address">{{ log.ipAddress }}</span>
+                  </td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="allLogsColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: allLogsColumns;" class="log-row"></tr>
+
+                <!-- No Data Row -->
+                <tr class="mat-row" *matNoDataRow>
+                  <td class="mat-cell no-data" [attr.colspan]="allLogsColumns.length">
+                    No audit logs found
+                  </td>
+                </tr>
+              </table>
+
+              <mat-paginator #allLogsPaginator [pageSizeOptions]="[10, 25, 50, 100]" 
+                             showFirstLastButtons></mat-paginator>
+            </div>
+          </div>
+        </mat-tab>
+
+        <!-- Login History Tab -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="tab-icon">login</mat-icon>
+            Login History
+          </ng-template>
+          <div class="tab-content">
+            <div class="section-header">
+              <h3>User Login/Logout History</h3>
+              <div class="controls">
+                <mat-form-field appearance="outline" class="days-selector">
+                  <mat-label>Last N Days</mat-label>
+                  <mat-select [(ngModel)]="loginDays" (selectionChange)="updateLoginHistory()">
+                    <mat-option [value]="7">7 Days</mat-option>
+                    <mat-option [value]="30">30 Days</mat-option>
+                    <mat-option [value]="60">60 Days</mat-option>
+                    <mat-option [value]="90">90 Days</mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div *ngIf="loginHistoryLoading" class="loading-container">
+              <mat-spinner diameter="50"></mat-spinner>
+              <p>Loading login history...</p>
+            </div>
+
+            <!-- Login History Table -->
+            <div *ngIf="!loginHistoryLoading" class="table-container">
+              <table mat-table [dataSource]="loginHistoryDataSource" matSort #loginSort="matSort" class="logs-table">
+                <!-- Timestamp Column -->
+                <ng-container matColumnDef="createdAt">
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header> Timestamp </th>
+                  <td mat-cell *matCellDef="let log"> {{ formatDate(log.createdAt) }} </td>
+                </ng-container>
+
+                <!-- User Column -->
+                <ng-container matColumnDef="username">
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header> User </th>
+                  <td mat-cell *matCellDef="let log">
+                    <mat-chip class="user-chip">{{ log.username }}</mat-chip>
+                  </td>
+                </ng-container>
+
+                <!-- Action Column -->
+                <ng-container matColumnDef="action">
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header> Action </th>
+                  <td mat-cell *matCellDef="let log">
+                    <mat-chip [class]="log.action === 'LOGIN' ? 'action-chip action-login' : 'action-chip action-logout'">
+                      <mat-icon class="chip-icon">{{ log.action === 'LOGIN' ? 'login' : 'logout' }}</mat-icon>
+                      {{ log.action }}
+                    </mat-chip>
+                  </td>
+                </ng-container>
+
+                <!-- IP Address Column -->
+                <ng-container matColumnDef="ipAddress">
+                  <th mat-header-cell *matHeaderCellDef> IP Address </th>
+                  <td mat-cell *matCellDef="let log"> 
+                    <span class="ip-address">{{ log.ipAddress || 'N/A' }}</span>
+                  </td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="loginHistoryColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: loginHistoryColumns;" class="log-row"></tr>
+
+                <!-- No Data Row -->
+                <tr class="mat-row" *matNoDataRow>
+                  <td class="mat-cell no-data" [attr.colspan]="loginHistoryColumns.length">
+                    No login history found for the selected period
+                  </td>
+                </tr>
+              </table>
+
+              <mat-paginator #loginPaginator [pageSizeOptions]="[10, 25, 50]" 
+                             showFirstLastButtons></mat-paginator>
+            </div>
+          </div>
+        </mat-tab>
+
+        <!-- Statistics Tab -->
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="tab-icon">analytics</mat-icon>
+            Statistics
+          </ng-template>
+          <div class="tab-content">
+            <div class="section-header">
+              <h3>Audit Statistics & Analytics</h3>
+              <mat-form-field appearance="outline" class="days-selector">
+                <mat-label>Time Period</mat-label>
+                <mat-select [(ngModel)]="statisticsDays" (selectionChange)="updateStatistics()">
+                  <mat-option [value]="7">Last 7 Days</mat-option>
+                  <mat-option [value]="30">Last 30 Days</mat-option>
+                  <mat-option [value]="60">Last 60 Days</mat-option>
+                  <mat-option [value]="90">Last 90 Days</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div *ngIf="statisticsLoading" class="loading-container">
+              <mat-spinner diameter="50"></mat-spinner>
+              <p>Loading statistics...</p>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div *ngIf="!statisticsLoading && statistics" class="statistics-grid">
+              <mat-card class="stat-card">
+                <mat-icon class="stat-icon total">assessment</mat-icon>
+                <div class="stat-content">
+                  <h4>Total Actions</h4>
+                  <p class="stat-value">{{ statistics.totalActions }}</p>
+                </div>
+              </mat-card>
+
+              <mat-card class="stat-card">
+                <mat-icon class="stat-icon users">people</mat-icon>
+                <div class="stat-content">
+                  <h4>Unique Users</h4>
+                  <p class="stat-value">{{ statistics.uniqueUsers }}</p>
+                </div>
+              </mat-card>
+
+              <mat-card class="stat-card">
+                <mat-icon class="stat-icon login">login</mat-icon>
+                <div class="stat-content">
+                  <h4>Logins</h4>
+                  <p class="stat-value">{{ statistics.loginCount }}</p>
+                </div>
+              </mat-card>
+
+              <mat-card class="stat-card">
+                <mat-icon class="stat-icon create">add_circle</mat-icon>
+                <div class="stat-content">
+                  <h4>Creates</h4>
+                  <p class="stat-value">{{ statistics.createCount }}</p>
+                </div>
+              </mat-card>
+
+              <mat-card class="stat-card">
+                <mat-icon class="stat-icon update">edit</mat-icon>
+                <div class="stat-content">
+                  <h4>Updates</h4>
+                  <p class="stat-value">{{ statistics.updateCount }}</p>
+                </div>
+              </mat-card>
+
+              <mat-card class="stat-card">
+                <mat-icon class="stat-icon delete">delete</mat-icon>
+                <div class="stat-content">
+                  <h4>Deletes</h4>
+                  <p class="stat-value">{{ statistics.deleteCount }}</p>
+                </div>
+              </mat-card>
+            </div>
+
+            <!-- Top Insights -->
+            <div *ngIf="!statisticsLoading && statistics" class="insights-section">
+              <mat-card class="insight-card">
+                <h4><mat-icon>star</mat-icon> Most Active User</h4>
+                <p class="insight-value">{{ statistics.mostActiveUser }}</p>
+              </mat-card>
+
+              <mat-card class="insight-card">
+                <h4><mat-icon>trending_up</mat-icon> Most Common Action</h4>
+                <p class="insight-value">{{ statistics.mostCommonAction }}</p>
+              </mat-card>
+            </div>
+
+            <!-- User Activity Table -->
+            <div *ngIf="!activityLoading && userActivity.length > 0" class="activity-section">
+              <h4>User Activity Summary</h4>
+              <div class="activity-grid">
+                <mat-card *ngFor="let user of userActivity" class="activity-card">
+                  <div class="activity-header">
+                    <mat-icon class="user-avatar">account_circle</mat-icon>
+                    <div class="user-info">
+                      <h5>{{ user.username }}</h5>
+                      <span class="role-badge">{{ user.role }}</span>
+                    </div>
+                  </div>
+                  <div class="activity-details">
+                    <div class="detail-item">
+                      <span class="label">Last Action:</span>
+                      <span class="value">{{ user.lastAction }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="label">Last Active:</span>
+                      <span class="value">{{ formatDate(user.lastActivityTime) }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="label">Total Actions:</span>
+                      <span class="value highlight">{{ user.actionCount }}</span>
+                    </div>
+                  </div>
+                </mat-card>
+              </div>
+            </div>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </mat-card-content>
+  </mat-card>
+</div>

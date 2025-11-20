@@ -1,0 +1,369 @@
+// ============================================
+// RESPONSIVE DESIGN SYSTEM
+// ============================================
+
+// Breakpoints
+$breakpoint-xs: 480px;   // Small phones
+$breakpoint-sm: 768px;   // Tablets portrait
+$breakpoint-md: 1024px;  // Tablets landscape / Small desktops
+$breakpoint-lg: 1280px;  // Desktops
+$breakpoint-xl: 1920px;  // Large desktops
+
+// Mixins for responsive design
+@mixin xs {
+  @media (max-width: #{$breakpoint-xs}) {
+    @content;
+  }
+}
+
+@mixin sm {
+  @media (max-width: #{$breakpoint-sm}) {
+    @content;
+  }
+}
+
+@mixin md {
+  @media (max-width: #{$breakpoint-md}) {
+    @content;
+  }
+}
+
+@mixin lg {
+  @media (max-width: #{$breakpoint-lg}) {
+    @content;
+  }
+}
+
+@mixin xl {
+  @media (min-width: #{$breakpoint-xl}) {
+    @content;
+  }
+}
+
+// Range mixins
+@mixin sm-up {
+  @media (min-width: #{$breakpoint-sm + 1}) {
+    @content;
+  }
+}
+
+@mixin md-up {
+  @media (min-width: #{$breakpoint-md + 1}) {
+    @content;
+  }
+}
+
+@mixin between($min, $max) {
+  @media (min-width: $min) and (max-width: $max) {
+    @content;
+  }
+}
+
+// ============================================
+// GLOBAL RESPONSIVE UTILITIES
+// ============================================
+
+// Container max-widths
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+
+  @include xs {
+    padding: 0 12px;
+  }
+
+  @include sm {
+    padding: 0 16px;
+  }
+}
+
+// Responsive grid system
+.responsive-grid {
+  display: grid;
+  gap: 20px;
+
+  &.cols-1 { grid-template-columns: 1fr; }
+  &.cols-2 { grid-template-columns: repeat(2, 1fr); }
+  &.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  &.cols-4 { grid-template-columns: repeat(4, 1fr); }
+
+  @include sm {
+    &.cols-2,
+    &.cols-3,
+    &.cols-4 {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @include md {
+    &.cols-3,
+    &.cols-4 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+}
+
+// Auto-responsive grid (recommended)
+.auto-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 20px;
+
+  @include xs {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  @include sm {
+    gap: 16px;
+  }
+}
+
+// Responsive flexbox
+.responsive-flex {
+  display: flex;
+  gap: 20px;
+
+  @include sm {
+    flex-direction: column;
+    gap: 16px;
+  }
+}
+
+// Hide/show utilities
+.hide-xs { @include xs { display: none !important; } }
+.hide-sm { @include sm { display: none !important; } }
+.hide-md { @include md { display: none !important; } }
+.hide-lg { @include lg { display: none !important; } }
+
+.show-xs { display: none !important; @include xs { display: block !important; } }
+.show-sm { display: none !important; @include sm { display: block !important; } }
+.show-md { display: none !important; @include md { display: block !important; } }
+.show-lg { display: none !important; @include lg { display: block !important; } }
+
+// Responsive spacing
+@mixin responsive-spacing($property, $desktop: 24px, $tablet: 20px, $mobile: 16px, $xs: 12px) {
+  #{$property}: $desktop;
+
+  @include md {
+    #{$property}: $tablet;
+  }
+
+  @include sm {
+    #{$property}: $mobile;
+  }
+
+  @include xs {
+    #{$property}: $xs;
+  }
+}
+
+// Responsive font sizes
+@mixin responsive-font($desktop, $tablet: null, $mobile: null) {
+  font-size: $desktop;
+
+  @if $tablet {
+    @include md {
+      font-size: $tablet;
+    }
+  }
+
+  @if $mobile {
+    @include sm {
+      font-size: $mobile;
+    }
+  }
+}
+
+// ============================================
+// FORM RESPONSIVENESS
+// ============================================
+.responsive-form {
+  .mat-mdc-form-field {
+    width: 100%;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+
+    @include sm {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+  }
+
+  .form-row-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+
+    @include md {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    @include sm {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+
+    @include sm {
+      flex-direction: column-reverse;
+      
+      button {
+        width: 100%;
+      }
+    }
+  }
+}
+
+// ============================================
+// TABLE RESPONSIVENESS
+// ============================================
+.responsive-table {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  @include sm {
+    table {
+      min-width: 600px;
+    }
+  }
+
+  @include xs {
+    font-size: 14px;
+    
+    table {
+      min-width: 500px;
+    }
+
+    th, td {
+      padding: 8px !important;
+    }
+  }
+}
+
+// Card stacking for mobile
+.card-stack {
+  @include sm {
+    table {
+      display: block;
+    }
+
+    thead {
+      display: none;
+    }
+
+    tbody, tr {
+      display: block;
+    }
+
+    tr {
+      margin-bottom: 16px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 12px;
+      background: white;
+    }
+
+    td {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f0f0;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &:before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #666;
+      }
+    }
+  }
+}
+
+// ============================================
+// CARD RESPONSIVENESS
+// ============================================
+mat-card {
+  @include responsive-spacing(padding, 24px, 20px, 16px, 12px);
+}
+
+.mat-mdc-card-header {
+  @include sm {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 12px;
+  }
+}
+
+// ============================================
+// STEPPER RESPONSIVENESS
+// ============================================
+.mat-stepper-horizontal {
+  @include sm {
+    .mat-horizontal-stepper-header-container {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .mat-horizontal-stepper-header {
+      padding: 12px 8px !important;
+    }
+  }
+}
+
+// ============================================
+// DIALOG RESPONSIVENESS
+// ============================================
+.responsive-dialog {
+  @include sm {
+    max-width: 95vw !important;
+    
+    .mat-mdc-dialog-container {
+      padding: 16px !important;
+    }
+
+    .mat-mdc-dialog-title {
+      font-size: 18px !important;
+    }
+  }
+}
+
+// ============================================
+// NAVIGATION RESPONSIVENESS
+// ============================================
+.responsive-nav {
+  .mat-toolbar {
+    @include sm {
+      padding: 0 12px !important;
+    }
+  }
+
+  .nav-links {
+    @include sm {
+      display: none;
+    }
+  }
+
+  .mobile-menu {
+    display: none;
+
+    @include sm {
+      display: flex;
+    }
+  }
+}

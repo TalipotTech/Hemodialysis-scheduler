@@ -1,0 +1,103 @@
+<div class="equipment-alerts-container" *ngIf="hasAlerts || showDetails">
+  <!-- Dialyser Alert -->
+  <mat-card [class.alert-card]="dialyserStatus && dialyserStatus.status !== 'OK'" 
+            [class.critical]="dialyserStatus?.status === 'Expired' || dialyserStatus?.status === 'Critical'"
+            [class.warning]="dialyserStatus?.status === 'Warning'">
+    <mat-card-content>
+      <div class="equipment-status">
+        <div class="status-header">
+          <mat-icon [color]="getStatusColor(dialyserStatus?.status || 'OK')" 
+                    [matTooltip]="dialyserStatus?.message || ''">
+            {{ getStatusIcon(dialyserStatus?.status || 'OK') }}
+          </mat-icon>
+          <h3>Dialyser</h3>
+          <mat-chip [color]="getStatusColor(dialyserStatus?.status || 'OK')" highlighted>
+            {{ dialyserStatus?.status }}
+          </mat-chip>
+        </div>
+
+        <div class="usage-info">
+          <div class="usage-numbers">
+            <span class="current">{{ dialyserStatus?.currentUsageCount }}</span>
+            <span class="separator">/</span>
+            <span class="max">{{ dialyserStatus?.maxUsageLimit }}</span>
+            <span class="label">uses</span>
+          </div>
+          <div class="remaining">
+            <strong>{{ dialyserStatus?.remainingUses }}</strong> use(s) remaining
+          </div>
+        </div>
+
+        <mat-progress-bar 
+          mode="determinate" 
+          [value]="dialyserStatus?.usagePercentage || 0"
+          [color]="getProgressBarColor(dialyserStatus?.usagePercentage || 0)">
+        </mat-progress-bar>
+        <div class="percentage">{{ dialyserStatus?.usagePercentage }}% used</div>
+
+        <div class="alert-message" *ngIf="dialyserStatus?.message">
+          {{ dialyserStatus?.message }}
+        </div>
+
+        <div class="replacement-warning" *ngIf="dialyserStatus?.requiresReplacement">
+          <mat-icon>priority_high</mat-icon>
+          <div>
+            <strong>REPLACEMENT REQUIRED</strong>
+            <div>Please inform patient to bring new dialyser</div>
+          </div>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Blood Tubing Alert -->
+  <mat-card [class.alert-card]="bloodTubingStatus && bloodTubingStatus.status !== 'OK'"
+            [class.critical]="bloodTubingStatus?.status === 'Expired' || bloodTubingStatus?.status === 'Critical'"
+            [class.warning]="bloodTubingStatus?.status === 'Warning'">
+    <mat-card-content>
+      <div class="equipment-status">
+        <div class="status-header">
+          <mat-icon [color]="getStatusColor(bloodTubingStatus?.status || 'OK')"
+                    [matTooltip]="bloodTubingStatus?.message || ''">
+            {{ getStatusIcon(bloodTubingStatus?.status || 'OK') }}
+          </mat-icon>
+          <h3>Blood Tubing</h3>
+          <mat-chip [color]="getStatusColor(bloodTubingStatus?.status || 'OK')" highlighted>
+            {{ bloodTubingStatus?.status }}
+          </mat-chip>
+        </div>
+
+        <div class="usage-info">
+          <div class="usage-numbers">
+            <span class="current">{{ bloodTubingStatus?.currentUsageCount }}</span>
+            <span class="separator">/</span>
+            <span class="max">{{ bloodTubingStatus?.maxUsageLimit }}</span>
+            <span class="label">uses</span>
+          </div>
+          <div class="remaining">
+            <strong>{{ bloodTubingStatus?.remainingUses }}</strong> use(s) remaining
+          </div>
+        </div>
+
+        <mat-progress-bar 
+          mode="determinate" 
+          [value]="bloodTubingStatus?.usagePercentage || 0"
+          [color]="getProgressBarColor(bloodTubingStatus?.usagePercentage || 0)">
+        </mat-progress-bar>
+        <div class="percentage">{{ bloodTubingStatus?.usagePercentage }}% used</div>
+
+        <div class="alert-message" *ngIf="bloodTubingStatus?.message">
+          {{ bloodTubingStatus?.message }}
+        </div>
+
+        <div class="replacement-warning" *ngIf="bloodTubingStatus?.requiresReplacement">
+          <mat-icon>priority_high</mat-icon>
+          <div>
+            <strong>REPLACEMENT REQUIRED</strong>
+            <div>Please inform patient to bring new blood tubing</div>
+          </div>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>
