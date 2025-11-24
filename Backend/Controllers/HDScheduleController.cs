@@ -158,6 +158,23 @@ public class HDScheduleController : ControllerBase
         }
     }
 
+    [HttpGet("future-scheduled")]
+    [Authorize(Roles = "Admin,HOD,Doctor,Nurse,Technician")] // All roles can view bed schedule
+    public async Task<ActionResult<ApiResponse<List<HDSchedule>>>> GetFutureScheduledSessions()
+    {
+        try
+        {
+            var schedules = await _scheduleRepository.GetFutureScheduledSessionsAsync();
+            return Ok(ApiResponse<List<HDSchedule>>.SuccessResponse(schedules, 
+                $"Retrieved {schedules.Count} future scheduled sessions"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving future scheduled sessions");
+            return StatusCode(500, ApiResponse<List<HDSchedule>>.ErrorResponse("An error occurred while retrieving future scheduled sessions"));
+        }
+    }
+
     [HttpGet("{id}")]
     [Authorize(Roles = "Admin,HOD,Doctor,Nurse,Technician")] // All roles can view individual schedule
     public async Task<ActionResult<ApiResponse<HDSchedule>>> GetSchedule(int id)

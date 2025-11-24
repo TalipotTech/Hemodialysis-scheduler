@@ -62,6 +62,10 @@ export class ScheduleService {
     return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/hdschedule/history`);
   }
 
+  getFutureScheduledSessions(): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/hdschedule/future-scheduled`);
+  }
+
   getTodaySchedules(): Observable<ApiResponse<any[]>> {
     return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/hdschedule/today`);
   }

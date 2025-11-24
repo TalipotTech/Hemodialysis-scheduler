@@ -13,6 +13,7 @@ public interface IHDScheduleRepository
     Task<List<HDSchedule>> GetActiveAsync(); // Not discharged and not moved to history
     Task<List<HDSchedule>> GetTodaySchedulesAsync();
     Task<List<HDSchedule>> GetHistorySessionsAsync(); // Get sessions moved to history
+    Task<List<HDSchedule>> GetFutureScheduledSessionsAsync(); // Get future scheduled sessions for Bed Schedule
     Task<bool> MoveCompletedSessionsToHistoryAsync(); // Auto-move completed slots to history
     Task<int> CreateAsync(HDSchedule schedule);
     Task<bool> UpdateAsync(HDSchedule schedule);

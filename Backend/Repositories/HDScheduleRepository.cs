@@ -411,6 +411,7 @@ public class HDScheduleRepository : IHDScheduleRepository
 
     public async Task<List<HDSchedule>> GetHistorySessionsAsync()
     {
+        // History = Only completed/treated sessions (moved to history after treatment)
         var query = @"
             SELECT h.*, p.Name as PatientName,
                    d.Name as AssignedDoctorName,
@@ -421,6 +422,29 @@ public class HDScheduleRepository : IHDScheduleRepository
             LEFT JOIN Staff n ON h.AssignedNurse = n.StaffID
             WHERE h.IsMovedToHistory = 1
             ORDER BY h.SessionDate DESC, h.UpdatedAt DESC";
+        
+        using var connection = _context.CreateConnection();
+        var schedules = await connection.QueryAsync<HDSchedule>(query);
+        return schedules.ToList();
+    }
+
+    public async Task<List<HDSchedule>> GetFutureScheduledSessionsAsync()
+    {
+        // Bed Schedule = All future scheduled sessions (today and beyond)
+        // Includes both Active and Pre-Scheduled sessions
+        // Excludes completed/discharged sessions
+        var query = @"
+            SELECT h.*, p.Name as PatientName, p.Age as PatientAge, p.MRN as PatientMRN,
+                   d.Name as AssignedDoctorName,
+                   n.Name as AssignedNurseName
+            FROM HDSchedule h
+            INNER JOIN Patients p ON h.PatientID = p.PatientID
+            LEFT JOIN Staff d ON h.AssignedDoctor = d.StaffID
+            LEFT JOIN Staff n ON h.AssignedNurse = n.StaffID
+            WHERE h.IsMovedToHistory = 0 
+              AND h.IsDischarged = 0
+              AND date(h.SessionDate) >= date('now')
+            ORDER BY h.SessionDate ASC, h.SlotID ASC, h.BedNumber ASC";
         
         using var connection = _context.CreateConnection();
         var schedules = await connection.QueryAsync<HDSchedule>(query);
