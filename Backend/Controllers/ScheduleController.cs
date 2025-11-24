@@ -35,9 +35,13 @@ public class ScheduleController : ControllerBase
                 ? DateTime.Today 
                 : DateTime.Parse(date).Date;
 
-            // Get all schedules for the target date (excluding discharged)
+            // Get all schedules for the target date (excluding discharged and history)
+            // This includes both Active and Pre-Scheduled sessions
             var allSchedules = await _scheduleRepository.GetAllAsync();
-            var daySchedules = allSchedules.Where(s => s.SessionDate.Date == targetDate && !s.IsDischarged).ToList();
+            var daySchedules = allSchedules.Where(s => 
+                s.SessionDate.Date == targetDate && 
+                !s.IsDischarged && 
+                !s.IsMovedToHistory).ToList();
 
             // Define slots
             var slots = new[]
