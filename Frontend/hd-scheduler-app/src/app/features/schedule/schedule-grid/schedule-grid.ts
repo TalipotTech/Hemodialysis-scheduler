@@ -15,6 +15,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTableModule } from '@angular/material/table';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { FormsModule } from '@angular/forms';
 import { ScheduleService } from '../../../core/services/schedule.service';
 import { DailyScheduleResponse, SlotSchedule, BedStatus } from '../../../core/models/schedule.model';
@@ -37,7 +38,8 @@ import { DailyScheduleResponse, SlotSchedule, BedStatus } from '../../../core/mo
     MatSnackBarModule,
     MatTabsModule,
     MatTableModule,
-    MatChipsModule
+    MatChipsModule,
+    MatSlideToggleModule
   ],
   templateUrl: './schedule-grid.html',
   styleUrl: './schedule-grid.scss',
@@ -55,8 +57,10 @@ export class ScheduleGrid implements OnInit, OnDestroy {
 
   beds = Array.from({ length: 10 }, (_, i) => i + 1);
   
-  // Auto-refresh interval
+  // Auto-refresh settings
+  autoRefreshEnabled = false;
   private refreshInterval: any;
+  private readonly REFRESH_INTERVAL_MS = 30000; // 30 seconds
 
   // Future scheduled sessions (Bed Schedule)
   futureScheduledSessions: any[] = [];
@@ -82,20 +86,37 @@ export class ScheduleGrid implements OnInit, OnDestroy {
     this.loadFutureScheduledSessions();
     // Auto-refresh when page becomes visible again (e.g., after returning from discharge)
     document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
-    
-    // Auto-refresh every 30 seconds to catch any changes (like discharges)
+  }
+
+  ngOnDestroy(): void {
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
+    this.stopAutoRefresh();
+  }
+
+  toggleAutoRefresh(): void {
+    if (this.autoRefreshEnabled) {
+      this.startAutoRefresh();
+      this.snackBar.open('Auto-refresh enabled (every 30 seconds)', 'Close', { duration: 3000 });
+    } else {
+      this.stopAutoRefresh();
+      this.snackBar.open('Auto-refresh disabled', 'Close', { duration: 3000 });
+    }
+  }
+
+  startAutoRefresh(): void {
+    this.stopAutoRefresh(); // Clear any existing interval
     this.refreshInterval = setInterval(() => {
       if (!document.hidden) {
         this.loadSchedule();
         this.loadFutureScheduledSessions();
       }
-    }, 30000); // 30 seconds
+    }, this.REFRESH_INTERVAL_MS);
   }
 
-  ngOnDestroy(): void {
-    document.removeEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
+  stopAutoRefresh(): void {
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval);
+      this.refreshInterval = null;
     }
   }
 
@@ -111,10 +132,25 @@ export class ScheduleGrid implements OnInit, OnDestroy {
     this.loading = true;
     this.errorMessage = '';
     
+    console.log('Loading schedule for date:', this.selectedDate);
+    
     this.scheduleService.getDailySchedule(this.selectedDate).subscribe({
       next: (response: any) => {
+        console.log('Schedule API response:', response);
         if (response.success && response.data) {
           this.schedule = response.data;
+          console.log('Schedule data loaded:', this.schedule);
+          
+          // Debug: Log all beds with their statuses
+          if (this.schedule && this.schedule.slots) {
+            this.schedule.slots.forEach((slot: any) => {
+              slot.beds.forEach((bed: any) => {
+                if (bed.status !== 'available') {
+                  console.log(`Slot ${slot.slotName}, Bed ${bed.bedNumber}: ${bed.status}, Patient: ${bed.patient?.name}`);
+                }
+              });
+            });
+          }
         } else {
           this.errorMessage = response.message || 'Failed to load schedule';
         }
@@ -129,6 +165,21 @@ export class ScheduleGrid implements OnInit, OnDestroy {
   }
 
   onDateChange(): void {
+    console.log('Date changed to:', this.selectedDate);
+    this.loadSchedule();
+  }
+
+  goToPreviousDay(): void {
+    const currentDate = new Date(this.selectedDate);
+    currentDate.setDate(currentDate.getDate() - 1);
+    this.selectedDate = currentDate;
+    this.loadSchedule();
+  }
+
+  goToNextDay(): void {
+    const currentDate = new Date(this.selectedDate);
+    currentDate.setDate(currentDate.getDate() + 1);
+    this.selectedDate = currentDate;
     this.loadSchedule();
   }
 
@@ -149,6 +200,9 @@ export class ScheduleGrid implements OnInit, OnDestroy {
     switch (bed.status) {
       case 'occupied':
         className = 'bed-occupied';
+        break;
+      case 'pre-scheduled':
+        className = 'bed-pre-scheduled';
         break;
       case 'reserved':
         className = 'bed-reserved';
@@ -171,6 +225,8 @@ export class ScheduleGrid implements OnInit, OnDestroy {
         return this.showAvailable;
       case 'occupied':
         return this.showOccupied;
+      case 'pre-scheduled':
+        return this.showOccupied; // Use same filter as occupied
       case 'reserved':
         return this.showReserved;
       default:
@@ -189,9 +245,23 @@ export class ScheduleGrid implements OnInit, OnDestroy {
       return 'Available';
     }
     if (bed.patient) {
-      return `Patient: ${bed.patient.name}\nAge: ${bed.patient.age}${bed.patient.bloodPressure ? '\nBP: ' + bed.patient.bloodPressure : ''}`;
+      const sessionInfo = this.getSessionInfo(bed);
+      return `${bed.patient.name} (${bed.patient.age})\n${sessionInfo}`;
     }
     return bed.status;
+  }
+
+  getSessionInfo(bed: any): string {
+    if (!bed.sessionDate) return 'N/A';
+    
+    const date = new Date(bed.sessionDate);
+    const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    
+    if (bed.sessionNumber && bed.totalWeeklySessions) {
+      return `Session ${bed.sessionNumber}/${bed.totalWeeklySessions} - ${formattedDate}`;
+    }
+    
+    return formattedDate;
   }
 
   loadFutureScheduledSessions(): void {
@@ -245,7 +315,14 @@ export class ScheduleGrid implements OnInit, OnDestroy {
   getTotalOccupied(): number {
     if (!this.schedule) return 0;
     return this.schedule.slots.reduce((total: number, slot: SlotSchedule) => {
-      return total + slot.beds.filter((b: BedStatus) => b.status === 'occupied').length;
+      return total + slot.beds.filter((b: BedStatus) => b.status === 'occupied' || b.status === 'pre-scheduled').length;
+    }, 0);
+  }
+
+  getTotalPreScheduled(): number {
+    if (!this.schedule) return 0;
+    return this.schedule.slots.reduce((total: number, slot: SlotSchedule) => {
+      return total + slot.beds.filter((b: BedStatus) => b.status === 'pre-scheduled').length;
     }, 0);
   }
 

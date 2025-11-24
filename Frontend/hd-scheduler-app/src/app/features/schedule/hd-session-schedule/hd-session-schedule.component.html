@@ -14,12 +14,7 @@
             @if (isEditMode) {
               <span class="edit-mode-badge">EDIT MODE - Auto-saving enabled</span>
             }
-            @if (isEditMode && scheduleId) {
-              <button mat-raised-button color="accent" (click)="startWorkflow()" class="workflow-button" matTooltip="Start 3-phase dialysis workflow">
-                <mat-icon>timeline</mat-icon>
-                Start Workflow
-              </button>
-            }
+            <!-- Start Workflow button removed -->
           </div>
           
           <!-- Auto-save indicator for new sessions -->
@@ -61,13 +56,10 @@
               <mat-icon class="person-icon">person</mat-icon>
               <div>
                 <h2 class="patient-main-name">{{ patient.name || 'Unknown Patient' }}</h2>
-                <p class="patient-subtitle">MRN: {{ patient.mrn || 'N/A' }} | Age: {{ patient.age }} years | {{ patient.gender || 'N/A' }}</p>
+                <p class="patient-subtitle">MRN: {{ patient.mrn || 'Not Assigned' }} | Age: {{ patient.age ? (patient.age + ' years') : 'N/A' }} | {{ patient.gender || 'N/A' }}</p>
               </div>
             </div>
-            <button mat-raised-button color="primary" (click)="togglePatientHistory()">
-              <mat-icon>{{ showPatientHistory ? 'visibility_off' : 'history' }}</mat-icon>
-              {{ showPatientHistory ? 'Hide' : 'View' }} History ({{ patientHistory.length }})
-            </button>
+            <!-- Removed View History button -->
           </div>
           
           <div class="patient-details-grid">

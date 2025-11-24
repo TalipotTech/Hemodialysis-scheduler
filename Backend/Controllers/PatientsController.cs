@@ -143,6 +143,8 @@ public class PatientsController : ControllerBase
                 EmergencyContact = request.EmergencyContact,
                 Address = request.Address,
                 GuardianName = request.GuardianName,
+                HDCycle = request.HDCycle,
+                HDFrequency = request.HDFrequency,
                 IsActive = true
             };
 
@@ -184,6 +186,8 @@ public class PatientsController : ControllerBase
             existingPatient.EmergencyContact = request.EmergencyContact;
             existingPatient.Address = request.Address;
             existingPatient.GuardianName = request.GuardianName;
+            existingPatient.HDCycle = request.HDCycle;
+            existingPatient.HDFrequency = request.HDFrequency;
 
             var result = await _patientRepository.UpdateAsync(existingPatient);
             

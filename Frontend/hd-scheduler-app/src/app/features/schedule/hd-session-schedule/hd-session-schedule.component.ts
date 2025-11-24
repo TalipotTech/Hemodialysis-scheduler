@@ -294,6 +294,20 @@ export class HdSessionScheduleComponent implements OnInit {
     this.showPatientHistory = !this.showPatientHistory;
   }
 
+  loadPatientDetails(patientId: number): void {
+    this.patientId = patientId;
+    this.patientService.getPatient(patientId).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.patient = response.data;
+        }
+      },
+      error: (error) => {
+        console.error('Error loading patient details:', error);
+      }
+    });
+  }
+
   viewSessionDetails(scheduleId: number): void {
     // Navigate to view/edit the selected session
     this.router.navigate(['/schedule/hd-session/edit', scheduleId]);
@@ -339,7 +353,9 @@ export class HdSessionScheduleComponent implements OnInit {
         if (response.success && response.data) {
           const session = response.data;
           this.patientId = session.patientID;
-          this.patient = { name: session.patientName, mrn: session.patientMRN, age: session.patientAge };
+          
+          // Load full patient details
+          this.loadPatientDetails(session.patientID);
           
           // Pre-fill ALL form fields with existing data (or leave empty if null)
           // Log the data to see what we're receiving
@@ -1079,13 +1095,18 @@ export class HdSessionScheduleComponent implements OnInit {
       isDischarged: false
     };
 
-    console.log('Updating HD session:', updateData);
+    console.log('Updating HD session with scheduleId:', this.scheduleId);
+    console.log('Update data:', updateData);
     
     this.scheduleService.updateSchedule(this.scheduleId!, updateData).subscribe({
       next: (response) => {
+        console.log('Update response:', response);
         if (response.success) {
           this.snackBar.open('HD session updated successfully!', 'Close', { duration: 3000 });
-          this.router.navigate(['/schedule']);
+          // Stay on the same page instead of navigating away
+          this.loading = false;
+          // Reload the session data to show updated values
+          this.loadExistingSession();
         } else {
           this.errorMessage = response.message || 'Failed to update HD session';
           this.snackBar.open(this.errorMessage, 'Close', { duration: 5000 });
@@ -1094,9 +1115,16 @@ export class HdSessionScheduleComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error updating HD session:', error);
+        console.error('Error response:', error.error);
+        console.error('Error status:', error.status);
         let errorMsg = 'An error occurred while updating the HD session';
         if (error.error?.message) {
           errorMsg = error.error.message;
+        } else if (error.error?.errors) {
+          const errors = Object.values(error.error.errors).flat().join(', ');
+          errorMsg = `Validation errors: ${errors}`;
+        } else if (error.message) {
+          errorMsg = error.message;
         }
         this.errorMessage = errorMsg;
         this.snackBar.open(errorMsg, 'Close', { duration: 5000 });

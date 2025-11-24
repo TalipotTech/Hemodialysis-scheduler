@@ -34,13 +34,26 @@ public class PatientHistoryRepository : IPatientHistoryRepository
         // Get all sessions with related data - include ALL fields from HDSchedule
         var sessionsQuery = @"
             SELECT 
-                h.*, 
+                h.ScheduleID, h.SessionDate, h.PatientID, h.SlotID, h.BedNumber,
+                h.DryWeight, h.HDStartDate, h.HDCycle, h.WeightGain,
+                h.DialyserType, h.DialyserModel, h.DialyserReuseCount, h.BloodTubingReuse, h.HDUnitNumber,
+                h.PrescribedDuration, h.UFGoal, h.DialysatePrescription, h.PrescribedBFR,
+                h.AnticoagulationType, h.HeparinDose, h.SyringeType, h.BolusDose, h.HeparinInfusionRate,
+                h.AccessType, h.AccessLocation,
+                h.StartTime,
+                h.PreWeight, h.PreBPSitting, h.PreTemperature, h.AccessBleedingTime, h.AccessStatus, h.Complications,
+                h.MonitoringTime, h.BloodPressure, h.HeartRate, h.ActualBFR, h.VenousPressure, h.ArterialPressure,
+                h.CurrentUFR, h.TotalUFAchieved, h.TmpPressure, h.Symptoms, h.Interventions, h.StaffInitials,
+                h.MedicationType, h.MedicationName, h.Dose, h.Route, h.AdministeredAt,
+                h.AlertType, h.AlertMessage, h.Severity, h.Resolution,
+                h.PostWeight, h.PostSBP, h.PostDBP, h.PostHR, h.PostAccessStatus, h.TotalFluidRemoved,
+                h.Notes, h.IsDischarged, h.IsMovedToHistory, h.SessionStatus, h.CreatedAt, h.UpdatedAt,
+                h.AssignedDoctor, h.AssignedNurse, h.BloodTestDone,
                 p.Name as PatientName,
                 s.SlotName,
                 d.Name as AssignedDoctorName,
                 n.Name as AssignedNurseName,
-                l.PreWeight, l.PostWeight, l.WeightLoss, l.BloodPressurePre, l.BloodPressurePost,
-                l.Temperature, l.Notes,
+                l.BloodPressurePre, l.BloodPressurePost, l.Temperature as LogTemperature,
                 (SELECT COUNT(*) FROM IntraDialyticRecords WHERE ScheduleID = h.ScheduleID) as IntraDialyticRecordsCount,
                 (SELECT COUNT(*) FROM PostDialysisMedications WHERE ScheduleID = h.ScheduleID) as MedicationsCount
             FROM HDSchedule h
@@ -72,13 +85,26 @@ public class PatientHistoryRepository : IPatientHistoryRepository
         // Get session summary with all HDSchedule fields
         var sessionQuery = @"
             SELECT 
-                h.*, 
+                h.ScheduleID, h.SessionDate, h.PatientID, h.SlotID, h.BedNumber,
+                h.DryWeight, h.HDStartDate, h.HDCycle, h.WeightGain,
+                h.DialyserType, h.DialyserModel, h.DialyserReuseCount, h.BloodTubingReuse, h.HDUnitNumber,
+                h.PrescribedDuration, h.UFGoal, h.DialysatePrescription, h.PrescribedBFR,
+                h.AnticoagulationType, h.HeparinDose, h.SyringeType, h.BolusDose, h.HeparinInfusionRate,
+                h.AccessType, h.AccessLocation,
+                h.StartTime,
+                h.PreWeight, h.PreBPSitting, h.PreTemperature, h.AccessBleedingTime, h.AccessStatus, h.Complications,
+                h.MonitoringTime, h.BloodPressure, h.HeartRate, h.ActualBFR, h.VenousPressure, h.ArterialPressure,
+                h.CurrentUFR, h.TotalUFAchieved, h.TmpPressure, h.Symptoms, h.Interventions, h.StaffInitials,
+                h.MedicationType, h.MedicationName, h.Dose, h.Route, h.AdministeredAt,
+                h.AlertType, h.AlertMessage, h.Severity, h.Resolution,
+                h.PostWeight, h.PostSBP, h.PostDBP, h.PostHR, h.PostAccessStatus, h.TotalFluidRemoved,
+                h.Notes, h.IsDischarged, h.IsMovedToHistory, h.SessionStatus, h.CreatedAt, h.UpdatedAt,
+                h.AssignedDoctor, h.AssignedNurse, h.BloodTestDone,
                 p.Name as PatientName,
                 s.SlotName,
                 d.Name as AssignedDoctorName,
                 n.Name as AssignedNurseName,
-                l.PreWeight, l.PostWeight, l.WeightLoss, l.BloodPressurePre, l.BloodPressurePost,
-                l.Temperature, l.Notes
+                l.BloodPressurePre, l.BloodPressurePost, l.Temperature as LogTemperature
             FROM HDSchedule h
             INNER JOIN Patients p ON h.PatientID = p.PatientID
             LEFT JOIN Slots s ON h.SlotID = s.SlotID
@@ -193,7 +219,7 @@ public class PatientHistoryRepository : IPatientHistoryRepository
                 trends.WeightTrend.Add(new VitalTrend 
                 { 
                     SessionDate = sessionDate, 
-                    Value = row.PreWeight, 
+                    Value = Convert.ToDecimal(row.PreWeight), 
                     Label = "Pre-Weight" 
                 });
             }
@@ -203,7 +229,7 @@ public class PatientHistoryRepository : IPatientHistoryRepository
                 trends.WeightLossTrend.Add(new VitalTrend 
                 { 
                     SessionDate = sessionDate, 
-                    Value = row.WeightLoss, 
+                    Value = Convert.ToDecimal(row.WeightLoss), 
                     Label = "Weight Loss" 
                 });
             }
@@ -213,7 +239,7 @@ public class PatientHistoryRepository : IPatientHistoryRepository
                 trends.UFGoalTrend.Add(new VitalTrend 
                 { 
                     SessionDate = sessionDate, 
-                    Value = row.UFGoal, 
+                    Value = Convert.ToDecimal(row.UFGoal), 
                     Label = "UF Goal" 
                 });
             }

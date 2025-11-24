@@ -45,14 +45,14 @@
               <mat-icon>badge</mat-icon>
               <div>
                 <label>MRN</label>
-                <span>{{ patientInfo.mrn }}</span>
+                <span>{{ patientInfo.mrn || 'Not Assigned' }}</span>
               </div>
             </div>
             <div class="info-item">
               <mat-icon>calendar_today</mat-icon>
               <div>
                 <label>Age</label>
-                <span>{{ patientInfo.age }} years</span>
+                <span>{{ patientInfo.age ? (patientInfo.age + ' years') : 'N/A' }}</span>
               </div>
             </div>
             <div class="info-item">
@@ -227,7 +227,11 @@
                         </div>
 
                         <div class="session-actions">
-                          <button mat-raised-button color="primary" (click)="viewSessionDetails(session)">
+                          <button mat-raised-button color="primary" (click)="editSession(session.scheduleID)">
+                            <mat-icon>edit</mat-icon>
+                            Edit Session
+                          </button>
+                          <button mat-raised-button color="accent" (click)="viewSessionDetails(session)">
                             <mat-icon>visibility</mat-icon>
                             View Full Details
                           </button>

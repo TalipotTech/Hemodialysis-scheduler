@@ -35,6 +35,8 @@ public class ScheduleController : ControllerBase
                 ? DateTime.Today 
                 : DateTime.Parse(date).Date;
 
+            _logger.LogInformation($"GetDailySchedule called for date: {targetDate:yyyy-MM-dd}");
+
             // Get all schedules for the target date (excluding discharged and history)
             // This includes both Active and Pre-Scheduled sessions
             var allSchedules = await _scheduleRepository.GetAllAsync();
@@ -42,6 +44,16 @@ public class ScheduleController : ControllerBase
                 s.SessionDate.Date == targetDate && 
                 !s.IsDischarged && 
                 !s.IsMovedToHistory).ToList();
+            
+            // Get start and end of week for session counting
+            var startOfWeek = targetDate.AddDays(-(int)targetDate.DayOfWeek);
+            var endOfWeek = startOfWeek.AddDays(7);
+
+            _logger.LogInformation($"Found {daySchedules.Count} schedules for {targetDate:yyyy-MM-dd}");
+            foreach (var schedule in daySchedules)
+            {
+                _logger.LogInformation($"  - ScheduleID: {schedule.ScheduleID}, Patient: {schedule.PatientName}, Slot: {schedule.SlotID}, Bed: {schedule.BedNumber}, Status: {schedule.SessionStatus}");
+            }
 
             // Define slots
             var slots = new[]
@@ -60,20 +72,50 @@ public class ScheduleController : ControllerBase
                 
                 // Create bed status array for 10 beds
                 var beds = new List<object>();
+                
+                // Track which schedules have been assigned to beds
+                var assignedScheduleIds = new HashSet<int>();
+                
                 for (int bedNum = 1; bedNum <= 10; bedNum++)
                 {
                     var schedule = slotSchedulesForSlot.FirstOrDefault(s => s.BedNumber == bedNum);
                     
                     if (schedule != null)
                     {
+                        assignedScheduleIds.Add(schedule.ScheduleID);
+                        
                         // Fetch patient data to get actual age
                         var patient = await _patientRepository.GetByIdAsync(schedule.PatientID);
+                        
+                        // Determine bed status based on session status and date
+                        string bedStatus = "occupied"; // Default for today's active sessions
+                        
+                        if (schedule.SessionStatus == "Pre-Scheduled" || schedule.SessionDate.Date > DateTime.Today)
+                        {
+                            bedStatus = "pre-scheduled"; // Future scheduled session
+                        }
+                        
+                        // Calculate weekly session info
+                        var patientWeekSessions = allSchedules
+                            .Where(s => s.PatientID == schedule.PatientID && 
+                                       s.SessionDate >= startOfWeek && 
+                                       s.SessionDate < endOfWeek &&
+                                       !s.IsDischarged)
+                            .OrderBy(s => s.SessionDate)
+                            .ToList();
+                        
+                        var sessionNumber = patientWeekSessions.FindIndex(s => s.ScheduleID == schedule.ScheduleID) + 1;
+                        var totalSessions = patientWeekSessions.Count;
                         
                         beds.Add(new
                         {
                             bedNumber = bedNum,
-                            status = "occupied",
+                            status = bedStatus,
                             scheduleId = schedule.ScheduleID,
+                            sessionStatus = schedule.SessionStatus ?? "Active",
+                            sessionDate = schedule.SessionDate.ToString("yyyy-MM-dd"),
+                            sessionNumber = sessionNumber,
+                            totalWeeklySessions = totalSessions,
                             patient = new
                             {
                                 id = schedule.PatientID,
@@ -92,6 +134,63 @@ public class ScheduleController : ControllerBase
                             scheduleId = (int?)null,
                             patient = (object?)null
                         });
+                    }
+                }
+                
+                // Handle schedules without bed assignments (BedNumber is null or 0)
+                // Assign them to available beds
+                var unassignedSchedules = slotSchedulesForSlot.Where(s => 
+                    (s.BedNumber == null || s.BedNumber == 0) && 
+                    !assignedScheduleIds.Contains(s.ScheduleID)).ToList();
+                
+                foreach (var schedule in unassignedSchedules)
+                {
+                    // Find first available bed
+                    for (int bedNum = 1; bedNum <= 10; bedNum++)
+                    {
+                        var bedIndex = bedNum - 1;
+                        if (bedIndex < beds.Count)
+                        {
+                            var bedObj = beds[bedIndex] as dynamic;
+                            if (bedObj != null && bedObj.status == "available")
+                            {
+                                // Fetch patient data
+                                var patient = await _patientRepository.GetByIdAsync(schedule.PatientID);
+                                
+                                // Calculate weekly session info
+                                var patientWeekSessions = allSchedules
+                                    .Where(s => s.PatientID == schedule.PatientID && 
+                                               s.SessionDate >= startOfWeek && 
+                                               s.SessionDate < endOfWeek &&
+                                               !s.IsDischarged)
+                                    .OrderBy(s => s.SessionDate)
+                                    .ToList();
+                                
+                                var sessionNumber = patientWeekSessions.FindIndex(s => s.ScheduleID == schedule.ScheduleID) + 1;
+                                var totalSessions = patientWeekSessions.Count;
+                                
+                                // Update this bed with the pre-scheduled patient
+                                beds[bedIndex] = new
+                                {
+                                    bedNumber = bedNum,
+                                    status = "pre-scheduled",
+                                    scheduleId = schedule.ScheduleID,
+                                    sessionStatus = schedule.SessionStatus ?? "Pre-Scheduled",
+                                    sessionDate = schedule.SessionDate.ToString("yyyy-MM-dd"),
+                                    sessionNumber = sessionNumber,
+                                    totalWeeklySessions = totalSessions,
+                                    needsBedAssignment = true,
+                                    patient = new
+                                    {
+                                        id = schedule.PatientID,
+                                        name = schedule.PatientName ?? patient?.Name ?? "Unknown",
+                                        age = patient?.Age ?? 0,
+                                        bloodPressure = schedule.BloodPressure
+                                    }
+                                };
+                                break; // Move to next schedule
+                            }
+                        }
                     }
                 }
 

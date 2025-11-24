@@ -122,6 +122,8 @@ public class CreatePatientRequest
     public string? EmergencyContact { get; set; } // Emergency contact details
     public string? Address { get; set; } // Patient address
     public string? GuardianName { get; set; } // Guardian name
+    public string? HDCycle { get; set; } // HD Cycle pattern (e.g., "MWF", "TTS", "Daily")
+    public int? HDFrequency { get; set; } // Number of sessions per week
 }
 
 public class CreateHDScheduleRequest

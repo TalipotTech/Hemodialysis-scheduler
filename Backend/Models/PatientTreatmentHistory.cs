@@ -45,6 +45,7 @@ public class TreatmentSessionSummary
     
     // Intra-Dialytic Monitoring
     public string? MonitoringTime { get; set; }
+    public string? BloodPressure { get; set; }
     public int? HeartRate { get; set; }
     public int? ActualBFR { get; set; }
     public int? VenousPressure { get; set; }
@@ -52,6 +53,7 @@ public class TreatmentSessionSummary
     public decimal? CurrentUFR { get; set; }
     public decimal? TotalUFAchieved { get; set; }
     public int? TmpPressure { get; set; }
+    public string? Symptoms { get; set; }
     public string? Interventions { get; set; }
     public string? StaffInitials { get; set; }
     

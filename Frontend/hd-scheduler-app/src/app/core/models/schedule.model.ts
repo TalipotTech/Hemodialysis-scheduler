@@ -31,9 +31,14 @@ export interface SlotSchedule {
 
 export interface BedStatus {
   bedNumber: number;
-  status: 'available' | 'occupied' | 'reserved';
+  status: 'available' | 'occupied' | 'reserved' | 'pre-scheduled';
   scheduleId?: number;
   patient?: PatientSummary;
+  sessionStatus?: string;
+  sessionDate?: string;
+  sessionNumber?: number;
+  totalWeeklySessions?: number;
+  needsBedAssignment?: boolean;
 }
 
 export interface HDSchedule {

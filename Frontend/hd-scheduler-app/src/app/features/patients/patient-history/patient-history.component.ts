@@ -183,6 +183,10 @@ export class PatientHistoryComponent implements OnInit {
     this.router.navigate(['/']);
   }
 
+  editSession(scheduleId: number): void {
+    this.router.navigate(['/schedule/hd-session/edit', scheduleId]);
+  }
+
   viewSessionDetails(session: any): void {
     this.router.navigate(['/patients', this.patientId, 'session', session.scheduleID]);
   }
