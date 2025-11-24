@@ -106,6 +106,7 @@ builder.Services.AddScoped<IStaffRepository, StaffRepository>();
 builder.Services.AddScoped<IPatientHistoryRepository, PatientHistoryRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<EquipmentUsageService>();
+builder.Services.AddScoped<IRecurringSessionService, RecurringSessionService>();
 
 // Register background service for auto-moving completed sessions to history
 builder.Services.AddHostedService<SessionHistoryBackgroundService>();

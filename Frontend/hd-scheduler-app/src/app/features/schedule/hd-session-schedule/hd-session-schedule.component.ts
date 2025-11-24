@@ -95,6 +95,11 @@ export class HdSessionScheduleComponent implements OnInit {
   alertTypes = ['Hypotension', 'Hypertension', 'Cramping', 'Chest Pain', 'Access Issue', 'Machine Alarm', 'Other'];
   severityLevels = ['Low', 'Medium', 'High', 'Critical'];
   
+  // Monitoring Records for multiple entries
+  monitoringRecords: any[] = [];
+  currentTime: Date = new Date();
+  monitoringTimeInterval: any = null;
+  
   hdCycles = [
     { value: 'MWF', label: 'Monday, Wednesday, Friday (3x/week)', frequency: 3 },
     { value: 'TTS', label: 'Tuesday, Thursday, Saturday (3x/week)', frequency: 3 },
@@ -148,6 +153,7 @@ export class HdSessionScheduleComponent implements OnInit {
       monitoringTime: [''],
       bloodPressure: [''],
       heartRate: [''],
+      temperature: [''],
       actualBFR: [''],
       venousPressure: [''],
       arterialPressure: [''],
@@ -157,6 +163,7 @@ export class HdSessionScheduleComponent implements OnInit {
       symptoms: [''],
       interventions: [''],
       staffInitials: [''],
+      monitoringNotes: [''],
       // Post-Dialysis Vital Signs
       postWeight: [''],
       postSBP: [''],
@@ -174,11 +181,18 @@ export class HdSessionScheduleComponent implements OnInit {
       alertType: [''],
       alertMessage: [''],
       severity: [''],
-      resolution: ['']
+      resolution: [''],
+      // Additional notes field
+      notes: ['']
     });
   }
 
   ngOnInit(): void {
+    // Start time updater for monitoring entries
+    this.monitoringTimeInterval = setInterval(() => {
+      this.updateCurrentTime();
+    }, 1000); // Update every second
+
     this.route.params.subscribe(params => {
       if (params['patientId']) {
         this.patientId = +params['patientId'];
@@ -193,6 +207,11 @@ export class HdSessionScheduleComponent implements OnInit {
         this.scheduleId = +params['scheduleId'];
         this.isEditMode = true;
         this.loadExistingSession();
+        
+        // Load monitoring records
+        setTimeout(() => {
+          this.loadMonitoringRecords();
+        }, 1000);
         
         // Setup auto-save on form changes (debounced) - only in edit mode
         setTimeout(() => {
@@ -522,6 +541,17 @@ export class HdSessionScheduleComponent implements OnInit {
     if (formValue.alertMessage) updates.AlertMessage = formValue.alertMessage;
     if (formValue.severity) updates.Severity = formValue.severity;
     if (formValue.resolution) updates.Resolution = formValue.resolution;
+    
+    // Post-Dialysis Vital Signs
+    if (formValue.postWeight != null && formValue.postWeight !== '') updates.PostWeight = formValue.postWeight;
+    if (formValue.postSBP != null && formValue.postSBP !== '') updates.PostSBP = formValue.postSBP;
+    if (formValue.postDBP != null && formValue.postDBP !== '') updates.PostDBP = formValue.postDBP;
+    if (formValue.postHR != null && formValue.postHR !== '') updates.PostHR = formValue.postHR;
+    if (formValue.totalFluidRemoved != null && formValue.totalFluidRemoved !== '') updates.TotalFluidRemoved = formValue.totalFluidRemoved;
+    if (formValue.postAccessStatus) updates.PostAccessStatus = formValue.postAccessStatus;
+    
+    // Additional notes field - IMPORTANT for medical records
+    if (formValue.notes) updates.Notes = formValue.notes;
 
     if (Object.keys(updates).length === 0) {
       return;
@@ -671,13 +701,104 @@ export class HdSessionScheduleComponent implements OnInit {
   }
 
   saveCurrentStep(): void {
-    // Save current form data without validation (allows partial saves)
-    if (this.isEditMode && this.scheduleId) {
+    // If we're not in edit mode yet, we need to validate and create the initial session
+    if (!this.isEditMode && !this.scheduleId) {
+      // Validate required fields for Step 1
+      const requiredStep1Fields = ['treatmentDate', 'slotID', 'bedNumber', 'dryWeight', 
+                                     'hdStartDate', 'hdCycle', 'prescribedDuration', 
+                                     'dialyserType', 'accessType'];
+      
+      let missingFields: string[] = [];
+      requiredStep1Fields.forEach(field => {
+        const control = this.sessionForm.get(field);
+        if (!control || !control.value || control.value === '') {
+          missingFields.push(field);
+        }
+      });
+
+      // Check if bed is selected
+      if (!this.selectedBed) {
+        this.snackBar.open('Please select a bed before saving', 'Close', { duration: 3000 });
+        return;
+      }
+
+      if (missingFields.length > 0) {
+        this.snackBar.open('Please fill in all required fields in Step 1 before saving', 'Close', { duration: 3000 });
+        return;
+      }
+
+      // If all required fields are filled, create the initial session
+      this.createInitialSession();
+    } else if (this.isEditMode && this.scheduleId) {
+      // We're in edit mode, just auto-save current changes
       this.autoSaveData();
       this.snackBar.open('✓ Progress saved successfully!', 'Close', { duration: 2000 });
-    } else {
-      this.snackBar.open('Please complete Step 1 first to enable auto-save', 'Close', { duration: 3000 });
     }
+  }
+
+  private createInitialSession(): void {
+    this.loading = true;
+    const formValue = this.sessionForm.value;
+    
+    // Helper function to convert empty strings to null
+    const toNumber = (value: any): number | null => {
+      if (value === '' || value === null || value === undefined) return null;
+      const num = Number(value);
+      return isNaN(num) ? null : num;
+    };
+
+    const toString = (value: any): string | null => {
+      if (value === '' || value === null || value === undefined) return null;
+      return String(value);
+    };
+    
+    const sessionData = {
+      patientID: this.patientId,
+      sessionDate: formValue.treatmentDate,
+      dryWeight: toNumber(formValue.dryWeight),
+      hdStartDate: formValue.hdStartDate,
+      hdCycle: toString(formValue.hdCycle),
+      dialyserType: formValue.dialyserType,
+      prescribedDuration: toNumber(formValue.prescribedDuration),
+      ufGoal: toNumber(formValue.ufGoal),
+      dialysatePrescription: toString(formValue.dialysatePrescription),
+      prescribedBFR: toNumber(formValue.prescribedBFR),
+      anticoagulationType: toString(formValue.anticoagulationType),
+      heparinDose: toNumber(formValue.heparinBolusDose),
+      bolusDose: toNumber(formValue.heparinBolusDose),
+      heparinInfusionRate: toNumber(formValue.heparinInfusionRate),
+      accessType: formValue.accessType,
+      accessLocation: toString(formValue.accessLocation),
+      slotID: formValue.slotID,
+      bedNumber: formValue.bedNumber,
+      dialyserModel: toString(formValue.dialyserModel),
+      dialyserReuseCount: toNumber(formValue.dialyserReuseNumber) || 0,
+      sessionsPerWeek: toNumber(formValue.sessionsPerWeek)
+    };
+
+    this.scheduleService.createHDSession(sessionData).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          // The API returns the scheduleID as a number directly in response.data
+          this.scheduleId = response.data;
+          this.isEditMode = true;
+          
+          this.snackBar.open('✓ Initial session created! You can now save progress as you continue.', 'Close', { 
+            duration: 3000 
+          });
+          
+          this.loading = false;
+        } else {
+          this.snackBar.open('Failed to create initial session', 'Close', { duration: 3000 });
+          this.loading = false;
+        }
+      },
+      error: (error) => {
+        console.error('Error creating initial session:', error);
+        this.snackBar.open('Error creating initial session', 'Close', { duration: 3000 });
+        this.loading = false;
+      }
+    });
   }
 
   onSubmit(): void {
@@ -791,8 +912,9 @@ export class HdSessionScheduleComponent implements OnInit {
       assignedNurse: null,   // Will be assigned by staff later
       dialyserModel: toString(formValue.dialyserModel),
       dialyserReuseCount: toNumber(formValue.dialyserReuseNumber) || 0,
-      bloodTubingReuse: 0,
+      bloodTubingReuse: toNumber(formValue.bloodTubingReuse) || 0,
       bloodTestDone: false,
+      sessionsPerWeek: toNumber(formValue.sessionsPerWeek),
       // HDTreatmentSession fields
       startTime: toString(formValue.startTime),
       preWeight: toNumber(formValue.preWeight),
@@ -831,7 +953,9 @@ export class HdSessionScheduleComponent implements OnInit {
       alertType: toString(formValue.alertType),
       alertMessage: toString(formValue.alertMessage),
       severity: toString(formValue.severity),
-      resolution: toString(formValue.resolution)
+      resolution: toString(formValue.resolution),
+      // Additional notes
+      notes: toString(formValue.notes)
     };
 
     console.log('Submitting HD session data:', sessionData);
@@ -897,7 +1021,7 @@ export class HdSessionScheduleComponent implements OnInit {
       dialyserType: formValue.dialyserType,
       dialyserModel: toString(formValue.dialyserModel),
       dialyserReuseCount: toNumber(formValue.dialyserReuseNumber) || 0,
-      bloodTubingReuse: 0,
+      bloodTubingReuse: toNumber(formValue.bloodTubingReuse) || 0,
       prescribedDuration: toNumber(formValue.prescribedDuration),
       ufGoal: toNumber(formValue.ufGoal),
       dialysatePrescription: toString(formValue.dialysatePrescription),
@@ -932,6 +1056,13 @@ export class HdSessionScheduleComponent implements OnInit {
       tmpPressure: toNumber(formValue.tmpPressure),
       interventions: toString(formValue.interventions),
       staffInitials: toString(formValue.staffInitials),
+      // Post-Dialysis Vital Signs
+      postWeight: toNumber(formValue.postWeight),
+      postSBP: toNumber(formValue.postSBP),
+      postDBP: toNumber(formValue.postDBP),
+      postHR: toNumber(formValue.postHR),
+      totalFluidRemoved: toNumber(formValue.totalFluidRemoved),
+      postAccessStatus: toString(formValue.postAccessStatus),
       // PostDialysisMedications fields
       medicationType: toString(formValue.medicationType),
       medicationName: toString(formValue.medicationName),
@@ -943,6 +1074,8 @@ export class HdSessionScheduleComponent implements OnInit {
       alertMessage: toString(formValue.alertMessage),
       severity: toString(formValue.severity),
       resolution: toString(formValue.resolution),
+      // Additional notes
+      notes: toString(formValue.notes),
       isDischarged: false
     };
 
@@ -1129,5 +1262,101 @@ export class HdSessionScheduleComponent implements OnInit {
     setTimeout(() => {
       this.router.navigate(['/schedule']);
     }, 1500);
+  }
+
+  // ===== INTRA-DIALYTIC MONITORING METHODS =====
+  
+  loadMonitoringRecords(): void {
+    if (!this.scheduleId) return;
+
+    this.scheduleService.getIntraDialyticRecords(this.scheduleId).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.monitoringRecords = response.data;
+          console.log('Loaded monitoring records:', this.monitoringRecords);
+        }
+      },
+      error: (error) => {
+        console.error('Error loading monitoring records:', error);
+      }
+    });
+  }
+
+  addMonitoringRecord(): void {
+    if (!this.scheduleId) {
+      this.snackBar.open('Please save the session first before adding monitoring records', 'Close', { duration: 3000 });
+      return;
+    }
+
+    const formValues = this.sessionForm.value;
+    
+    // Build monitoring record object
+    const monitoringRecord = {
+      patientID: this.patientId,
+      scheduleID: this.scheduleId,
+      sessionDate: formValues.treatmentDate,
+      timeRecorded: new Date().toISOString(),
+      bloodPressure: formValues.bloodPressure,
+      pulseRate: formValues.heartRate,
+      temperature: formValues.temperature,
+      ufVolume: formValues.totalUFAchieved,
+      venousPressure: formValues.venousPressure,
+      notes: formValues.monitoringNotes || formValues.symptoms || formValues.interventions || ''
+    };
+
+    this.loading = true;
+    this.scheduleService.addIntraDialyticRecord(monitoringRecord).subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.snackBar.open(`✓ Monitoring Entry #${this.monitoringRecords.length + 1} saved successfully!`, 'Close', { duration: 3000 });
+          
+          // Add to local array
+          this.monitoringRecords.push({
+            ...monitoringRecord,
+            recordID: response.data
+          });
+
+          // Clear monitoring fields for next entry
+          this.sessionForm.patchValue({
+            bloodPressure: '',
+            heartRate: null,
+            temperature: null,
+            actualBFR: null,
+            venousPressure: null,
+            arterialPressure: null,
+            currentUFR: null,
+            totalUFAchieved: null,
+            tmpPressure: null,
+            symptoms: '',
+            interventions: '',
+            staffInitials: '',
+            monitoringNotes: ''
+          });
+
+          this.loading = false;
+        } else {
+          this.snackBar.open('Failed to save monitoring record', 'Close', { duration: 3000 });
+          this.loading = false;
+        }
+      },
+      error: (error) => {
+        console.error('Error saving monitoring record:', error);
+        this.snackBar.open('Error saving monitoring record', 'Close', { duration: 3000 });
+        this.loading = false;
+      }
+    });
+  }
+
+  updateCurrentTime(): void {
+    this.currentTime = new Date();
+  }
+
+  ngOnDestroy(): void {
+    if (this.autoSaveTimer) {
+      clearTimeout(this.autoSaveTimer);
+    }
+    if (this.monitoringTimeInterval) {
+      clearInterval(this.monitoringTimeInterval);
+    }
   }
 }

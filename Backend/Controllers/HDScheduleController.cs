@@ -15,17 +15,20 @@ public class HDScheduleController : ControllerBase
     private readonly IHDScheduleRepository _scheduleRepository;
     private readonly IPatientRepository _patientRepository;
     private readonly EquipmentUsageService _equipmentUsageService;
+    private readonly IRecurringSessionService _recurringSessionService;
     private readonly ILogger<HDScheduleController> _logger;
 
     public HDScheduleController(
         IHDScheduleRepository scheduleRepository,
         IPatientRepository patientRepository,
         EquipmentUsageService equipmentUsageService,
+        IRecurringSessionService recurringSessionService,
         ILogger<HDScheduleController> logger)
     {
         _scheduleRepository = scheduleRepository;
         _patientRepository = patientRepository;
         _equipmentUsageService = equipmentUsageService;
+        _recurringSessionService = recurringSessionService;
         _logger = logger;
     }
 
@@ -199,6 +202,14 @@ public class HDScheduleController : ControllerBase
     {
         try
         {
+            // Log model state errors
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
+                _logger.LogWarning("Model validation failed: {Errors}", string.Join(", ", errors));
+                return BadRequest(ApiResponse<int>.ErrorResponse($"Validation failed: {string.Join(", ", errors)}"));
+            }
+
             // Check if patient already has a session on this date
             var existingSchedules = await _scheduleRepository.GetByPatientIdAsync(request.PatientID);
             var sessionOnSameDate = existingSchedules.FirstOrDefault(s => 
@@ -275,6 +286,14 @@ public class HDScheduleController : ControllerBase
                 AlertMessage = request.AlertMessage,
                 Severity = request.Severity,
                 Resolution = request.Resolution,
+                // Post-Dialysis Assessment fields - CRITICAL FOR MEDICAL RECORDS
+                PostWeight = request.PostWeight,
+                PostSBP = request.PostSBP,
+                PostDBP = request.PostDBP,
+                PostHR = request.PostHR,
+                PostAccessStatus = request.PostAccessStatus,
+                TotalFluidRemoved = request.TotalFluidRemoved,
+                Notes = request.Notes,
                 // Status
                 CreatedByStaffName = username,
                 CreatedByStaffRole = role,
@@ -335,6 +354,23 @@ public class HDScheduleController : ControllerBase
             }
             
             _logger.LogInformation("HD Schedule created successfully with ID {ScheduleId} by {Username}", scheduleId, username);
+            
+            // Generate recurring sessions if HD Cycle is specified
+            if (!string.IsNullOrEmpty(request.HDCycle))
+            {
+                try
+                {
+                    schedule.ScheduleID = scheduleId; // Set the ID for the base session
+                    var recurringSessionIds = await _recurringSessionService.GenerateRecurringSessions(schedule, weeksAhead: 1);
+                    _logger.LogInformation("Created {Count} recurring sessions for schedule {ScheduleId}", 
+                        recurringSessionIds.Count, scheduleId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to create recurring sessions for schedule {ScheduleId}", scheduleId);
+                    // Don't fail the main request if recurring creation fails
+                }
+            }
             
             return CreatedAtAction(nameof(GetSchedule), new { id = scheduleId }, 
                 ApiResponse<int>.SuccessResponse(scheduleId, "HD Schedule created successfully"));
@@ -735,5 +771,78 @@ public class HDScheduleController : ControllerBase
         
         // Last resort - parse as string
         return element.ToString();
+    }
+
+    // ==================== INTRA-DIALYTIC MONITORING ENDPOINTS ====================
+
+    /// <summary>
+    /// Get all monitoring records for a specific HD session
+    /// </summary>
+    [HttpGet("{scheduleId}/monitoring")]
+    [Authorize(Roles = "Admin,HOD,Doctor,Nurse,Technician")]
+    public async Task<ActionResult<ApiResponse<List<object>>>> GetMonitoringRecords(int scheduleId)
+    {
+        try
+        {
+            var records = await _scheduleRepository.GetIntraDialyticRecordsAsync(scheduleId);
+            return Ok(ApiResponse<List<object>>.SuccessResponse(
+                records.ToList<object>(), 
+                $"Retrieved {records.Count()} monitoring records"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving monitoring records for schedule {ScheduleId}", scheduleId);
+            return StatusCode(500, ApiResponse<List<object>>.ErrorResponse(
+                "An error occurred while retrieving monitoring records"));
+        }
+    }
+
+    /// <summary>
+    /// Add a new monitoring record during HD session
+    /// </summary>
+    [HttpPost("monitoring")]
+    [Authorize(Roles = "Admin,Doctor,Nurse,Technician")]
+    public async Task<ActionResult<ApiResponse<int>>> AddMonitoringRecord([FromBody] IntraDialyticRecordDTO record)
+    {
+        try
+        {
+            var recordId = await _scheduleRepository.CreateIntraDialyticRecordAsync(record);
+            
+            _logger.LogInformation("Monitoring record created with ID {RecordId}", recordId);
+            return Ok(ApiResponse<int>.SuccessResponse(recordId, "Monitoring record saved successfully"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating monitoring record");
+            return StatusCode(500, ApiResponse<int>.ErrorResponse(
+                "An error occurred while saving the monitoring record"));
+        }
+    }
+
+    /// <summary>
+    /// Delete a monitoring record
+    /// </summary>
+    [HttpDelete("monitoring/{recordId}")]
+    [Authorize(Roles = "Admin,Doctor,Nurse")]
+    public async Task<ActionResult<ApiResponse<bool>>> DeleteMonitoringRecord(int recordId)
+    {
+        try
+        {
+            var result = await _scheduleRepository.DeleteIntraDialyticRecordAsync(recordId);
+            
+            if (result)
+            {
+                _logger.LogInformation("Monitoring record {RecordId} deleted", recordId);
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "Monitoring record deleted successfully"));
+            }
+            
+            return NotFound(ApiResponse<bool>.ErrorResponse("Monitoring record not found"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting monitoring record {RecordId}", recordId);
+            return StatusCode(500, ApiResponse<bool>.ErrorResponse(
+                "An error occurred while deleting the monitoring record"));
+        }
     }
 }

@@ -26,5 +26,7 @@ public interface IHDScheduleRepository
     // Related tables
     Task<int> CreateHDLogAsync(HDLog log);
     Task<int> CreateIntraDialyticRecordAsync(object record);
+    Task<IEnumerable<object>> GetIntraDialyticRecordsAsync(int scheduleId);
+    Task<bool> DeleteIntraDialyticRecordAsync(int recordId);
     Task<int> CreatePostDialysisMedicationAsync(object medication);
 }

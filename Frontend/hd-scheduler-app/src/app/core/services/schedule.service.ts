@@ -119,4 +119,18 @@ export class ScheduleService {
   getHDLogById(hdLogId: number): Observable<ApiResponse<any>> {
     return this.http.get<ApiResponse<any>>(`${environment.apiUrl}/hdlog/${hdLogId}`);
   }
+
+  // ==================== INTRA-DIALYTIC MONITORING ====================
+  
+  getIntraDialyticRecords(scheduleId: number): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/hdschedule/${scheduleId}/monitoring`);
+  }
+
+  addIntraDialyticRecord(record: any): Observable<ApiResponse<number>> {
+    return this.http.post<ApiResponse<number>>(`${environment.apiUrl}/hdschedule/monitoring`, record);
+  }
+
+  deleteIntraDialyticRecord(recordId: number): Observable<ApiResponse<boolean>> {
+    return this.http.delete<ApiResponse<boolean>>(`${environment.apiUrl}/hdschedule/monitoring/${recordId}`);
+  }
 }

@@ -640,79 +640,152 @@
               <h3 class="step-title">
                 <mat-icon>monitor_heart</mat-icon>
                 Intra-Dialytic Monitoring
+                <span class="monitoring-info">Record vitals every 30-60 minutes</span>
               </h3>
 
-              <div class="section-card">
-                <div class="form-row">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Monitoring Time</mat-label>
-                    <input matInput type="time" formControlName="monitoringTime">
-                  </mat-form-field>
+              <!-- Monitoring Records List -->
+              @if (monitoringRecords && monitoringRecords.length > 0) {
+                <div class="monitoring-records-list">
+                  <h4>
+                    <mat-icon>list</mat-icon>
+                    Recorded Monitoring Entries ({{ monitoringRecords.length }})
+                  </h4>
+                  <div class="records-grid">
+                    @for (record of monitoringRecords; track record.recordID || $index) {
+                      <div class="monitoring-record-card">
+                        <div class="record-header">
+                          <mat-icon class="record-icon">schedule</mat-icon>
+                          <div class="record-title">
+                            <h5>Reading #{{ $index + 1 }}</h5>
+                            <span class="record-time">{{ record.timeRecorded | date:'short' }}</span>
+                          </div>
+                        </div>
+                        <div class="record-details">
+                          <div class="vital-row">
+                            <span class="vital-label">BP:</span>
+                            <span class="vital-value">{{ record.bloodPressure || 'N/A' }}</span>
+                          </div>
+                          <div class="vital-row">
+                            <span class="vital-label">HR:</span>
+                            <span class="vital-value">{{ record.pulseRate || 'N/A' }} bpm</span>
+                          </div>
+                          <div class="vital-row">
+                            <span class="vital-label">Temp:</span>
+                            <span class="vital-value">{{ record.temperature || 'N/A' }}°C</span>
+                          </div>
+                          <div class="vital-row">
+                            <span class="vital-label">UF Volume:</span>
+                            <span class="vital-value">{{ record.ufVolume || 'N/A' }} L</span>
+                          </div>
+                          <div class="vital-row">
+                            <span class="vital-label">VP:</span>
+                            <span class="vital-value">{{ record.venousPressure || 'N/A' }} mmHg</span>
+                          </div>
+                          @if (record.notes) {
+                            <div class="vital-row full-width">
+                              <span class="vital-label">Notes:</span>
+                              <span class="vital-value">{{ record.notes }}</span>
+                            </div>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
 
+              <!-- New Monitoring Entry Form -->
+              <div class="section-card monitoring-entry-card">
+                <div class="card-header">
+                  <mat-icon>add_circle</mat-icon>
+                  <h4>New Monitoring Entry #{{ (monitoringRecords?.length || 0) + 1 }}</h4>
+                  <span class="entry-time">{{ currentTime | date:'shortTime' }}</span>
+                </div>
+
+                <div class="form-row">
                   <mat-form-field appearance="outline">
                     <mat-label>Blood Pressure</mat-label>
                     <input matInput formControlName="bloodPressure" placeholder="140/90">
+                    <mat-hint>Systolic/Diastolic</mat-hint>
                   </mat-form-field>
 
                   <mat-form-field appearance="outline">
                     <mat-label>Heart Rate (bpm)</mat-label>
-                    <input matInput type="number" formControlName="heartRate">
+                    <input matInput type="number" formControlName="heartRate" placeholder="75">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Temperature (°C)</mat-label>
+                    <input matInput type="number" formControlName="temperature" step="0.1" placeholder="36.5">
                   </mat-form-field>
                 </div>
 
                 <div class="form-row">
                   <mat-form-field appearance="outline">
                     <mat-label>Actual BFR (mL/min)</mat-label>
-                    <input matInput type="number" formControlName="actualBFR">
+                    <input matInput type="number" formControlName="actualBFR" placeholder="350">
                   </mat-form-field>
 
                   <mat-form-field appearance="outline">
                     <mat-label>Venous Pressure (mmHg)</mat-label>
-                    <input matInput type="number" formControlName="venousPressure">
+                    <input matInput type="number" formControlName="venousPressure" placeholder="150">
                   </mat-form-field>
 
                   <mat-form-field appearance="outline">
                     <mat-label>Arterial Pressure (mmHg)</mat-label>
-                    <input matInput type="number" formControlName="arterialPressure">
+                    <input matInput type="number" formControlName="arterialPressure" placeholder="-200">
                   </mat-form-field>
                 </div>
 
                 <div class="form-row">
                   <mat-form-field appearance="outline">
                     <mat-label>Current UFR (mL/hr)</mat-label>
-                    <input matInput type="number" formControlName="currentUFR">
+                    <input matInput type="number" formControlName="currentUFR" placeholder="500">
                   </mat-form-field>
 
                   <mat-form-field appearance="outline">
                     <mat-label>Total UF Achieved (L)</mat-label>
-                    <input matInput type="number" formControlName="totalUFAchieved" step="0.01">
+                    <input matInput type="number" formControlName="totalUFAchieved" step="0.01" placeholder="2.5">
                   </mat-form-field>
 
                   <mat-form-field appearance="outline">
                     <mat-label>TMP (mmHg)</mat-label>
-                    <input matInput type="number" formControlName="tmpPressure">
+                    <input matInput type="number" formControlName="tmpPressure" placeholder="100">
                   </mat-form-field>
                 </div>
 
                 <div class="form-row">
                   <mat-form-field appearance="outline" class="full-width">
                     <mat-label>Symptoms</mat-label>
-                    <textarea matInput formControlName="symptoms" rows="2"></textarea>
+                    <textarea matInput formControlName="symptoms" rows="2" placeholder="Any patient complaints or symptoms observed"></textarea>
                   </mat-form-field>
                 </div>
 
                 <div class="form-row">
                   <mat-form-field appearance="outline" class="full-width">
                     <mat-label>Interventions</mat-label>
-                    <textarea matInput formControlName="interventions" rows="2"></textarea>
+                    <textarea matInput formControlName="interventions" rows="2" placeholder="Actions taken in response to symptoms"></textarea>
                   </mat-form-field>
                 </div>
 
                 <div class="form-row">
                   <mat-form-field appearance="outline">
                     <mat-label>Staff Initials</mat-label>
-                    <input matInput formControlName="staffInitials" maxlength="10">
+                    <input matInput formControlName="staffInitials" maxlength="10" placeholder="e.g., JD">
                   </mat-form-field>
+
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Additional Notes</mat-label>
+                    <input matInput formControlName="monitoringNotes" placeholder="Any additional observations">
+                  </mat-form-field>
+                </div>
+
+                <div class="monitoring-actions">
+                  <button mat-raised-button color="accent" (click)="addMonitoringRecord()" type="button" [disabled]="loading || !scheduleId">
+                    <mat-icon>add_circle</mat-icon>
+                    Save Monitoring Entry #{{ (monitoringRecords?.length || 0) + 1 }}
+                  </button>
+                  <span class="hint-text">Save this reading and add another if needed</span>
                 </div>
               </div>
 
@@ -720,13 +793,10 @@
                 <button mat-button matStepperPrevious type="button">
                   <mat-icon>arrow_back</mat-icon> Previous
                 </button>
-                <button mat-button matStepperNext type="button">
+                <button mat-button matStepperNext type="button" [disabled]="!monitoringRecords || monitoringRecords.length === 0">
                   Next <mat-icon>arrow_forward</mat-icon>
                 </button>
-                <button mat-raised-button color="primary" (click)="saveCurrentStep()" type="button" [disabled]="loading">
-                  <mat-icon>save</mat-icon>
-                  Save Progress
-                </button>
+                <span class="step-hint">At least one monitoring entry required to proceed</span>
               </div>
             </mat-step>
 
