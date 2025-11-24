@@ -12,6 +12,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatTabsModule } from '@angular/material/tabs';
+import { MatTableModule } from '@angular/material/table';
+import { MatChipsModule } from '@angular/material/chips';
 import { FormsModule } from '@angular/forms';
 import { ScheduleService } from '../../../core/services/schedule.service';
 import { DailyScheduleResponse, SlotSchedule, BedStatus } from '../../../core/models/schedule.model';
@@ -31,7 +34,10 @@ import { DailyScheduleResponse, SlotSchedule, BedStatus } from '../../../core/mo
     MatInputModule,
     MatTooltipModule,
     MatCheckboxModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatTabsModule,
+    MatTableModule,
+    MatChipsModule
   ],
   templateUrl: './schedule-grid.html',
   styleUrl: './schedule-grid.scss',
@@ -52,6 +58,14 @@ export class ScheduleGrid implements OnInit, OnDestroy {
   // Auto-refresh interval
   private refreshInterval: any;
 
+  // Future scheduled sessions (Bed Schedule)
+  futureScheduledSessions: any[] = [];
+  loadingFuture = false;
+  selectedTab = 0;
+
+  // Columns for future schedule table
+  futureScheduleColumns: string[] = ['sessionDate', 'patientName', 'age', 'slotName', 'bedNumber', 'hdCycle', 'status', 'actions'];
+
   constructor(
     private scheduleService: ScheduleService,
     private location: Location,
@@ -65,6 +79,7 @@ export class ScheduleGrid implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadSchedule();
+    this.loadFutureScheduledSessions();
     // Auto-refresh when page becomes visible again (e.g., after returning from discharge)
     document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
     
@@ -72,6 +87,7 @@ export class ScheduleGrid implements OnInit, OnDestroy {
     this.refreshInterval = setInterval(() => {
       if (!document.hidden) {
         this.loadSchedule();
+        this.loadFutureScheduledSessions();
       }
     }, 30000); // 30 seconds
   }
@@ -87,6 +103,7 @@ export class ScheduleGrid implements OnInit, OnDestroy {
     if (!document.hidden) {
       // Page is visible again, refresh the schedule
       this.loadSchedule();
+      this.loadFutureScheduledSessions();
     }
   }
 
@@ -177,8 +194,52 @@ export class ScheduleGrid implements OnInit, OnDestroy {
     return bed.status;
   }
 
+  loadFutureScheduledSessions(): void {
+    this.loadingFuture = true;
+    this.scheduleService.getFutureScheduledSessions().subscribe({
+      next: (response: any) => {
+        if (response.success && response.data) {
+          this.futureScheduledSessions = response.data;
+          console.log('Future scheduled sessions:', this.futureScheduledSessions);
+        }
+        this.loadingFuture = false;
+      },
+      error: (error: any) => {
+        console.error('Error loading future scheduled sessions:', error);
+        this.loadingFuture = false;
+      }
+    });
+  }
+
   onRefresh(): void {
-    this.loadSchedule();
+    if (this.selectedTab === 0) {
+      this.loadSchedule();
+    } else {
+      this.loadFutureScheduledSessions();
+    }
+  }
+
+  onTabChange(index: number): void {
+    this.selectedTab = index;
+  }
+
+  getSlotName(slotId: number): string {
+    const slotNames: { [key: number]: string } = {
+      1: 'Morning (6:00 AM - 10:00 AM)',
+      2: 'Afternoon (11:00 AM - 3:00 PM)',
+      3: 'Evening (4:00 PM - 8:00 PM)',
+      4: 'Night (9:00 PM - 1:00 AM)'
+    };
+    return slotNames[slotId] || 'Unknown Slot';
+  }
+
+  formatDate(dateString: string): string {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  viewSessionDetails(scheduleId: number): void {
+    this.router.navigate(['/schedule/hd-session/edit', scheduleId]);
   }
 
   getTotalOccupied(): number {

@@ -25,27 +25,31 @@
     </mat-card-header>
 
     <mat-card-content>
-      <!-- Statistics -->
-      @if (schedule && !loading) {
-        <div class="stats-row">
-          <div class="stat-card">
-            <div class="stat-value">{{ getTotalOccupied() }}</div>
-            <div class="stat-label">Occupied Beds</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value">{{ getTotalCapacity() - getTotalOccupied() }}</div>
-            <div class="stat-label">Available Beds</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value">{{ getOccupancyRate() }}%</div>
-            <div class="stat-label">Occupancy Rate</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value">{{ getTotalCapacity() }}</div>
-            <div class="stat-label">Total Capacity</div>
-          </div>
-        </div>
-      }
+      <!-- Tabs for Today's Schedule and Future Bed Schedule -->
+      <mat-tab-group [(selectedIndex)]="selectedTab" (selectedIndexChange)="onTabChange($event)">
+        <!-- Tab 1: Today's Daily Schedule -->
+        <mat-tab label="Today's Schedule">
+          <!-- Statistics -->
+          @if (schedule && !loading) {
+            <div class="stats-row">
+              <div class="stat-card">
+                <div class="stat-value">{{ getTotalOccupied() }}</div>
+                <div class="stat-label">Occupied Beds</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">{{ getTotalCapacity() - getTotalOccupied() }}</div>
+                <div class="stat-label">Available Beds</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">{{ getOccupancyRate() }}%</div>
+                <div class="stat-label">Occupancy Rate</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">{{ getTotalCapacity() }}</div>
+                <div class="stat-label">Total Capacity</div>
+              </div>
+            </div>
+          }
 
       <!-- Loading Spinner -->
       @if (loading) {
@@ -135,14 +139,141 @@
         </div>
       }
 
-      <!-- Empty State -->
-      @if (!loading && !errorMessage && !schedule) {
-        <div class="empty-state">
-          <mat-icon>event_busy</mat-icon>
-          <h3>No Schedule Available</h3>
-          <p>No schedule found for the selected date</p>
-        </div>
-      }
+          <!-- Empty State -->
+          @if (!loading && !errorMessage && !schedule) {
+            <div class="empty-state">
+              <mat-icon>event_busy</mat-icon>
+              <h3>No Schedule Available</h3>
+              <p>No schedule found for the selected date</p>
+            </div>
+          }
+        </mat-tab>
+
+        <!-- Tab 2: Future Bed Schedule -->
+        <mat-tab label="Bed Schedule (Future Sessions)">
+          <div class="future-schedule-container">
+            <div class="info-banner">
+              <mat-icon>info</mat-icon>
+              <span>This shows all future scheduled dialysis sessions. History tab shows only completed treatments.</span>
+            </div>
+
+            <!-- Loading Spinner -->
+            @if (loadingFuture) {
+              <div class="loading-container">
+                <mat-spinner></mat-spinner>
+              </div>
+            }
+
+            <!-- Future Sessions Table -->
+            @if (!loadingFuture && futureScheduledSessions.length > 0) {
+              <div class="future-schedule-table">
+                <table mat-table [dataSource]="futureScheduledSessions" class="mat-elevation-z2">
+                  <!-- Date Column -->
+                  <ng-container matColumnDef="sessionDate">
+                    <th mat-header-cell *matHeaderCellDef>Session Date</th>
+                    <td mat-cell *matCellDef="let session">
+                      <div class="session-date">
+                        <mat-icon>event</mat-icon>
+                        {{ formatDate(session.sessionDate) }}
+                      </div>
+                    </td>
+                  </ng-container>
+
+                  <!-- Patient Name Column -->
+                  <ng-container matColumnDef="patientName">
+                    <th mat-header-cell *matHeaderCellDef>Patient</th>
+                    <td mat-cell *matCellDef="let session">
+                      <div class="patient-info">
+                        <strong>{{ session.patientName }}</strong>
+                        <div class="patient-mrn">MRN: {{ session.patientMRN || 'N/A' }}</div>
+                      </div>
+                    </td>
+                  </ng-container>
+
+                  <!-- Age Column -->
+                  <ng-container matColumnDef="age">
+                    <th mat-header-cell *matHeaderCellDef>Age</th>
+                    <td mat-cell *matCellDef="let session">{{ session.patientAge || 'N/A' }}</td>
+                  </ng-container>
+
+                  <!-- Slot Column -->
+                  <ng-container matColumnDef="slotName">
+                    <th mat-header-cell *matHeaderCellDef>Time Slot</th>
+                    <td mat-cell *matCellDef="let session">
+                      <div class="slot-info">
+                        <mat-icon>schedule</mat-icon>
+                        {{ getSlotName(session.slotID) }}
+                      </div>
+                    </td>
+                  </ng-container>
+
+                  <!-- Bed Number Column -->
+                  <ng-container matColumnDef="bedNumber">
+                    <th mat-header-cell *matHeaderCellDef>Bed</th>
+                    <td mat-cell *matCellDef="let session">
+                      <mat-chip [class.chip-assigned]="session.bedNumber" [class.chip-unassigned]="!session.bedNumber">
+                        {{ session.bedNumber ? 'Bed ' + session.bedNumber : 'Not Assigned' }}
+                      </mat-chip>
+                    </td>
+                  </ng-container>
+
+                  <!-- HD Cycle Column -->
+                  <ng-container matColumnDef="hdCycle">
+                    <th mat-header-cell *matHeaderCellDef>HD Cycle</th>
+                    <td mat-cell *matCellDef="let session">
+                      <div class="hd-cycle">
+                        <mat-icon>repeat</mat-icon>
+                        {{ session.hdCycle || 'N/A' }}
+                      </div>
+                    </td>
+                  </ng-container>
+
+                  <!-- Status Column -->
+                  <ng-container matColumnDef="status">
+                    <th mat-header-cell *matHeaderCellDef>Status</th>
+                    <td mat-cell *matCellDef="let session">
+                      <mat-chip [class.chip-pre-scheduled]="session.sessionStatus === 'Pre-Scheduled'" [class.chip-active]="session.sessionStatus !== 'Pre-Scheduled'">
+                        {{ session.sessionStatus || 'Active' }}
+                      </mat-chip>
+                    </td>
+                  </ng-container>
+
+                  <!-- Actions Column -->
+                  <ng-container matColumnDef="actions">
+                    <th mat-header-cell *matHeaderCellDef>Actions</th>
+                    <td mat-cell *matCellDef="let session">
+                      <button mat-icon-button 
+                              color="primary"
+                              matTooltip="View/Edit Session Details"
+                              (click)="viewSessionDetails(session.scheduleID)">
+                        <mat-icon>visibility</mat-icon>
+                      </button>
+                    </td>
+                  </ng-container>
+
+                  <tr mat-header-row *matHeaderRowDef="futureScheduleColumns"></tr>
+                  <tr mat-row *matRowDef="let row; columns: futureScheduleColumns;" 
+                      class="future-session-row"></tr>
+                </table>
+              </div>
+
+              <div class="summary-info">
+                <mat-icon>info_outline</mat-icon>
+                <span>Total Future Sessions: <strong>{{ futureScheduledSessions.length }}</strong></span>
+              </div>
+            }
+
+            <!-- Empty State -->
+            @if (!loadingFuture && futureScheduledSessions.length === 0) {
+              <div class="empty-state">
+                <mat-icon>event_available</mat-icon>
+                <h3>No Future Sessions Scheduled</h3>
+                <p>There are no upcoming dialysis sessions scheduled at this time.</p>
+              </div>
+            }
+          </div>
+        </mat-tab>
+      </mat-tab-group>
     </mat-card-content>
   </mat-card>
 </div>
