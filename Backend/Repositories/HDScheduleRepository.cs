@@ -84,8 +84,10 @@ public class HDScheduleRepository : IHDScheduleRepository
 
     public async Task<List<HDSchedule>> GetBySlotAndDateAsync(int slotId, DateTime date)
     {
+        // Include both Active and Pre-Scheduled sessions for the selected date
+        // Exclude discharged and history sessions
         var query = @"
-            SELECT h.*, p.Name as PatientName,
+            SELECT h.*, p.Name as PatientName, p.Age as PatientAge,
                    d.Name as AssignedDoctorName,
                    n.Name as AssignedNurseName
             FROM HDSchedule h
@@ -94,6 +96,8 @@ public class HDScheduleRepository : IHDScheduleRepository
             LEFT JOIN Staff n ON h.AssignedNurse = n.StaffID
             WHERE h.SlotID = @SlotID 
               AND DATE(h.SessionDate) = DATE(@Date)
+              AND h.IsDischarged = 0
+              AND h.IsMovedToHistory = 0
             ORDER BY h.BedNumber";
         
         using var connection = _context.CreateConnection();
