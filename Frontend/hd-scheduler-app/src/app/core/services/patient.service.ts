@@ -21,6 +21,10 @@ export class PatientService {
     return this.http.get<ApiResponse<Patient[]>>(this.apiUrl);
   }
 
+  getAllIncludingInactive(): Observable<ApiResponse<Patient[]>> {
+    return this.http.get<ApiResponse<Patient[]>>(`${this.apiUrl}/all-including-inactive`);
+  }
+
   getActivePatients(): Observable<ApiResponse<Patient[]>> {
     return this.http.get<ApiResponse<Patient[]>>(`${this.apiUrl}/active`);
   }
@@ -39,6 +43,10 @@ export class PatientService {
 
   deletePatient(id: number): Observable<ApiResponse<boolean>> {
     return this.http.delete<ApiResponse<boolean>>(`${this.apiUrl}/${id}`);
+  }
+
+  dischargePatient(id: number): Observable<ApiResponse<boolean>> {
+    return this.http.put<ApiResponse<boolean>>(`${this.apiUrl}/${id}/discharge`, {});
   }
 
   getPatientHistory(id: number): Observable<ApiResponse<any>> {

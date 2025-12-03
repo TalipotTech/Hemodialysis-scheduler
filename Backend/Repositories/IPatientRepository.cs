@@ -6,6 +6,7 @@ public interface IPatientRepository
 {
     // Patient CRUD - Demographics only
     Task<List<Patient>> GetAllAsync();
+    Task<List<Patient>> GetAllIncludingInactiveAsync(); // Get all patients including inactive
     Task<List<Patient>> GetActiveAsync(); // Get only active patients
     Task<Patient?> GetByIdAsync(int patientId);
     Task<Patient?> GetByMRNAsync(string mrn); // Get patient by MRN
@@ -14,4 +15,5 @@ public interface IPatientRepository
     Task<bool> UpdateAsync(Patient patient);
     Task<bool> DeleteAsync(int patientId); // Soft delete
     Task<PatientWithLatestSession?> GetPatientWithLatestSessionAsync(int patientId);
+    Task<bool> IncrementEquipmentCountersAsync(int patientId); // Auto-increment equipment counters
 }

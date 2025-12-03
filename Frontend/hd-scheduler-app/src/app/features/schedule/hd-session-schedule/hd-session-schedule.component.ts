@@ -19,6 +19,7 @@ import { MatStepperModule } from '@angular/material/stepper';
 import { MatTabsModule } from '@angular/material/tabs';
 import { PatientService } from '../../../core/services/patient.service';
 import { ScheduleService } from '../../../core/services/schedule.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatRadioModule } from '@angular/material/radio';
 import { EquipmentUsageAlertComponent } from '../../../shared/components/equipment-usage-alert/equipment-usage-alert.component';
@@ -69,9 +70,12 @@ export class HdSessionScheduleComponent implements OnInit {
   showPatientHistory: boolean = false;
   selectedSlot: number | null = null;
   selectedBed: number | null = null;
+  sessionNumber: number | null = null;
+  totalWeeklySessions: number | null = null;
   bedAssignmentMode: 'auto' | 'manual' = 'auto'; // Default to auto-assign
   autoAssignedBed: number | null = null;
   showBedChangeOption: boolean = false;
+  isAuthenticated: boolean = false;
 
   slots = [
     { id: 1, name: 'Slot 1 - Morning', time: '06:00 AM - 10:00 AM', beds: 10 },
@@ -100,6 +104,12 @@ export class HdSessionScheduleComponent implements OnInit {
   currentTime: Date = new Date();
   monitoringTimeInterval: any = null;
   
+  // Auto-filled fields tracking
+  autoFilledFields: Array<{label: string, value: any}> = [];
+  
+  // Max date for date pickers (today)
+  today: Date = new Date();
+  
   hdCycles = [
     { value: 'MWF', label: 'Monday, Wednesday, Friday (3x/week)', frequency: 3 },
     { value: 'TTS', label: 'Tuesday, Thursday, Saturday (3x/week)', frequency: 3 },
@@ -117,6 +127,7 @@ export class HdSessionScheduleComponent implements OnInit {
     private location: Location,
     private patientService: PatientService,
     private scheduleService: ScheduleService,
+    private authService: AuthService,
     private snackBar: MatSnackBar
   ) {
     this.sessionForm = this.fb.group({
@@ -144,8 +155,6 @@ export class HdSessionScheduleComponent implements OnInit {
       ufGoal: [''],
       preBPSitting: [''],
       preTemperature: [''],
-      dialyserReuseNumber: [0],
-      bloodTubingReuse: [0],
       accessBleedingTime: [''],
       accessStatus: [''],
       complications: [''],
@@ -188,6 +197,19 @@ export class HdSessionScheduleComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Check authentication first
+    this.isAuthenticated = this.authService.isAuthenticated();
+    if (!this.isAuthenticated) {
+      console.warn('⚠️ User not authenticated. Showing warning banner.');
+      this.snackBar.open('⚠️ Please log in to save HD session data', 'Login', { 
+        duration: 8000,
+        horizontalPosition: 'center',
+        verticalPosition: 'top'
+      }).onAction().subscribe(() => {
+        this.router.navigate(['/login'], { queryParams: { returnUrl: this.router.url } });
+      });
+    }
+    
     // Start time updater for monitoring entries
     this.monitoringTimeInterval = setInterval(() => {
       this.updateCurrentTime();
@@ -251,6 +273,78 @@ export class HdSessionScheduleComponent implements OnInit {
       next: (response) => {
         if (response.success && response.data) {
           this.patient = response.data;
+          console.log('✅ Patient loaded:', this.patient);
+          console.log('📋 Patient prescription fields:', {
+            dialyserModel: this.patient.dialyserModel,
+            prescribedDuration: this.patient.prescribedDuration,
+            prescribedBFR: this.patient.prescribedBFR,
+            dialysatePrescription: this.patient.dialysatePrescription,
+            hdCycle: this.patient.hdCycle,
+            hdFrequency: this.patient.hdFrequency
+          });
+          
+          // Pre-fill form with patient data for new sessions
+          if (!this.isEditMode && !this.scheduleId) {
+            this.autoFilledFields = []; // Reset array
+            
+            // Track and display auto-filled fields
+            if (this.patient.dryWeight) {
+              this.sessionForm.patchValue({ dryWeight: this.patient.dryWeight });
+              this.autoFilledFields.push({ label: 'Dry Weight', value: `${this.patient.dryWeight} kg` });
+            }
+            
+            if (this.patient.hdStartDate) {
+              this.sessionForm.patchValue({ hdStartDate: new Date(this.patient.hdStartDate) });
+              this.autoFilledFields.push({ label: 'HD Start Date', value: new Date(this.patient.hdStartDate).toLocaleDateString() });
+            }
+            
+            if (this.patient.hdCycle) {
+              this.sessionForm.patchValue({ hdCycle: this.patient.hdCycle });
+              const cycleLabel = this.hdCycles.find(c => c.value === this.patient.hdCycle)?.label || this.patient.hdCycle;
+              this.autoFilledFields.push({ label: 'HD Cycle', value: cycleLabel });
+              
+              // Auto-populate hdFrequency based on hdCycle
+              const cycleOption = this.hdCycles.find(c => c.value === this.patient.hdCycle);
+              if (cycleOption && cycleOption.frequency !== null) {
+                this.sessionForm.patchValue({ hdFrequency: cycleOption.frequency });
+              } else if (this.patient.hdFrequency) {
+                this.sessionForm.patchValue({ hdFrequency: this.patient.hdFrequency });
+              }
+            } else if (this.patient.hdFrequency) {
+              this.sessionForm.patchValue({ hdFrequency: this.patient.hdFrequency });
+            }
+            
+            if (this.patient.dialyserType) {
+              this.sessionForm.patchValue({ dialyserType: this.patient.dialyserType });
+              this.autoFilledFields.push({ label: 'Dialyser Type', value: this.patient.dialyserType });
+            }
+            
+            if (this.patient.dialyserModel) {
+              this.sessionForm.patchValue({ dialyserModel: this.patient.dialyserModel });
+              this.autoFilledFields.push({ label: 'Dialyser Model', value: this.patient.dialyserModel });
+            }
+            
+            if (this.patient.prescribedDuration) {
+              this.sessionForm.patchValue({ prescribedDuration: this.patient.prescribedDuration });
+              this.autoFilledFields.push({ label: 'Prescribed Duration', value: `${this.patient.prescribedDuration} hours` });
+            } else {
+              this.sessionForm.patchValue({ prescribedDuration: 4.0 });
+              this.autoFilledFields.push({ label: 'Prescribed Duration', value: '4 hours' });
+            }
+            
+            if (this.patient.prescribedBFR) {
+              this.sessionForm.patchValue({ prescribedBFR: this.patient.prescribedBFR });
+              this.autoFilledFields.push({ label: 'Prescribed BFR', value: `${this.patient.prescribedBFR} mL/min` });
+            } else {
+              this.sessionForm.patchValue({ prescribedBFR: 400 });
+              this.autoFilledFields.push({ label: 'Prescribed BFR', value: '400 mL/min' });
+            }
+            
+            if (this.patient.dialysatePrescription) {
+              this.sessionForm.patchValue({ dialysatePrescription: this.patient.dialysatePrescription });
+              this.autoFilledFields.push({ label: 'Dialysate Prescription', value: this.patient.dialysatePrescription });
+            }
+          }
           
           // Auto-load suggested equipment counts from previous session
           this.loadSuggestedEquipmentCounts();
@@ -300,6 +394,19 @@ export class HdSessionScheduleComponent implements OnInit {
       next: (response) => {
         if (response.success && response.data) {
           this.patient = response.data;
+          console.log('✅ Patient loaded in edit mode:', this.patient);
+          console.log('📋 Prescription fields:', {
+            dialyserModel: this.patient.dialyserModel,
+            prescribedDuration: this.patient.prescribedDuration,
+            prescribedBFR: this.patient.prescribedBFR,
+            dialysatePrescription: this.patient.dialysatePrescription,
+            hdCycle: this.patient.hdCycle,
+            hdFrequency: this.patient.hdFrequency,
+            dryWeight: this.patient.dryWeight,
+            hdStartDate: this.patient.hdStartDate,
+            dialyserType: this.patient.dialyserType
+          });
+          console.log('🔍 isEditMode:', this.isEditMode, '| patient exists:', !!this.patient);
         }
       },
       error: (error) => {
@@ -313,33 +420,52 @@ export class HdSessionScheduleComponent implements OnInit {
     this.router.navigate(['/schedule/hd-session/edit', scheduleId]);
   }
 
-  loadSuggestedEquipmentCounts(): void {
-    if (!this.patientId) return;
-
-    this.scheduleService.getSuggestedEquipmentCounts(this.patientId).subscribe({
-      next: (response) => {
-        if (response.success && response.data) {
-          console.log('Auto-loaded equipment counts:', response.data);
-          
-          // Automatically populate the form fields
-          this.sessionForm.patchValue({
-            dialyserReuseNumber: response.data.dialyserReuseCount,
-            bloodTubingReuse: response.data.bloodTubingReuse
-          });
-          
-          // Show info message to user
-          this.snackBar.open(
-            response.data.message || 'Equipment counts loaded automatically',
-            'OK',
-            { duration: 5000 }
-          );
-        }
-      },
-      error: (error) => {
-        console.warn('Could not load equipment counts:', error);
-        // Silently fail - not critical, defaults to 0
+  getPatientHDFrequency(): string {
+    if (!this.patient) {
+      return 'Loading...';
+    }
+    
+    // Return HD Frequency if available
+    if (this.patient.hdFrequency) {
+      return this.patient.hdFrequency + 'x/week';
+    }
+    
+    // Otherwise, try to calculate from HD Cycle
+    if (this.patient.hdCycle) {
+      // Try to match both the value (e.g., "MWF") and the full label
+      const cycleOption = this.hdCycles.find(c => 
+        c.value === this.patient.hdCycle || 
+        c.value.toLowerCase() === this.patient.hdCycle.toLowerCase() ||
+        c.label === this.patient.hdCycle
+      );
+      
+      if (cycleOption && cycleOption.frequency !== null) {
+        return cycleOption.frequency + 'x/week';
       }
-    });
+    }
+    
+    // If we have the form loaded, try to get from the form
+    const formCycle = this.sessionForm?.get('hdCycle')?.value;
+    const formFrequency = this.sessionForm?.get('hdFrequency')?.value;
+    
+    if (formFrequency) {
+      return formFrequency + 'x/week';
+    }
+    
+    if (formCycle) {
+      const cycleOption = this.hdCycles.find(c => c.value === formCycle);
+      if (cycleOption && cycleOption.frequency !== null) {
+        return cycleOption.frequency + 'x/week';
+      }
+    }
+    
+    return 'N/A';
+  }
+
+  loadSuggestedEquipmentCounts(): void {
+    // This method has been deprecated - equipment counts are now managed at the patient level
+    // Kept for backward compatibility but does nothing
+    console.log('loadSuggestedEquipmentCounts called but equipment tracking moved to patient level');
   }
 
   loadExistingSession(): void {
@@ -353,6 +479,10 @@ export class HdSessionScheduleComponent implements OnInit {
         if (response.success && response.data) {
           const session = response.data;
           this.patientId = session.patientID;
+          
+          // Store session information
+          this.sessionNumber = session.sessionNumber || session.SessionNumber || null;
+          this.totalWeeklySessions = session.totalWeeklySessions || session.TotalWeeklySessions || null;
           
           // Load full patient details
           this.loadPatientDetails(session.patientID);
@@ -372,13 +502,13 @@ export class HdSessionScheduleComponent implements OnInit {
             dryWeight: session.dryWeight || session.DryWeight || '',
             hdStartDate: session.hdStartDate || session.HDStartDate ? new Date(session.hdStartDate || session.HDStartDate) : null,
             hdCycle: session.hdCycle || session.HDCycle || '',
+            hdFrequency: session.hdFrequency || session.HDFrequency || session.hdFrequency || '',
+            hdCustomDays: session.hdCustomDays || session.HDCustomDays || '',
             weightGain: session.weightGain || session.WeightGain || '',
             
             // Equipment
             dialyserType: session.dialyserType || session.DialyserType || '',
             dialyserModel: session.dialyserModel || session.DialyserModel || '',
-            dialyserReuseNumber: session.dialyserReuseCount || session.DialyserReuseCount || 0,
-            bloodTubingReuse: session.bloodTubingReuse || session.BloodTubingReuse || 0,
             hdUnitNumber: session.hdUnitNumber || session.HDUnitNumber || '',
             
             // Prescription
@@ -453,6 +583,11 @@ export class HdSessionScheduleComponent implements OnInit {
           this.selectedSlot = session.slotID;
           this.selectedBed = session.bedNumber;
           
+          // Auto-populate HD Frequency based on HD Cycle if not already set
+          if ((session.hdCycle || session.HDCycle) && !(session.hdFrequency || session.HDFrequency)) {
+            this.onHDCycleChange();
+          }
+          
           // DISABLE only the core registration fields that cannot be changed after initial bed assignment
           // These are the mandatory setup fields that define the schedule slot/location
           this.sessionForm.get('treatmentDate')?.disable();
@@ -489,18 +624,18 @@ export class HdSessionScheduleComponent implements OnInit {
     if (formValue.dryWeight != null && formValue.dryWeight !== '') updates.DryWeight = formValue.dryWeight;
     if (formValue.hdStartDate) updates.HDStartDate = formValue.hdStartDate;
     if (formValue.hdCycle != null && formValue.hdCycle !== '') updates.HDCycle = formValue.hdCycle;
+    if (formValue.hdFrequency != null && formValue.hdFrequency !== '') updates.HDFrequency = formValue.hdFrequency;
     if (formValue.weightGain != null && formValue.weightGain !== '') updates.WeightGain = formValue.weightGain;
     
     // Equipment
+    if (formValue.dialyserType) updates.DialyserType = formValue.dialyserType;
     if (formValue.dialyserModel) updates.DialyserModel = formValue.dialyserModel;
-    if (formValue.dialyserReuseNumber != null && formValue.dialyserReuseNumber !== '') updates.DialyserReuseCount = formValue.dialyserReuseNumber;
-    if (formValue.bloodTubingReuse != null && formValue.bloodTubingReuse !== '') updates.BloodTubingReuse = formValue.bloodTubingReuse;
     if (formValue.hdUnitNumber) updates.HDUnitNumber = formValue.hdUnitNumber;
     
     // Prescription
     if (formValue.prescribedDuration != null && formValue.prescribedDuration !== '') updates.PrescribedDuration = formValue.prescribedDuration;
     if (formValue.ufGoal != null && formValue.ufGoal !== '') updates.UFGoal = formValue.ufGoal;
-    if (formValue.dialysatePrescription) updates.DialysatePrescription = formValue.dialysatePrescription;
+    // Note: dialysatePrescription is excluded from auto-save (user request)
     if (formValue.prescribedBFR != null && formValue.prescribedBFR !== '') updates.PrescribedBFR = formValue.prescribedBFR;
     
     // Anticoagulation
@@ -511,6 +646,7 @@ export class HdSessionScheduleComponent implements OnInit {
     if (formValue.heparinInfusionRate != null && formValue.heparinInfusionRate !== '') updates.HeparinInfusionRate = formValue.heparinInfusionRate;
     
     // Access
+    if (formValue.accessType) updates.AccessType = formValue.accessType;
     if (formValue.accessLocation) updates.AccessLocation = formValue.accessLocation;
     
     // Vitals & Symptoms
@@ -558,6 +694,20 @@ export class HdSessionScheduleComponent implements OnInit {
     if (formValue.severity) updates.Severity = formValue.severity;
     if (formValue.resolution) updates.Resolution = formValue.resolution;
     
+    // Additional Notes
+    if (formValue.notes) updates.Notes = formValue.notes;
+    
+    // Debug: Log treatment alerts fields
+    if (formValue.alertType || formValue.alertMessage || formValue.severity || formValue.resolution || formValue.notes) {
+      console.log('🚨 Treatment Alerts & Notes auto-save:', {
+        alertType: formValue.alertType,
+        alertMessage: formValue.alertMessage,
+        severity: formValue.severity,
+        resolution: formValue.resolution,
+        notes: formValue.notes
+      });
+    }
+    
     // Post-Dialysis Vital Signs
     if (formValue.postWeight != null && formValue.postWeight !== '') updates.PostWeight = formValue.postWeight;
     if (formValue.postSBP != null && formValue.postSBP !== '') updates.PostSBP = formValue.postSBP;
@@ -565,6 +715,19 @@ export class HdSessionScheduleComponent implements OnInit {
     if (formValue.postHR != null && formValue.postHR !== '') updates.PostHR = formValue.postHR;
     if (formValue.totalFluidRemoved != null && formValue.totalFluidRemoved !== '') updates.TotalFluidRemoved = formValue.totalFluidRemoved;
     if (formValue.postAccessStatus) updates.PostAccessStatus = formValue.postAccessStatus;
+    
+    // Debug: Log post-dialysis fields
+    if (formValue.postWeight || formValue.postSBP || formValue.postDBP) {
+      console.log('📊 Post-Dialysis fields:', {
+        postWeight: formValue.postWeight,
+        postSBP: formValue.postSBP,
+        postDBP: formValue.postDBP,
+        postHR: formValue.postHR,
+        PostWeight: updates.PostWeight,
+        PostSBP: updates.PostSBP,
+        PostDBP: updates.PostDBP
+      });
+    }
     
     // Additional notes field - IMPORTANT for medical records
     if (formValue.notes) updates.Notes = formValue.notes;
@@ -582,9 +745,22 @@ export class HdSessionScheduleComponent implements OnInit {
       },
       error: (error) => {
         console.error('Auto-save failed:', error);
-        this.snackBar.open('Failed to save changes', 'Retry', { duration: 3000 }).onAction().subscribe(() => {
-          this.autoSaveData();
-        });
+        
+        // Handle 401 Unauthorized specifically
+        if (error.status === 401) {
+          this.snackBar.open('⚠️ Session expired. Please log in again.', 'Login', { 
+            duration: 5000,
+            horizontalPosition: 'center',
+            verticalPosition: 'top',
+            panelClass: ['error-snackbar']
+          }).onAction().subscribe(() => {
+            this.router.navigate(['/login'], { queryParams: { returnUrl: this.router.url } });
+          });
+        } else {
+          this.snackBar.open('Failed to save changes', 'Retry', { duration: 3000 }).onAction().subscribe(() => {
+            this.autoSaveData();
+          });
+        }
       }
     });
   }
@@ -597,10 +773,16 @@ export class HdSessionScheduleComponent implements OnInit {
       if (cycleOption.frequency !== null) {
         // Auto-fill for predefined cycles
         this.sessionForm.patchValue({ hdFrequency: cycleOption.frequency, hdCustomDays: '' });
+        console.log(`Auto-filled hdFrequency to ${cycleOption.frequency} based on cycle ${selectedCycle}`);
       } else {
         // Clear the fields for Custom cycle - let user enter manually
         this.sessionForm.patchValue({ hdFrequency: '', hdCustomDays: '' });
       }
+    }
+    
+    // Trigger auto-save if in edit mode
+    if (this.isEditMode) {
+      this.autoSaveData();
     }
   }
 
@@ -717,20 +899,15 @@ export class HdSessionScheduleComponent implements OnInit {
   }
 
   saveCurrentStep(): void {
+    console.log('💾 Save Progress clicked | isEditMode:', this.isEditMode, '| scheduleId:', this.scheduleId);
+    
     // If we're not in edit mode yet, we need to validate and create the initial session
     if (!this.isEditMode && !this.scheduleId) {
-      // Validate required fields for Step 1
-      const requiredStep1Fields = ['treatmentDate', 'slotID', 'bedNumber', 'dryWeight', 
-                                     'hdStartDate', 'hdCycle', 'prescribedDuration', 
-                                     'dialyserType', 'accessType'];
-      
-      let missingFields: string[] = [];
-      requiredStep1Fields.forEach(field => {
-        const control = this.sessionForm.get(field);
-        if (!control || !control.value || control.value === '') {
-          missingFields.push(field);
-        }
-      });
+      // Check if slot is selected
+      if (!this.selectedSlot) {
+        this.snackBar.open('Please select a time slot before saving', 'Close', { duration: 3000 });
+        return;
+      }
 
       // Check if bed is selected
       if (!this.selectedBed) {
@@ -738,17 +915,52 @@ export class HdSessionScheduleComponent implements OnInit {
         return;
       }
 
+      // Validate only the essential required fields for Step 1
+      const formValue = this.sessionForm.value;
+      let missingFields: string[] = [];
+      
+      // Check treatment date
+      if (!formValue.treatmentDate) {
+        missingFields.push('Treatment Date');
+      }
+      
+      // Check dry weight (must be a number greater than 0)
+      if (!formValue.dryWeight || formValue.dryWeight <= 0) {
+        missingFields.push('Dry Weight');
+      }
+      
+      // Check prescribed duration
+      if (!formValue.prescribedDuration || formValue.prescribedDuration <= 0) {
+        missingFields.push('Prescribed Duration');
+      }
+      
+      // Check access type
+      if (!formValue.accessType || formValue.accessType === '') {
+        missingFields.push('Access Type');
+      }
+
       if (missingFields.length > 0) {
-        this.snackBar.open('Please fill in all required fields in Step 1 before saving', 'Close', { duration: 3000 });
+        const fieldNames = missingFields.join(', ');
+        this.snackBar.open(`Please fill in required fields: ${fieldNames}`, 'Close', { duration: 4000 });
         return;
       }
+
+      // Ensure slotID and bedNumber are set in the form
+      this.sessionForm.patchValue({
+        slotID: this.selectedSlot,
+        bedNumber: this.selectedBed
+      });
 
       // If all required fields are filled, create the initial session
       this.createInitialSession();
     } else if (this.isEditMode && this.scheduleId) {
       // We're in edit mode, just auto-save current changes
+      console.log('💾 Calling autoSaveData in edit mode...');
       this.autoSaveData();
       this.snackBar.open('✓ Progress saved successfully!', 'Close', { duration: 2000 });
+    } else {
+      console.warn('⚠️ Cannot save: isEditMode =', this.isEditMode, ', scheduleId =', this.scheduleId);
+      this.snackBar.open('Unable to save. Please refresh the page.', 'Close', { duration: 3000 });
     }
   }
 
@@ -774,6 +986,7 @@ export class HdSessionScheduleComponent implements OnInit {
       dryWeight: toNumber(formValue.dryWeight),
       hdStartDate: formValue.hdStartDate,
       hdCycle: toString(formValue.hdCycle),
+      hdFrequency: toNumber(formValue.hdFrequency),
       dialyserType: formValue.dialyserType,
       prescribedDuration: toNumber(formValue.prescribedDuration),
       ufGoal: toNumber(formValue.ufGoal),
@@ -788,9 +1001,10 @@ export class HdSessionScheduleComponent implements OnInit {
       slotID: formValue.slotID,
       bedNumber: formValue.bedNumber,
       dialyserModel: toString(formValue.dialyserModel),
-      dialyserReuseCount: toNumber(formValue.dialyserReuseNumber) || 0,
       sessionsPerWeek: toNumber(formValue.sessionsPerWeek)
     };
+
+    console.log('🚀 Creating HD session with data:', JSON.stringify(sessionData, null, 2));
 
     this.scheduleService.createHDSession(sessionData).subscribe({
       next: (response) => {
@@ -799,9 +1013,14 @@ export class HdSessionScheduleComponent implements OnInit {
           this.scheduleId = response.data;
           this.isEditMode = true;
           
-          this.snackBar.open('✓ Initial session created! You can now save progress as you continue.', 'Close', { 
-            duration: 3000 
+          console.log('✓ Session created with ID:', this.scheduleId, '| Edit mode:', this.isEditMode);
+          
+          this.snackBar.open('✓ HD Session saved! You can now proceed to Monitoring step.', 'Close', { 
+            duration: 4000 
           });
+          
+          // Clear the auto-filled fields indicator since session is now saved
+          this.autoFilledFields = [];
           
           this.loading = false;
         } else {
@@ -810,8 +1029,10 @@ export class HdSessionScheduleComponent implements OnInit {
         }
       },
       error: (error) => {
-        console.error('Error creating initial session:', error);
-        this.snackBar.open('Error creating initial session', 'Close', { duration: 3000 });
+        console.error('❌ Error creating initial session:', error);
+        console.error('Error details:', error.error);
+        const errorMessage = error.error?.message || error.message || 'Error creating initial session';
+        this.snackBar.open(errorMessage, 'Close', { duration: 5000 });
         this.loading = false;
       }
     });
@@ -824,7 +1045,8 @@ export class HdSessionScheduleComponent implements OnInit {
       return;
     }
 
-    if (!this.selectedBed) {
+    // Only check bed selection in create mode, not in edit mode
+    if (!this.isEditMode && !this.selectedBed) {
       this.snackBar.open('Please select a bed', 'Close', { duration: 3000 });
       return;
     }
@@ -911,6 +1133,7 @@ export class HdSessionScheduleComponent implements OnInit {
       dryWeight: toNumber(formValue.dryWeight),
       hdStartDate: formValue.hdStartDate,
       hdCycle: toString(formValue.hdCycle),
+      hdFrequency: toNumber(formValue.hdFrequency),
       dialyserType: formValue.dialyserType,
       prescribedDuration: toNumber(formValue.prescribedDuration),
       ufGoal: toNumber(formValue.ufGoal),
@@ -927,8 +1150,6 @@ export class HdSessionScheduleComponent implements OnInit {
       assignedDoctor: null,  // Will be assigned by staff later
       assignedNurse: null,   // Will be assigned by staff later
       dialyserModel: toString(formValue.dialyserModel),
-      dialyserReuseCount: toNumber(formValue.dialyserReuseNumber) || 0,
-      bloodTubingReuse: toNumber(formValue.bloodTubingReuse) || 0,
       bloodTestDone: false,
       sessionsPerWeek: toNumber(formValue.sessionsPerWeek),
       // HDTreatmentSession fields
@@ -974,7 +1195,23 @@ export class HdSessionScheduleComponent implements OnInit {
       notes: toString(formValue.notes)
     };
 
-    console.log('Submitting HD session data:', sessionData);
+    console.log('🔍 Full Form Values:', formValue);
+    console.log('📤 Submitting HD session data:', sessionData);
+    console.log('📋 Pre-Dialysis Fields:', {
+      preWeight: formValue.preWeight,
+      preBPSitting: formValue.preBPSitting,
+      preTemperature: formValue.preTemperature
+    });
+    console.log('📊 Intra-Dialytic Fields:', {
+      monitoringTime: formValue.monitoringTime,
+      bloodPressure: formValue.bloodPressure,
+      heartRate: formValue.heartRate
+    });
+    console.log('✅ Post-Dialysis Fields:', {
+      postWeight: formValue.postWeight,
+      postSBP: formValue.postSBP,
+      postDBP: formValue.postDBP
+    });
     
     this.scheduleService.createHDSession(sessionData).subscribe({
       next: (response) => {
@@ -1029,15 +1266,14 @@ export class HdSessionScheduleComponent implements OnInit {
     const updateData = {
       scheduleID: this.scheduleId,
       patientID: this.patientId,
-      sessionDate: formValue.treatmentDate,
+      sessionDate: formValue.treatmentDate ? new Date(formValue.treatmentDate).toISOString() : new Date().toISOString(),
       dryWeight: toNumber(formValue.dryWeight),
-      hdStartDate: formValue.hdStartDate,
+      hdStartDate: formValue.hdStartDate ? new Date(formValue.hdStartDate).toISOString() : null,
       hdCycle: toString(formValue.hdCycle),
+      hdFrequency: toNumber(formValue.hdFrequency),
       weightGain: toNumber(formValue.weightGain),
       dialyserType: formValue.dialyserType,
       dialyserModel: toString(formValue.dialyserModel),
-      dialyserReuseCount: toNumber(formValue.dialyserReuseNumber) || 0,
-      bloodTubingReuse: toNumber(formValue.bloodTubingReuse) || 0,
       prescribedDuration: toNumber(formValue.prescribedDuration),
       ufGoal: toNumber(formValue.ufGoal),
       dialysatePrescription: toString(formValue.dialysatePrescription),
@@ -1048,8 +1284,8 @@ export class HdSessionScheduleComponent implements OnInit {
       heparinInfusionRate: toNumber(formValue.heparinInfusionRate),
       accessType: formValue.accessType,
       accessLocation: toString(formValue.accessLocation),
-      slotID: formValue.slotID,
-      bedNumber: formValue.bedNumber,
+      slotID: toNumber(formValue.slotID),
+      bedNumber: toNumber(formValue.bedNumber),
       bloodPressure: toString(formValue.bloodPressure),
       symptoms: toString(formValue.symptoms),
       bloodTestDone: false,
@@ -1098,6 +1334,7 @@ export class HdSessionScheduleComponent implements OnInit {
     console.log('Updating HD session with scheduleId:', this.scheduleId);
     console.log('Update data:', updateData);
     
+    // Backend expects the data directly (not wrapped in a 'request' object)
     this.scheduleService.updateSchedule(this.scheduleId!, updateData).subscribe({
       next: (response) => {
         console.log('Update response:', response);
@@ -1114,9 +1351,12 @@ export class HdSessionScheduleComponent implements OnInit {
         }
       },
       error: (error) => {
-        console.error('Error updating HD session:', error);
-        console.error('Error response:', error.error);
-        console.error('Error status:', error.status);
+        console.error('❌ Error updating HD session:', error);
+        console.error('❌ Error response:', error.error);
+        console.error('❌ Error status:', error.status);
+        if (error.error?.errors) {
+          console.error('❌ Validation errors details:', JSON.stringify(error.error.errors, null, 2));
+        }
         let errorMsg = 'An error occurred while updating the HD session';
         if (error.error?.message) {
           errorMsg = error.error.message;
@@ -1139,6 +1379,10 @@ export class HdSessionScheduleComponent implements OnInit {
 
   goHome(): void {
     this.router.navigate(['/']);
+  }
+
+  goToLogin(): void {
+    this.router.navigate(['/login'], { queryParams: { returnUrl: this.router.url } });
   }
 
   getSlotName(slotId: number): string {
@@ -1237,6 +1481,14 @@ export class HdSessionScheduleComponent implements OnInit {
   private restoreDraftFromLocalStorage(draft: any): void {
     if (!draft || !draft.formData) return;
 
+    // Convert date strings back to Date objects
+    if (draft.formData.treatmentDate) {
+      draft.formData.treatmentDate = new Date(draft.formData.treatmentDate);
+    }
+    if (draft.formData.sessionStartTime) {
+      draft.formData.sessionStartTime = new Date(draft.formData.sessionStartTime);
+    }
+
     // Restore form data
     this.sessionForm.patchValue(draft.formData);
 
@@ -1312,37 +1564,53 @@ export class HdSessionScheduleComponent implements OnInit {
 
   addMonitoringRecord(): void {
     if (!this.scheduleId) {
-      this.snackBar.open('Please save the session first before adding monitoring records', 'Close', { duration: 3000 });
+      this.snackBar.open('⚠ Please save the HD session first (click "Save HD Session" button) before adding monitoring records', 'Close', { duration: 6000 });
+      // Scroll to top to show the save button
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     const formValues = this.sessionForm.value;
     
-    // Build monitoring record object
+    // Format date properly for backend
+    const sessionDate = formValues.treatmentDate instanceof Date 
+      ? formValues.treatmentDate.toISOString().split('T')[0]
+      : formValues.treatmentDate;
+    
+    // Build comprehensive monitoring record object with ALL fields
     const monitoringRecord = {
       patientID: this.patientId,
       scheduleID: this.scheduleId,
-      sessionDate: formValues.treatmentDate,
+      sessionDate: sessionDate,
       timeRecorded: new Date().toISOString(),
-      bloodPressure: formValues.bloodPressure,
-      pulseRate: formValues.heartRate,
-      temperature: formValues.temperature,
-      ufVolume: formValues.totalUFAchieved,
-      venousPressure: formValues.venousPressure,
-      notes: formValues.monitoringNotes || formValues.symptoms || formValues.interventions || ''
+      bloodPressure: formValues.bloodPressure || '',
+      pulseRate: formValues.heartRate || null,
+      temperature: formValues.temperature || null,
+      ufVolume: formValues.totalUFAchieved || null,
+      venousPressure: formValues.venousPressure || null,
+      arterialPressure: formValues.arterialPressure || null,
+      bloodFlowRate: formValues.actualBFR || null,
+      dialysateFlowRate: formValues.dialysateFlowRate || null,
+      currentUFR: formValues.currentUFR || null,
+      tmpPressure: formValues.tmpPressure || null,
+      symptoms: formValues.symptoms || '',
+      interventions: formValues.interventions || '',
+      staffInitials: formValues.staffInitials || '',
+      recordedBy: formValues.staffInitials || null,
+      notes: formValues.monitoringNotes || ''
     };
 
+    console.log('Sending monitoring record:', monitoringRecord);
+    
     this.loading = true;
     this.scheduleService.addIntraDialyticRecord(monitoringRecord).subscribe({
       next: (response) => {
         if (response.success) {
-          this.snackBar.open(`✓ Monitoring Entry #${this.monitoringRecords.length + 1} saved successfully!`, 'Close', { duration: 3000 });
+          const entryNumber = this.monitoringRecords.length + 1;
+          this.snackBar.open(`✓ Monitoring Entry #${entryNumber} saved successfully!`, 'Close', { duration: 3000 });
           
-          // Add to local array
-          this.monitoringRecords.push({
-            ...monitoringRecord,
-            recordID: response.data
-          });
+          // Reload monitoring records from backend to get the complete list
+          this.loadMonitoringRecords();
 
           // Clear monitoring fields for next entry
           this.sessionForm.patchValue({
@@ -1361,6 +1629,7 @@ export class HdSessionScheduleComponent implements OnInit {
             monitoringNotes: ''
           });
 
+          console.log(`✅ Cleared fields for new entry. Next entry will be #${entryNumber + 1}`);
           this.loading = false;
         } else {
           this.snackBar.open('Failed to save monitoring record', 'Close', { duration: 3000 });
@@ -1369,7 +1638,21 @@ export class HdSessionScheduleComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error saving monitoring record:', error);
-        this.snackBar.open('Error saving monitoring record', 'Close', { duration: 3000 });
+        console.error('Error details:', error.error);
+        
+        // Handle authentication error specifically
+        if (error.status === 401) {
+          this.snackBar.open('⚠️ Session expired. Please log in again.', 'Login', { 
+            duration: 5000,
+            horizontalPosition: 'center',
+            verticalPosition: 'top'
+          }).onAction().subscribe(() => {
+            this.router.navigate(['/login'], { queryParams: { returnUrl: this.router.url } });
+          });
+        } else {
+          const errorMsg = error.error?.message || error.message || 'Unknown error';
+          this.snackBar.open(`Error: ${errorMsg}`, 'Close', { duration: 5000 });
+        }
         this.loading = false;
       }
     });

@@ -55,6 +55,21 @@
     border-radius: 12px;
     margin-bottom: 24px;
 
+    h3 {
+      margin: 0 0 20px 0;
+      font-size: 20px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      mat-icon {
+        font-size: 28px;
+        width: 28px;
+        height: 28px;
+      }
+    }
+
     .info-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -86,6 +101,115 @@
             display: block;
             font-size: 18px;
             font-weight: 600;
+          }
+        }
+      }
+    }
+  }
+
+  .equipment-tracking-card {
+    background: #fff;
+    padding: 24px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+    h3 {
+      margin: 0 0 20px 0;
+      color: #424242;
+      font-size: 20px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      mat-icon {
+        color: #1976d2;
+        font-size: 28px;
+        width: 28px;
+        height: 28px;
+      }
+    }
+
+    .equipment-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+
+      .equipment-item {
+        background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+        padding: 20px;
+        border-radius: 12px;
+        border-left: 5px solid #1976d2;
+
+        &.dialyser {
+          background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+          border-left-color: #2196f3;
+        }
+
+        &.tubing {
+          background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+          border-left-color: #9c27b0;
+        }
+
+        &.sessions {
+          background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+          border-left-color: #4caf50;
+        }
+
+        .equipment-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 16px;
+
+          mat-icon {
+            font-size: 32px;
+            width: 32px;
+            height: 32px;
+            color: #1976d2;
+          }
+
+          h4 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #424242;
+          }
+        }
+
+        .equipment-details {
+          .current-usage,
+          .purchase-count,
+          .sessions-completed {
+            margin-bottom: 16px;
+
+            label {
+              display: block;
+              font-size: 13px;
+              color: #757575;
+              font-weight: 500;
+              margin-bottom: 8px;
+            }
+
+            .usage-value,
+            .purchase-value,
+            .sessions-value {
+              display: block;
+              font-size: 24px;
+              font-weight: 700;
+              color: #1976d2;
+              margin-bottom: 8px;
+            }
+
+            mat-progress-bar {
+              height: 8px;
+              border-radius: 4px;
+            }
+          }
+
+          .sessions-completed {
+            margin-bottom: 0;
           }
         }
       }
@@ -246,6 +370,23 @@
 
             mat-chip {
               margin-left: 8px;
+            }
+
+            .info-banner {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              padding: 12px;
+              background: #e3f2fd;
+              border: 1px solid #90caf9;
+              border-radius: 4px;
+              margin-bottom: 12px;
+              color: #1565c0;
+              font-weight: 500;
+
+              mat-icon {
+                color: #1976d2;
+              }
             }
           }
         }

@@ -335,6 +335,179 @@ public class ScheduleController : ControllerBase
         }
     }
 
+    [HttpGet("auto-discharge-info")]
+    [Authorize(Roles = "Admin,HOD,Doctor,Nurse")]
+    public async Task<ActionResult<ApiResponse<object>>> GetAutoDischargeInfo()
+    {
+        try
+        {
+            var schedules = await _scheduleRepository.GetAllAsync();
+            
+            // Get sessions that are running and will be auto-discharged
+            var activeSessions = schedules.Where(s => 
+                s.TreatmentStartTime.HasValue && 
+                !s.IsDischarged && 
+                !s.IsMovedToHistory).ToList();
+
+            var autoDischargeInfo = activeSessions.Select(s => {
+                var startTime = s.TreatmentStartTime ?? DateTime.Now;
+                var autoDischargeTime = startTime.AddHours(5);
+                var hoursRunning = (DateTime.Now - startTime).TotalHours;
+                var hoursUntilAutoDischarge = (autoDischargeTime - DateTime.Now).TotalHours;
+                
+                return new {
+                    scheduleId = s.ScheduleID,
+                    patientId = s.PatientID,
+                    patientName = s.PatientName,
+                    treatmentStartTime = startTime.ToString("yyyy-MM-dd HH:mm:ss"),
+                    autoDischargeTime = autoDischargeTime.ToString("yyyy-MM-dd HH:mm:ss"),
+                    hoursRunning = Math.Round(hoursRunning, 2),
+                    hoursUntilAutoDischarge = Math.Round(hoursUntilAutoDischarge, 2),
+                    willAutoDischarge = hoursUntilAutoDischarge > 0,
+                    bedNumber = s.BedNumber,
+                    slotId = s.SlotID,
+                    sessionStatus = s.SessionStatus
+                };
+            }).OrderBy(x => x.hoursUntilAutoDischarge).ToList();
+
+            return Ok(ApiResponse<object>.SuccessResponse(new { 
+                autoDischargeEnabled = true,
+                autoDischargeAfterHours = 5,
+                checkIntervalMinutes = 5,
+                activeSessions = autoDischargeInfo.Count,
+                sessions = autoDischargeInfo
+            }));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting auto-discharge info");
+            return StatusCode(500, ApiResponse<object>.ErrorResponse("An error occurred"));
+        }
+    }
+
+    [HttpGet("patient-statistics")]
+    [Authorize(Roles = "Admin,HOD,Doctor,Nurse,Technician")]
+    public async Task<ActionResult<ApiResponse<object>>> GetPatientStatistics([FromQuery] string? date = null)
+    {
+        try
+        {
+            DateTime referenceDate = string.IsNullOrEmpty(date) 
+                ? DateTime.Today 
+                : DateTime.Parse(date).Date;
+
+            var allSchedules = await _scheduleRepository.GetAllAsync();
+
+            // Calculate date ranges
+            var startOfDay = referenceDate.Date;
+            var endOfDay = startOfDay.AddDays(1);
+
+            var startOfWeek = referenceDate.AddDays(-(int)referenceDate.DayOfWeek); // Sunday
+            var endOfWeek = startOfWeek.AddDays(7);
+
+            var startOfMonth = new DateTime(referenceDate.Year, referenceDate.Month, 1);
+            var endOfMonth = startOfMonth.AddMonths(1);
+
+            var startOfYear = new DateTime(referenceDate.Year, 1, 1);
+            var endOfYear = startOfYear.AddYears(1);
+
+            // Day Statistics
+            var daySchedules = allSchedules.Where(s => 
+                s.SessionDate >= startOfDay && s.SessionDate < endOfDay).ToList();
+            var dayActive = daySchedules.Count(s => !s.IsDischarged && !s.IsMovedToHistory);
+            var dayDischarged = daySchedules.Count(s => s.IsDischarged || s.IsMovedToHistory);
+            var dayTotal = daySchedules.Count;
+            var dayUniquePatients = daySchedules.Select(s => s.PatientID).Distinct().Count();
+
+            // Week Statistics
+            var weekSchedules = allSchedules.Where(s => 
+                s.SessionDate >= startOfWeek && s.SessionDate < endOfWeek).ToList();
+            var weekActive = weekSchedules.Count(s => !s.IsDischarged && !s.IsMovedToHistory);
+            var weekDischarged = weekSchedules.Count(s => s.IsDischarged || s.IsMovedToHistory);
+            var weekTotal = weekSchedules.Count;
+            var weekUniquePatients = weekSchedules.Select(s => s.PatientID).Distinct().Count();
+
+            // Month Statistics
+            var monthSchedules = allSchedules.Where(s => 
+                s.SessionDate >= startOfMonth && s.SessionDate < endOfMonth).ToList();
+            var monthActive = monthSchedules.Count(s => !s.IsDischarged && !s.IsMovedToHistory);
+            var monthDischarged = monthSchedules.Count(s => s.IsDischarged || s.IsMovedToHistory);
+            var monthTotal = monthSchedules.Count;
+            var monthUniquePatients = monthSchedules.Select(s => s.PatientID).Distinct().Count();
+
+            // Year Statistics
+            var yearSchedules = allSchedules.Where(s => 
+                s.SessionDate >= startOfYear && s.SessionDate < endOfYear).ToList();
+            var yearActive = yearSchedules.Count(s => !s.IsDischarged && !s.IsMovedToHistory);
+            var yearDischarged = yearSchedules.Count(s => s.IsDischarged || s.IsMovedToHistory);
+            var yearTotal = yearSchedules.Count;
+            var yearUniquePatients = yearSchedules.Select(s => s.PatientID).Distinct().Count();
+
+            var statistics = new
+            {
+                referenceDate = referenceDate.ToString("yyyy-MM-dd"),
+                generatedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                
+                day = new
+                {
+                    date = referenceDate.ToString("yyyy-MM-dd"),
+                    dayOfWeek = referenceDate.DayOfWeek.ToString(),
+                    active = dayActive,
+                    discharged = dayDischarged,
+                    total = dayTotal,
+                    uniquePatients = dayUniquePatients,
+                    dischargeRate = dayTotal > 0 ? Math.Round((double)dayDischarged / dayTotal * 100, 2) : 0
+                },
+                
+                week = new
+                {
+                    startDate = startOfWeek.ToString("yyyy-MM-dd"),
+                    endDate = endOfWeek.AddDays(-1).ToString("yyyy-MM-dd"),
+                    weekNumber = System.Globalization.ISOWeek.GetWeekOfYear(referenceDate),
+                    active = weekActive,
+                    discharged = weekDischarged,
+                    total = weekTotal,
+                    uniquePatients = weekUniquePatients,
+                    dischargeRate = weekTotal > 0 ? Math.Round((double)weekDischarged / weekTotal * 100, 2) : 0,
+                    averageSessionsPerDay = Math.Round((double)weekTotal / 7, 2)
+                },
+                
+                month = new
+                {
+                    month = referenceDate.ToString("MMMM yyyy"),
+                    startDate = startOfMonth.ToString("yyyy-MM-dd"),
+                    endDate = endOfMonth.AddDays(-1).ToString("yyyy-MM-dd"),
+                    active = monthActive,
+                    discharged = monthDischarged,
+                    total = monthTotal,
+                    uniquePatients = monthUniquePatients,
+                    dischargeRate = monthTotal > 0 ? Math.Round((double)monthDischarged / monthTotal * 100, 2) : 0,
+                    averageSessionsPerDay = Math.Round((double)monthTotal / DateTime.DaysInMonth(referenceDate.Year, referenceDate.Month), 2)
+                },
+                
+                year = new
+                {
+                    year = referenceDate.Year,
+                    startDate = startOfYear.ToString("yyyy-MM-dd"),
+                    endDate = endOfYear.AddDays(-1).ToString("yyyy-MM-dd"),
+                    active = yearActive,
+                    discharged = yearDischarged,
+                    total = yearTotal,
+                    uniquePatients = yearUniquePatients,
+                    dischargeRate = yearTotal > 0 ? Math.Round((double)yearDischarged / yearTotal * 100, 2) : 0,
+                    averageSessionsPerMonth = Math.Round((double)yearTotal / 12, 2),
+                    averageSessionsPerDay = Math.Round((double)yearTotal / 365, 2)
+                }
+            };
+
+            return Ok(ApiResponse<object>.SuccessResponse(statistics));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting patient statistics");
+            return StatusCode(500, ApiResponse<object>.ErrorResponse("An error occurred"));
+        }
+    }
+
     private int CalculateAge(DateTime date)
     {
         // This is a placeholder - you should get actual patient birth date

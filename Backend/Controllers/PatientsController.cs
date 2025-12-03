@@ -52,6 +52,22 @@ public class PatientsController : ControllerBase
         }
     }
 
+    [HttpGet("all-including-inactive")]
+    [Authorize(Roles = "Admin,HOD,Doctor,Nurse,Technician")]
+    public async Task<ActionResult<ApiResponse<List<Patient>>>> GetAllIncludingInactive()
+    {
+        try
+        {
+            var patients = await _patientRepository.GetAllIncludingInactiveAsync();
+            return Ok(ApiResponse<List<Patient>>.SuccessResponse(patients));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving all patients");
+            return StatusCode(500, ApiResponse<List<Patient>>.ErrorResponse("An error occurred while retrieving all patients"));
+        }
+    }
+
     [HttpGet("search")]
     [Authorize(Roles = "Admin,HOD,Doctor,Nurse,Technician")]
     public async Task<ActionResult<ApiResponse<List<Patient>>>> SearchPatients([FromQuery] string q)
@@ -145,6 +161,16 @@ public class PatientsController : ControllerBase
                 GuardianName = request.GuardianName,
                 HDCycle = request.HDCycle,
                 HDFrequency = request.HDFrequency,
+                DryWeight = request.DryWeight,
+                HDStartDate = request.HDStartDate,
+                DialyserType = request.DialyserType,
+                DialyserModel = request.DialyserModel,
+                PrescribedDuration = request.PrescribedDuration,
+                PrescribedBFR = request.PrescribedBFR,
+                DialysatePrescription = request.DialysatePrescription,
+                DialyserCount = request.DialyserCount ?? 0,
+                BloodTubingCount = request.BloodTubingCount ?? 0,
+                TotalDialysisCompleted = request.TotalDialysisCompleted ?? 0,
                 IsActive = true
             };
 
@@ -188,6 +214,16 @@ public class PatientsController : ControllerBase
             existingPatient.GuardianName = request.GuardianName;
             existingPatient.HDCycle = request.HDCycle;
             existingPatient.HDFrequency = request.HDFrequency;
+            existingPatient.DryWeight = request.DryWeight;
+            existingPatient.HDStartDate = request.HDStartDate;
+            existingPatient.DialyserType = request.DialyserType;
+            existingPatient.DialyserModel = request.DialyserModel;
+            existingPatient.PrescribedDuration = request.PrescribedDuration;
+            existingPatient.PrescribedBFR = request.PrescribedBFR;
+            existingPatient.DialysatePrescription = request.DialysatePrescription;
+            existingPatient.DialyserCount = request.DialyserCount ?? existingPatient.DialyserCount;
+            existingPatient.BloodTubingCount = request.BloodTubingCount ?? existingPatient.BloodTubingCount;
+            existingPatient.TotalDialysisCompleted = request.TotalDialysisCompleted ?? existingPatient.TotalDialysisCompleted;
 
             var result = await _patientRepository.UpdateAsync(existingPatient);
             
@@ -230,6 +266,133 @@ public class PatientsController : ControllerBase
         {
             _logger.LogError(ex, "Error deleting patient {PatientId}", id);
             return StatusCode(500, ApiResponse<bool>.ErrorResponse("An error occurred while deleting the patient"));
+        }
+    }
+
+    [HttpPut("{id}/discharge")]
+    [Authorize(Roles = "Admin,Doctor,Nurse")]
+    public async Task<ActionResult<ApiResponse<bool>>> DischargePatient(int id)
+    {
+        try
+        {
+            var patient = await _patientRepository.GetByIdAsync(id);
+            if (patient == null)
+            {
+                return NotFound(ApiResponse<bool>.ErrorResponse("Patient not found"));
+            }
+
+            // Mark patient as inactive/discharged
+            patient.IsActive = false;
+            var result = await _patientRepository.UpdateAsync(patient);
+            
+            if (result)
+            {
+                _logger.LogInformation("Patient {PatientId} ({PatientName}) manually discharged", patient.PatientID, patient.Name);
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "Patient discharged successfully"));
+            }
+            
+            return StatusCode(500, ApiResponse<bool>.ErrorResponse("Failed to discharge patient"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error discharging patient {PatientId}", id);
+            return StatusCode(500, ApiResponse<bool>.ErrorResponse("An error occurred while discharging the patient"));
+        }
+    }
+
+    [HttpGet("{id}/equipment-status")]
+    [Authorize(Roles = "Admin,HOD,Doctor,Nurse,Technician")]
+    public async Task<ActionResult<ApiResponse<object>>> GetEquipmentStatus(int id)
+    {
+        try
+        {
+            var patient = await _patientRepository.GetByIdAsync(id);
+            if (patient == null)
+            {
+                return NotFound(ApiResponse<object>.ErrorResponse("Patient not found"));
+            }
+
+            // Equipment usage limits
+            const int DIALYSER_MAX = 12; // Maximum 12 uses
+            const int BLOOD_TUBING_MAX = 1; // Single use only
+
+            // Calculate dialyser status
+            var dialyserPercentage = (patient.DialyserCount * 100.0) / DIALYSER_MAX;
+            var dialyserRemaining = DIALYSER_MAX - patient.DialyserCount;
+            string dialyserStatus = "OK";
+            string dialyserMessage = "";
+            bool dialyserRequiresReplacement = false;
+
+            if (patient.DialyserCount >= DIALYSER_MAX)
+            {
+                dialyserStatus = "Expired";
+                dialyserMessage = "URGENT: Dialyser has reached maximum usage limit. Replacement required immediately.";
+                dialyserRequiresReplacement = true;
+            }
+            else if (dialyserPercentage >= 90)
+            {
+                dialyserStatus = "Critical";
+                dialyserMessage = $"WARNING: Dialyser usage at {dialyserPercentage:F1}%. Replace soon ({dialyserRemaining} use(s) remaining).";
+                dialyserRequiresReplacement = true;
+            }
+            else if (dialyserPercentage >= 80)
+            {
+                dialyserStatus = "Warning";
+                dialyserMessage = $"Dialyser usage at {dialyserPercentage:F1}%. Consider replacement soon ({dialyserRemaining} use(s) remaining).";
+            }
+
+            // Calculate blood tubing status
+            var bloodTubingPercentage = (patient.BloodTubingCount * 100.0) / BLOOD_TUBING_MAX;
+            var bloodTubingRemaining = BLOOD_TUBING_MAX - patient.BloodTubingCount;
+            string bloodTubingStatus = "OK";
+            string bloodTubingMessage = "";
+            bool bloodTubingRequiresReplacement = false;
+
+            if (patient.BloodTubingCount >= BLOOD_TUBING_MAX)
+            {
+                bloodTubingStatus = "Expired";
+                bloodTubingMessage = "URGENT: Blood tubing has reached usage limit. Replacement required.";
+                bloodTubingRequiresReplacement = true;
+            }
+            else if (bloodTubingPercentage >= 80)
+            {
+                bloodTubingStatus = "Warning";
+                bloodTubingMessage = $"Blood tubing usage at {bloodTubingPercentage:F1}%. ({bloodTubingRemaining} use(s) remaining).";
+            }
+
+            var equipmentStatus = new
+            {
+                patientId = patient.PatientID,
+                patientName = patient.Name,
+                dialyser = new
+                {
+                    currentUsageCount = patient.DialyserCount,
+                    maxUsageLimit = DIALYSER_MAX,
+                    remainingUses = dialyserRemaining,
+                    usagePercentage = Math.Round(dialyserPercentage, 1),
+                    status = dialyserStatus,
+                    message = dialyserMessage,
+                    requiresReplacement = dialyserRequiresReplacement
+                },
+                bloodTubing = new
+                {
+                    currentUsageCount = patient.BloodTubingCount,
+                    maxUsageLimit = BLOOD_TUBING_MAX,
+                    remainingUses = bloodTubingRemaining,
+                    usagePercentage = Math.Round(bloodTubingPercentage, 1),
+                    status = bloodTubingStatus,
+                    message = bloodTubingMessage,
+                    requiresReplacement = bloodTubingRequiresReplacement
+                },
+                totalDialysisCompleted = patient.TotalDialysisCompleted
+            };
+
+            return Ok(ApiResponse<object>.SuccessResponse(equipmentStatus));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving equipment status for patient {PatientId}", id);
+            return StatusCode(500, ApiResponse<object>.ErrorResponse("An error occurred while retrieving equipment status"));
         }
     }
 }

@@ -20,7 +20,11 @@ public class PatientRepository : IPatientRepository
                 p.PatientID, p.MRN, p.Name, p.Age, p.Gender, 
                 p.ContactNumber, p.EmergencyContact, p.Address, p.GuardianName,
                 p.IsActive, p.CreatedAt, p.UpdatedAt,
-                h.ScheduleID, h.SlotID, h.BedNumber, h.DialyserType,
+                p.DryWeight, p.HDCycle, p.HDFrequency, p.HDStartDate, p.DialyserType,
+                p.DialyserModel, p.PrescribedDuration, p.PrescribedBFR, p.DialysatePrescription,
+                p.DialyserCount, p.BloodTubingCount, p.TotalDialysisCompleted,
+                p.DialysersPurchased, p.BloodTubingPurchased,
+                h.ScheduleID, h.SlotID, h.BedNumber,
                 h.AssignedDoctor, h.AssignedNurse, 
                 CASE WHEN (h.IsDischarged = 1 OR h.IsMovedToHistory = 1) THEN 1 ELSE 0 END as IsDischarged,
                 d.Name as AssignedDoctorName,
@@ -43,6 +47,39 @@ public class PatientRepository : IPatientRepository
         return patients.ToList();
     }
 
+    public async Task<List<Patient>> GetAllIncludingInactiveAsync()
+    {
+        var query = @"
+            SELECT 
+                p.PatientID, p.MRN, p.Name, p.Age, p.Gender, 
+                p.ContactNumber, p.EmergencyContact, p.Address, p.GuardianName,
+                p.IsActive, p.CreatedAt, p.UpdatedAt,
+                p.DryWeight, p.HDCycle, p.HDFrequency, p.HDStartDate, p.DialyserType,
+                p.DialyserModel, p.PrescribedDuration, p.PrescribedBFR, p.DialysatePrescription,
+                p.DialyserCount, p.BloodTubingCount, p.TotalDialysisCompleted,
+                p.DialysersPurchased, p.BloodTubingPurchased,
+                h.ScheduleID, h.SlotID, h.BedNumber,
+                h.AssignedDoctor, h.AssignedNurse, 
+                CASE WHEN (h.IsDischarged = 1 OR h.IsMovedToHistory = 1) THEN 1 ELSE 0 END as IsDischarged,
+                d.Name as AssignedDoctorName,
+                n.Name as AssignedNurseName
+            FROM Patients p
+            LEFT JOIN (
+                SELECT * FROM HDSchedule
+                WHERE (PatientID, SessionDate) IN (
+                    SELECT PatientID, MAX(SessionDate)
+                    FROM HDSchedule
+                    GROUP BY PatientID
+                )
+            ) h ON p.PatientID = h.PatientID
+            LEFT JOIN Staff d ON h.AssignedDoctor = d.StaffID
+            LEFT JOIN Staff n ON h.AssignedNurse = n.StaffID
+            ORDER BY p.CreatedAt DESC";
+        using var connection = _context.CreateConnection();
+        var patients = await connection.QueryAsync<Patient>(query);
+        return patients.ToList();
+    }
+
     public async Task<Patient?> GetByMRNAsync(string mrn)
     {
         var query = "SELECT * FROM Patients WHERE MRN = @MRN";
@@ -57,7 +94,11 @@ public class PatientRepository : IPatientRepository
                 p.PatientID, p.MRN, p.Name, p.Age, p.Gender, 
                 p.ContactNumber, p.EmergencyContact, p.Address, p.GuardianName,
                 p.IsActive, p.CreatedAt, p.UpdatedAt,
-                h.ScheduleID, h.SlotID, h.BedNumber, h.DialyserType,
+                p.DryWeight, p.HDCycle, p.HDFrequency, p.HDStartDate, p.DialyserType,
+                p.DialyserModel, p.PrescribedDuration, p.PrescribedBFR, p.DialysatePrescription,
+                p.DialyserCount, p.BloodTubingCount, p.TotalDialysisCompleted,
+                p.DialysersPurchased, p.BloodTubingPurchased,
+                h.ScheduleID, h.SlotID, h.BedNumber,
                 h.AssignedDoctor, h.AssignedNurse, h.IsDischarged,
                 d.Name as AssignedDoctorName,
                 n.Name as AssignedNurseName
@@ -69,6 +110,7 @@ public class PatientRepository : IPatientRepository
                     FROM HDSchedule
                     GROUP BY PatientID
                 )
+                AND IsDischarged = 0
             ) h ON p.PatientID = h.PatientID
             LEFT JOIN Staff d ON h.AssignedDoctor = d.StaffID
             LEFT JOIN Staff n ON h.AssignedNurse = n.StaffID
@@ -86,7 +128,11 @@ public class PatientRepository : IPatientRepository
                 p.PatientID, p.MRN, p.Name, p.Age, p.Gender, 
                 p.ContactNumber, p.EmergencyContact, p.Address, p.GuardianName,
                 p.IsActive, p.CreatedAt, p.UpdatedAt,
-                h.ScheduleID, h.SlotID, h.BedNumber, h.DialyserType,
+                p.DryWeight, p.HDCycle, p.HDFrequency, p.HDStartDate, p.DialyserType,
+                p.DialyserModel, p.PrescribedDuration, p.PrescribedBFR, p.DialysatePrescription,
+                p.DialyserCount, p.BloodTubingCount, p.TotalDialysisCompleted,
+                p.DialysersPurchased, p.BloodTubingPurchased,
+                h.ScheduleID, h.SlotID, h.BedNumber,
                 h.AssignedDoctor, h.AssignedNurse, 
                 CASE WHEN (h.IsDischarged = 1 OR h.IsMovedToHistory = 1) THEN 1 ELSE 0 END as IsDischarged,
                 d.Name as AssignedDoctorName,
@@ -112,7 +158,11 @@ public class PatientRepository : IPatientRepository
                 p.PatientID, p.MRN, p.Name, p.Age, p.Gender, 
                 p.ContactNumber, p.EmergencyContact, p.Address, p.GuardianName,
                 p.IsActive, p.CreatedAt, p.UpdatedAt,
-                h.SlotID, h.BedNumber, h.DialyserType,
+                p.DryWeight, p.HDCycle, p.HDFrequency, p.HDStartDate, p.DialyserType,
+                p.DialyserModel, p.PrescribedDuration, p.PrescribedBFR, p.DialysatePrescription,
+                p.DialyserCount, p.BloodTubingCount, p.TotalDialysisCompleted,
+                p.DialysersPurchased, p.BloodTubingPurchased,
+                h.SlotID, h.BedNumber,
                 h.AssignedDoctor, h.AssignedNurse, 
                 CASE WHEN (h.IsDischarged = 1 OR h.IsMovedToHistory = 1) THEN 1 ELSE 0 END as IsDischarged,
                 d.Name as AssignedDoctorName,
@@ -143,10 +193,18 @@ public class PatientRepository : IPatientRepository
     {
         var query = @"INSERT INTO Patients 
                      (MRN, Name, Age, Gender, ContactNumber, EmergencyContact, Address, GuardianName, 
-                      HDCycle, HDFrequency, IsActive, CreatedAt, UpdatedAt)
+                      HDCycle, HDFrequency, DryWeight, HDStartDate, DialyserType, 
+                      DialyserModel, PrescribedDuration, PrescribedBFR, DialysatePrescription,
+                      DialyserCount, BloodTubingCount, TotalDialysisCompleted,
+                      DialysersPurchased, BloodTubingPurchased,
+                      IsActive, CreatedAt, UpdatedAt)
                      VALUES 
                      (@MRN, @Name, @Age, @Gender, @ContactNumber, @EmergencyContact, @Address, @GuardianName,
-                      @HDCycle, @HDFrequency, 1, datetime('now'), datetime('now'));
+                      @HDCycle, @HDFrequency, @DryWeight, @HDStartDate, @DialyserType,
+                      @DialyserModel, @PrescribedDuration, @PrescribedBFR, @DialysatePrescription,
+                      @DialyserCount, @BloodTubingCount, @TotalDialysisCompleted,
+                      @DialysersPurchased, @BloodTubingPurchased,
+                      1, datetime('now'), datetime('now'));
                      SELECT last_insert_rowid()";
         using var connection = _context.CreateConnection();
         return await connection.QuerySingleAsync<int>(query, patient);
@@ -165,6 +223,19 @@ public class PatientRepository : IPatientRepository
                      GuardianName = @GuardianName,
                      HDCycle = @HDCycle,
                      HDFrequency = @HDFrequency,
+                     DryWeight = @DryWeight,
+                     HDStartDate = @HDStartDate,
+                     DialyserType = @DialyserType,
+                     DialyserModel = @DialyserModel,
+                     PrescribedDuration = @PrescribedDuration,
+                     PrescribedBFR = @PrescribedBFR,
+                     DialysatePrescription = @DialysatePrescription,
+                     DialyserCount = @DialyserCount,
+                     BloodTubingCount = @BloodTubingCount,
+                     TotalDialysisCompleted = @TotalDialysisCompleted,
+                     DialysersPurchased = @DialysersPurchased,
+                     BloodTubingPurchased = @BloodTubingPurchased,
+                     IsActive = @IsActive,
                      UpdatedAt = datetime('now')
                      WHERE PatientID = @PatientID";
         using var connection = _context.CreateConnection();
@@ -204,5 +275,18 @@ public class PatientRepository : IPatientRepository
         
         using var connection = _context.CreateConnection();
         return await connection.QueryFirstOrDefaultAsync<PatientWithLatestSession>(query, new { PatientID = patientId });
+    }
+
+    public async Task<bool> IncrementEquipmentCountersAsync(int patientId)
+    {
+        var query = @"UPDATE Patients SET 
+                     DialyserCount = DialyserCount + 1,
+                     BloodTubingCount = BloodTubingCount + 1,
+                     TotalDialysisCompleted = TotalDialysisCompleted + 1,
+                     UpdatedAt = datetime('now')
+                     WHERE PatientID = @PatientID";
+        using var connection = _context.CreateConnection();
+        var affected = await connection.ExecuteAsync(query, new { PatientID = patientId });
+        return affected > 0;
     }
 }

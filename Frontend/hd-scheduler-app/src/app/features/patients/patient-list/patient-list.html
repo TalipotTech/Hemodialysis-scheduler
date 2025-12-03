@@ -34,31 +34,37 @@
     </mat-card-header>
 
     <mat-card-content>
-      <!-- Search Bar -->
-      <mat-form-field appearance="outline" class="search-field">
-        <mat-label>Search Patients</mat-label>
-        <input matInput [(ngModel)]="searchTerm" (input)="onSearch()" 
-               placeholder="Search by name, MRN, or phone">
-        <mat-icon matPrefix>search</mat-icon>
-      </mat-form-field>
+      <!-- Tabs for Active Patients and Discharged History -->
+      <mat-tab-group [(selectedIndex)]="selectedTabIndex" (selectedIndexChange)="onTabChange($event)">
+        
+        <!-- Active Patients Tab -->
+        <mat-tab label="Active Patients">
+          <div class="tab-content">
+            <!-- Search Bar -->
+            <mat-form-field appearance="outline" class="search-field">
+              <mat-label>Search Patients</mat-label>
+              <input matInput [(ngModel)]="searchTerm" (input)="onSearch()" 
+                     placeholder="Search by name, MRN, or phone">
+              <mat-icon matPrefix>search</mat-icon>
+            </mat-form-field>
 
-      <!-- Loading Spinner -->
-      @if (loading) {
-        <div class="loading-container">
-          <mat-spinner></mat-spinner>
-        </div>
-      }
+            <!-- Loading Spinner -->
+            @if (loading) {
+              <div class="loading-container">
+                <mat-spinner></mat-spinner>
+              </div>
+            }
 
-      <!-- Error Message -->
-      @if (errorMessage && !loading) {
-        <div class="error-message">
-          <mat-icon>error</mat-icon>
-          {{ errorMessage }}
-        </div>
-      }
+            <!-- Error Message -->
+            @if (errorMessage && !loading) {
+              <div class="error-message">
+                <mat-icon>error</mat-icon>
+                {{ errorMessage }}
+              </div>
+            }
 
-      <!-- Patient Table -->
-      @if (!loading && !errorMessage && filteredPatients.length > 0) {
+            <!-- Patient Table -->
+            @if (!loading && !errorMessage && filteredPatients.length > 0) {
         <div class="table-container">
           <table mat-table [dataSource]="filteredPatients" class="patients-table">
             
@@ -201,20 +207,155 @@
         </div>
       }
 
-      <!-- Empty State -->
-      @if (!loading && !errorMessage && filteredPatients.length === 0) {
-        <div class="empty-state">
-          <mat-icon>people_outline</mat-icon>
-          <h3>No Patients Found</h3>
-          <p>{{ searchTerm ? 'Try a different search term' : 'Start by adding a new patient' }}</p>
-          @if (!searchTerm) {
-            <button mat-raised-button color="primary" (click)="onAddPatient()">
-              <mat-icon>add</mat-icon>
-              Add First Patient
-            </button>
-          }
-        </div>
-      }
+            <!-- Empty State -->
+            @if (!loading && !errorMessage && filteredPatients.length === 0) {
+              <div class="empty-state">
+                <mat-icon>people_outline</mat-icon>
+                <h3>No Patients Found</h3>
+                <p>{{ searchTerm ? 'Try a different search term' : 'Start by adding a new patient' }}</p>
+                @if (!searchTerm) {
+                  <button mat-raised-button color="primary" (click)="onAddPatient()">
+                    <mat-icon>add</mat-icon>
+                    Add First Patient
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        </mat-tab>
+
+        <!-- Discharged Patients History Tab -->
+        <mat-tab label="Discharged History">
+          <div class="tab-content">
+            <div class="tab-header">
+              <h3><mat-icon>history</mat-icon> Discharged Patients Treatment History</h3>
+              <p class="subtitle">Complete records of all discharged patients and their treatment sessions</p>
+            </div>
+
+            <!-- Search Bar for Discharged -->
+            <mat-form-field appearance="outline" class="search-field">
+              <mat-label>Search Discharged Patients</mat-label>
+              <input matInput [(ngModel)]="dischargedSearchTerm" (input)="onDischargedSearch()" 
+                     placeholder="Search by name, MRN, or phone">
+              <mat-icon matPrefix>search</mat-icon>
+            </mat-form-field>
+
+            <!-- Loading Spinner -->
+            @if (loadingDischarged) {
+              <div class="loading-container">
+                <mat-spinner></mat-spinner>
+              </div>
+            }
+
+            <!-- Error Message -->
+            @if (dischargedErrorMessage && !loadingDischarged) {
+              <div class="error-message">
+                <mat-icon>error</mat-icon>
+                {{ dischargedErrorMessage }}
+              </div>
+            }
+
+            <!-- Discharged Patients List -->
+            @if (!loadingDischarged && !dischargedErrorMessage && filteredDischargedPatients.length > 0) {
+              <div class="discharged-patients-list">
+                @for (patient of filteredDischargedPatients; track patient.patientID) {
+                  <mat-expansion-panel class="patient-history-panel">
+                    <mat-expansion-panel-header>
+                      <mat-panel-title>
+                        <div class="patient-header-info">
+                          <mat-icon>person</mat-icon>
+                          <div class="patient-details">
+                            <h4>{{ patient.name }}</h4>
+                            <span class="patient-meta">ID: {{ patient.patientID }} | MRN: {{ patient.mrn || 'N/A' }} | Age: {{ patient.age }} | {{ patient.gender }}</span>
+                          </div>
+                        </div>
+                      </mat-panel-title>
+                      <mat-panel-description>
+                        <mat-chip color="accent" highlighted>
+                          {{ patient.totalDialysisCompleted || 0 }} Sessions Completed
+                        </mat-chip>
+                      </mat-panel-description>
+                    </mat-expansion-panel-header>
+
+                    <div class="patient-history-details">
+                      <!-- Patient Summary Info -->
+                      <div class="info-section">
+                        <h4><mat-icon>info</mat-icon> Patient Information</h4>
+                        <div class="info-grid-compact">
+                          <div class="info-item-compact">
+                            <label>Dry Weight:</label>
+                            <span>{{ patient.dryWeight ? (patient.dryWeight + ' kg') : 'N/A' }}</span>
+                          </div>
+                          <div class="info-item-compact">
+                            <label>HD Cycle:</label>
+                            <span>{{ patient.hdCycle || 'N/A' }}</span>
+                          </div>
+                          <div class="info-item-compact">
+                            <label>HD Start Date:</label>
+                            <span>{{ patient.hdStartDate ? (patient.hdStartDate | date:'MMM d, y') : 'N/A' }}</span>
+                          </div>
+                          <div class="info-item-compact">
+                            <label>Dialyser Type:</label>
+                            <span>{{ patient.dialyserType || 'N/A' }}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Equipment Usage Summary -->
+                      <div class="equipment-section">
+                        <h4><mat-icon>build_circle</mat-icon> Equipment Usage Summary</h4>
+                        <div class="equipment-summary-grid">
+                          <div class="equipment-stat">
+                            <div class="stat-icon dialyser"><mat-icon>water_drop</mat-icon></div>
+                            <div class="stat-details">
+                              <label>Dialyser Usage</label>
+                              <div class="stat-value">{{ patient.dialyserCount || 0 }} / 7 uses</div>
+                              <div class="stat-meta">Purchased: {{ patient.dialysersPurchased || 0 }} times</div>
+                            </div>
+                          </div>
+                          <div class="equipment-stat">
+                            <div class="stat-icon tubing"><mat-icon>line_style</mat-icon></div>
+                            <div class="stat-details">
+                              <label>Blood Tubing Usage</label>
+                              <div class="stat-value">{{ patient.bloodTubingCount || 0 }} / 12 uses</div>
+                              <div class="stat-meta">Purchased: {{ patient.bloodTubingPurchased || 0 }} times</div>
+                            </div>
+                          </div>
+                          <div class="equipment-stat">
+                            <div class="stat-icon sessions"><mat-icon>event_available</mat-icon></div>
+                            <div class="stat-details">
+                              <label>Total Dialysis</label>
+                              <div class="stat-value">{{ patient.totalDialysisCompleted || 0 }} sessions</div>
+                              <div class="stat-meta">Completed treatments</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Action Buttons -->
+                      <div class="history-actions">
+                        <button mat-raised-button color="primary" (click)="viewFullHistory(patient.patientID)">
+                          <mat-icon>history</mat-icon>
+                          View Full Treatment History
+                        </button>
+                      </div>
+                    </div>
+                  </mat-expansion-panel>
+                }
+              </div>
+            }
+
+            <!-- Empty State for Discharged -->
+            @if (!loadingDischarged && !dischargedErrorMessage && filteredDischargedPatients.length === 0) {
+              <div class="empty-state">
+                <mat-icon>history</mat-icon>
+                <h3>No Discharged Patients Found</h3>
+                <p>{{ dischargedSearchTerm ? 'Try a different search term' : 'No patients have been discharged yet' }}</p>
+              </div>
+            }
+          </div>
+        </mat-tab>
+      </mat-tab-group>
     </mat-card-content>
   </mat-card>
 </div>

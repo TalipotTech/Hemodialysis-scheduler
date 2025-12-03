@@ -18,11 +18,24 @@ public class Patient
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     
+    // HD Treatment Information (added 2025-11-28)
+    public decimal? DryWeight { get; set; } // Dry weight in kg
+    public DateTime? HDStartDate { get; set; } // Date when HD treatment started
+    public string? DialyserType { get; set; } // Hi Flux or Lo Flux
+    public string? DialyserModel { get; set; } // Specific dialyser model
+    public decimal? PrescribedDuration { get; set; } // Prescribed treatment duration in hours
+    public int? PrescribedBFR { get; set; } // Prescribed Blood Flow Rate in mL/min
+    public string? DialysatePrescription { get; set; } // Dialysate prescription (e.g., K+ Free, Normal, etc.)
+    public int DialyserCount { get; set; } = 0; // Current dialyser usage count
+    public int BloodTubingCount { get; set; } = 0; // Current blood tubing usage count
+    public int TotalDialysisCompleted { get; set; } = 0; // Total number of dialysis sessions completed
+    public int DialysersPurchased { get; set; } = 0; // Total number of dialysers purchased (lifetime)
+    public int BloodTubingPurchased { get; set; } = 0; // Total number of blood tubing sets purchased (lifetime)
+    
     // Latest Session Data
     public int? ScheduleID { get; set; }
     public int? SlotID { get; set; }
     public int? BedNumber { get; set; }
-    public string? DialyserType { get; set; }
     public int? AssignedDoctor { get; set; }
     public int? AssignedNurse { get; set; }
     public string? AssignedDoctorName { get; set; }

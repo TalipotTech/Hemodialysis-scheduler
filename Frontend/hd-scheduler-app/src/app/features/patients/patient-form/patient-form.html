@@ -4,18 +4,26 @@
       <mat-card-title>
         <div class="header-row">
           <div class="header-left">
-            <button mat-icon-button (click)="goBack()" class="back-button" matTooltip="Go Back">
-              <mat-icon>arrow_back</mat-icon>
-            </button>
-            <h2>{{ isEditMode ? 'Edit Patient' : 'Add New Patient' }}</h2>
-          </div>
-          <div class="header-right">
-            <button mat-icon-button (click)="goToAdminDashboard()" matTooltip="Go to Admin Dashboard">
+            <button mat-icon-button (click)="goToAdminDashboard()" class="home-button" matTooltip="Home">
               <mat-icon>home</mat-icon>
             </button>
-            <button mat-icon-button (click)="onCancel()" matTooltip="Close">
-              <mat-icon>close</mat-icon>
+            <button mat-icon-button (click)="goBack()" class="back-button" matTooltip="Back">
+              <mat-icon>arrow_back</mat-icon>
             </button>
+            <h2>Patient Form</h2>
+          </div>
+          <div class="header-right">
+            <!-- Auto-save indicator -->
+            <div class="auto-save-indicator" [class.saving]="saveStatus === 'saving'" [class.saved]="saveStatus === 'saved'" [class.visible]="saveStatus !== 'idle'">
+              @if (saveStatus === 'saving') {
+                <mat-spinner diameter="16"></mat-spinner>
+                <span>Saving...</span>
+              }
+              @if (saveStatus === 'saved') {
+                <mat-icon>check_circle</mat-icon>
+                <span>Saved</span>
+              }
+            </div>
           </div>
         </div>
       </mat-card-title>
@@ -130,12 +138,150 @@
           </mat-form-field>
         </div>
 
+        <!-- Basic HD Information -->
+        <h3>Basic HD Information</h3>
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Dry Weight (kg)</mat-label>
+            <input matInput type="number" formControlName="dryWeight" placeholder="Enter dry weight" step="0.1">
+            <mat-hint>Target weight after dialysis</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>HD Start Date</mat-label>
+            <input matInput [matDatepicker]="hdStartPicker" formControlName="hdStartDate" placeholder="Select date">
+            <mat-datepicker-toggle matSuffix [for]="hdStartPicker"></mat-datepicker-toggle>
+            <mat-datepicker #hdStartPicker></mat-datepicker>
+            <mat-hint>When HD treatment began</mat-hint>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>HD Cycle (Days Pattern)</mat-label>
+            <mat-select formControlName="hdCycle" (selectionChange)="onHDCycleChange()">
+              <mat-option value="">Not Set</mat-option>
+              @for (cycle of hdCycles; track cycle.value) {
+                <mat-option [value]="cycle.value">{{ cycle.label }}</mat-option>
+              }
+            </mat-select>
+            <mat-hint>Select the weekly dialysis pattern</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Sessions Per Week</mat-label>
+            <input matInput formControlName="hdFrequency" type="number" min="1" max="7" placeholder="e.g., 3">
+            <mat-hint>Number of dialysis sessions per week</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Prescribed Duration (hours)</mat-label>
+            <input matInput type="number" formControlName="prescribedDuration" step="0.5" placeholder="4">
+            <mat-hint>Typically 3.5 - 5 hours</mat-hint>
+          </mat-form-field>
+        </div>
+
+        <!-- Dialyser & Dialysate -->
+        <h3>Dialyser & Dialysate</h3>
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Dialyser Type</mat-label>
+            <mat-select formControlName="dialyserType">
+              @for (type of dialyserTypes; track type) {
+                <mat-option [value]="type">{{ type }}</mat-option>
+              }
+            </mat-select>
+            <mat-hint>HI/LO flux</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Dialyser Model</mat-label>
+            <input matInput formControlName="dialyserModel" placeholder="Enter model">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Prescribed BFR (mL/min)</mat-label>
+            <input matInput type="number" formControlName="prescribedBFR" placeholder="e.g., 400">
+            <mat-hint>Blood flow rate</mat-hint>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Dialysate Prescription</mat-label>
+            <mat-select formControlName="dialysatePrescription">
+              @for (prescription of dialysatePrescriptions; track prescription) {
+                <mat-option [value]="prescription">{{ prescription }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <!-- Equipment Usage Tracking -->
+        <h3>Equipment Usage & Session History</h3>
+        
+        <!-- Equipment Usage Alert Component -->
+        <app-equipment-usage-alert
+          [dialyserCount]="patientForm.get('dialyserCount')?.value || 0"
+          [bloodTubingCount]="patientForm.get('bloodTubingCount')?.value || 0"
+          [showDetails]="true">
+        </app-equipment-usage-alert>
+        
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Dialyser Use Number</mat-label>
+            <input matInput type="number" formControlName="dialyserCount" placeholder="0" min="0" max="7" 
+                   (input)="validateDialyserCount($event)">
+            <mat-hint>Current dialyser usage count (Max: 7)</mat-hint>
+            @if (patientForm.get('dialyserCount')?.hasError('max')) {
+              <mat-error>⚠️ Maximum is 7. Patient must bring new dialyser!</mat-error>
+            }
+            @if (patientForm.get('dialyserCount')?.hasError('min')) {
+              <mat-error>⚠️ Minimum is 0</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Blood Tubing Number</mat-label>
+            <input matInput type="number" formControlName="bloodTubingCount" placeholder="0" min="0" max="12"
+                   (input)="validateBloodTubingCount($event)">
+            <mat-hint>Current blood tubing usage count (Max: 12)</mat-hint>
+            @if (patientForm.get('bloodTubingCount')?.hasError('max')) {
+              <mat-error>⚠️ Maximum is 12. Patient must bring new tubing!</mat-error>
+            }
+            @if (patientForm.get('bloodTubingCount')?.hasError('min')) {
+              <mat-error>⚠️ Minimum is 0</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Total No. of Dialysis</mat-label>
+            <input matInput type="number" formControlName="totalDialysisCompleted" placeholder="0" readonly>
+            <mat-hint>Auto-updated after each dialysis session</mat-hint>
+            <mat-icon matSuffix matTooltip="This field updates automatically when HD sessions are completed">info</mat-icon>
+          </mat-form-field>
+        </div>
+
+        @if (isEditMode) {
+          <div class="form-row">
+            <button mat-raised-button 
+                    type="button"
+                    color="accent"
+                    (click)="reloadEquipmentCounts()"
+                    [disabled]="loading"
+                    style="margin-bottom: 16px;">
+              <mat-icon>refresh</mat-icon>
+              Reload Counts from Latest Session
+            </button>
+          </div>
+        }
+
         <!-- Form Actions -->
         <div class="form-actions">
           @if (patientForm.invalid && patientForm.touched) {
             <div class="validation-warning">
               <mat-icon>info</mat-icon>
-              <span>Please fill in all required fields (marked with *) to save</span>
+              <span>Please fill in all required fields (marked with **) to save</span>
             </div>
           }
           <div class="action-buttons">

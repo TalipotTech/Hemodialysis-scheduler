@@ -328,6 +328,10 @@ public class HDScheduleRepository : IHDScheduleRepository
     {
         using var connection = _context.CreateConnection();
         
+        // Get patient ID for the schedule
+        var getPatientQuery = "SELECT PatientID FROM HDSchedule WHERE ScheduleID = @ScheduleID";
+        var patientId = await connection.QueryFirstOrDefaultAsync<int?>(getPatientQuery, new { ScheduleID = scheduleId });
+        
         // Mark schedule as discharged
         var updateScheduleQuery = @"
             UPDATE HDSchedule SET 
@@ -337,9 +341,20 @@ public class HDScheduleRepository : IHDScheduleRepository
         
         var affected = await connection.ExecuteAsync(updateScheduleQuery, new { ScheduleID = scheduleId });
         
-        // Release bed in BedAssignments if exists
-        if (affected > 0)
+        // AUTO-INCREMENT: Update equipment counters and total dialysis count
+        if (affected > 0 && patientId.HasValue)
         {
+            var incrementCountersQuery = @"
+                UPDATE Patients
+                SET DialyserCount = DialyserCount + 1,
+                    BloodTubingCount = BloodTubingCount + 1,
+                    TotalDialysisCompleted = TotalDialysisCompleted + 1,
+                    UpdatedAt = datetime('now')
+                WHERE PatientID = @PatientID";
+            
+            await connection.ExecuteAsync(incrementCountersQuery, new { PatientID = patientId.Value });
+            
+            // Release bed in BedAssignments if exists
             var releaseBedQuery = @"
                 UPDATE BedAssignments SET 
                     IsActive = 0,
@@ -385,16 +400,22 @@ public class HDScheduleRepository : IHDScheduleRepository
 
     public async Task<int> CreateIntraDialyticRecordAsync(object record)
     {
+        using var connection = _context.CreateConnection();
+        
+        // Use all available monitoring columns
         var query = @"
             INSERT INTO IntraDialyticRecords 
             (PatientID, ScheduleID, SessionDate, TimeRecorded, BloodPressure, PulseRate,
-             Temperature, UFVolume, VenousPressure, Notes, CreatedAt)
+             Temperature, UFVolume, VenousPressure, ArterialPressure, BloodFlowRate, 
+             DialysateFlowRate, CurrentUFR, TMPPressure, Symptoms, Interventions, 
+             StaffInitials, RecordedBy, Notes, CreatedAt)
             VALUES 
             (@PatientID, @ScheduleID, @SessionDate, @TimeRecorded, @BloodPressure, @PulseRate,
-             @Temperature, @UFVolume, @VenousPressure, @Notes, datetime('now'));
+             @Temperature, @UFVolume, @VenousPressure, @ArterialPressure, @BloodFlowRate,
+             @DialysateFlowRate, @CurrentUFR, @TMPPressure, @Symptoms, @Interventions,
+             @StaffInitials, @RecordedBy, @Notes, datetime('now'));
             SELECT last_insert_rowid()";
         
-        using var connection = _context.CreateConnection();
         return await connection.QuerySingleAsync<int>(query, record);
     }
 
@@ -549,6 +570,15 @@ public class HDScheduleRepository : IHDScheduleRepository
                 Temperature,
                 UFVolume,
                 VenousPressure,
+                ArterialPressure,
+                BloodFlowRate,
+                DialysateFlowRate,
+                CurrentUFR,
+                TMPPressure,
+                Symptoms,
+                Interventions,
+                StaffInitials,
+                RecordedBy,
                 Notes,
                 CreatedAt
             FROM IntraDialyticRecords 

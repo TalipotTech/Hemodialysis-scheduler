@@ -62,6 +62,31 @@
           </div>
         </div>
 
+        <!-- Patient Information -->
+        <div class="section">
+          <h3><mat-icon>person</mat-icon> Patient Information</h3>
+          <table class="data-table">
+            <tr>
+              <td class="label">Patient Name:</td>
+              <td class="value">{{ sessionData.sessionInfo?.patientName || 'N/A' }}</td>
+              <td class="label">Patient ID:</td>
+              <td class="value">{{ sessionData.sessionInfo?.patientID || 'N/A' }}</td>
+            </tr>
+            <tr>
+              <td class="label">HD Cycle:</td>
+              <td class="value">{{ sessionData.sessionInfo?.hdCycle || 'N/A' }}</td>
+              <td class="label">HD Unit Number:</td>
+              <td class="value">{{ sessionData.sessionInfo?.hdUnitNumber || 'N/A' }}</td>
+            </tr>
+            <tr>
+              <td class="label">Dry Weight:</td>
+              <td class="value">{{ sessionData.sessionInfo?.dryWeight || 'N/A' }} kg</td>
+              <td class="label">Weight Gain:</td>
+              <td class="value">{{ sessionData.sessionInfo?.weightGain || 'N/A' }} kg</td>
+            </tr>
+          </table>
+        </div>
+
         <!-- Complete Session Data in Table Format -->
         <div class="section">
           <h3><mat-icon>medication</mat-icon> Prescription & Treatment Plan</h3>
@@ -73,17 +98,46 @@
               <td class="value">{{ sessionData.sessionInfo?.dialyserModel || 'N/A' }}</td>
             </tr>
             <tr>
+              <td class="label">Dialyser Reuse Count:</td>
+              <td class="value">{{ sessionData.sessionInfo?.dialyserReuseCount || 'N/A' }}</td>
+              <td class="label">Blood Tubing Reuse:</td>
+              <td class="value">{{ sessionData.sessionInfo?.bloodTubingReuse || 'N/A' }}</td>
+            </tr>
+            <tr>
               <td class="label">Prescribed Duration:</td>
               <td class="value">{{ sessionData.sessionInfo?.prescribedDuration || 'N/A' }} hours</td>
               <td class="label">UF Goal:</td>
               <td class="value">{{ sessionData.sessionInfo?.ufGoal || 'N/A' }} L</td>
             </tr>
             <tr>
-              <td class="label">Dialysate:</td>
+              <td class="label">Total UF Achieved:</td>
+              <td class="value">{{ sessionData.sessionInfo?.totalUFAchieved || 'N/A' }} L</td>
+              <td class="label">Total Fluid Removed:</td>
+              <td class="value">{{ sessionData.sessionInfo?.totalFluidRemoved || 'N/A' }} L</td>
+            </tr>
+            <tr>
+              <td class="label">Dialysate Prescription:</td>
               <td class="value">{{ sessionData.sessionInfo?.dialysatePrescription || 'N/A' }}</td>
-              <td class="label">Blood Flow Rate:</td>
+              <td class="label">Prescribed BFR:</td>
               <td class="value">{{ sessionData.sessionInfo?.prescribedBFR || 'N/A' }} mL/min</td>
             </tr>
+            <tr>
+              <td class="label">Actual BFR:</td>
+              <td class="value">{{ sessionData.sessionInfo?.actualBFR || 'N/A' }} mL/min</td>
+              <td class="label">Start Time:</td>
+              <td class="value">{{ sessionData.sessionInfo?.startTime || sessionData.sessionInfo?.sessionStartTime || 'N/A' }}</td>
+            </tr>
+            <tr>
+              <td class="label">HD Start Date:</td>
+              <td class="value" colspan="3">{{ sessionData.sessionInfo?.hdStartDate | date:'medium' }}</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Vascular Access Information -->
+        <div class="section">
+          <h3><mat-icon>bloodtype</mat-icon> Vascular Access Information</h3>
+          <table class="data-table">
             <tr>
               <td class="label">Access Type:</td>
               <td class="value">{{ sessionData.sessionInfo?.accessType || 'N/A' }}</td>
@@ -91,10 +145,37 @@
               <td class="value">{{ sessionData.sessionInfo?.accessLocation || 'N/A' }}</td>
             </tr>
             <tr>
-              <td class="label">Dry Weight:</td>
-              <td class="value">{{ sessionData.sessionInfo?.dryWeight || 'N/A' }} kg</td>
-              <td class="label">Start Time:</td>
-              <td class="value">{{ sessionData.sessionInfo?.startTime || sessionData.sessionInfo?.sessionStartTime || 'N/A' }}</td>
+              <td class="label">Access Status (Pre):</td>
+              <td class="value">{{ sessionData.sessionInfo?.accessStatus || 'N/A' }}</td>
+              <td class="label">Access Bleeding Time:</td>
+              <td class="value">{{ sessionData.sessionInfo?.accessBleedingTime || 'N/A' }} min</td>
+            </tr>
+            <tr>
+              <td class="label">Post-Access Status:</td>
+              <td class="value" colspan="3">{{ sessionData.sessionInfo?.postAccessStatus || 'N/A' }}</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Anticoagulation Details -->
+        <div class="section">
+          <h3><mat-icon>science</mat-icon> Anticoagulation</h3>
+          <table class="data-table">
+            <tr>
+              <td class="label">Anticoagulation Type:</td>
+              <td class="value">{{ sessionData.sessionInfo?.anticoagulationType || 'N/A' }}</td>
+              <td class="label">Syringe Type:</td>
+              <td class="value">{{ sessionData.sessionInfo?.syringeType || 'N/A' }}</td>
+            </tr>
+            <tr>
+              <td class="label">Heparin Dose:</td>
+              <td class="value">{{ sessionData.sessionInfo?.heparinDose || 'N/A' }} units</td>
+              <td class="label">Bolus Dose:</td>
+              <td class="value">{{ sessionData.sessionInfo?.bolusDose || 'N/A' }} units</td>
+            </tr>
+            <tr>
+              <td class="label">Heparin Infusion Rate:</td>
+              <td class="value" colspan="3">{{ sessionData.sessionInfo?.heparinInfusionRate || 'N/A' }} units/hr</td>
             </tr>
           </table>
         </div>
@@ -112,12 +193,12 @@
             <tr>
               <td class="label">Pre-Temperature:</td>
               <td class="value">{{ sessionData.sessionInfo?.preTemperature || 'N/A' }}°C</td>
-              <td class="label">Access Bleeding Time:</td>
-              <td class="value">{{ sessionData.sessionInfo?.accessBleedingTime || 'N/A' }}</td>
-            </tr>
-            <tr>
-              <td class="label">Access Status:</td>
-              <td class="value" colspan="3">{{ sessionData.sessionInfo?.accessStatus || 'N/A' }}</td>
+              <td class="label">Blood Test Done:</td>
+              <td class="value">
+                <mat-chip [color]="sessionData.sessionInfo?.bloodTestDone ? 'accent' : 'basic'" highlighted>
+                  {{ sessionData.sessionInfo?.bloodTestDone ? 'Yes' : 'No' }}
+                </mat-chip>
+              </td>
             </tr>
             @if (sessionData.sessionInfo?.complications) {
               <tr>
@@ -130,43 +211,82 @@
 
         <!-- Intra-Dialytic Monitoring -->
         <div class="section highlight-blue">
-          <h3><mat-icon>monitor</mat-icon> Intra-Dialytic Monitoring</h3>
-          <table class="data-table">
-            <tr>
-              <td class="label">Monitoring Time:</td>
-              <td class="value">{{ sessionData.sessionInfo?.monitoringTime || 'N/A' }}</td>
-              <td class="label">Heart Rate:</td>
-              <td class="value">{{ sessionData.sessionInfo?.heartRate || 'N/A' }} bpm</td>
-            </tr>
-            <tr>
-              <td class="label">Actual BFR:</td>
-              <td class="value">{{ sessionData.sessionInfo?.actualBFR || 'N/A' }} mL/min</td>
-              <td class="label">Venous Pressure:</td>
-              <td class="value">{{ sessionData.sessionInfo?.venousPressure || 'N/A' }} mmHg</td>
-            </tr>
-            <tr>
-              <td class="label">Arterial Pressure:</td>
-              <td class="value">{{ sessionData.sessionInfo?.arterialPressure || 'N/A' }} mmHg</td>
-              <td class="label">Current UFR:</td>
-              <td class="value">{{ sessionData.sessionInfo?.currentUFR || 'N/A' }} L/hr</td>
-            </tr>
-            <tr>
-              <td class="label">Total UF Achieved:</td>
-              <td class="value">{{ sessionData.sessionInfo?.totalUFAchieved || 'N/A' }} L</td>
-              <td class="label">TMP Pressure:</td>
-              <td class="value">{{ sessionData.sessionInfo?.tmpPressure || 'N/A' }} mmHg</td>
-            </tr>
-            <tr>
-              <td class="label">Staff Initials:</td>
-              <td class="value" colspan="3">{{ sessionData.sessionInfo?.staffInitials || 'N/A' }}</td>
-            </tr>
-            @if (sessionData.sessionInfo?.interventions) {
-              <tr>
-                <td class="label">Interventions:</td>
-                <td class="value" colspan="3">{{ sessionData.sessionInfo.interventions }}</td>
-              </tr>
-            }
-          </table>
+          <h3><mat-icon>monitor</mat-icon> Intra-Dialytic Monitoring Records</h3>
+          
+          @if (sessionData.intraDialyticRecords && sessionData.intraDialyticRecords.length > 0) {
+            <div class="monitoring-records">
+              @for (record of sessionData.intraDialyticRecords; track record.recordID || record.RecordID; let i = $index) {
+                <div class="monitoring-entry">
+                  <h4>
+                    <mat-icon>schedule</mat-icon>
+                    Reading #{{ i + 1 }} - {{ (record.timeRecorded || record.TimeRecorded) | date:'short' }}
+                  </h4>
+                  <table class="data-table">
+                    <tr>
+                      <td class="label">Blood Pressure:</td>
+                      <td class="value">{{ (record.bloodPressure || record.BloodPressure) || 'N/A' }}</td>
+                      <td class="label">Heart Rate:</td>
+                      <td class="value">{{ (record.pulseRate || record.PulseRate || record.heartRate || record.HeartRate) || 'N/A' }} bpm</td>
+                    </tr>
+                    <tr>
+                      <td class="label">Temperature:</td>
+                      <td class="value">{{ (record.temperature || record.Temperature) || 'N/A' }}°C</td>
+                      <td class="label">UF Volume:</td>
+                      <td class="value">{{ (record.ufVolume || record.UFVolume) || 'N/A' }} L</td>
+                    </tr>
+                    <tr>
+                      <td class="label">Venous Pressure:</td>
+                      <td class="value">{{ (record.venousPressure || record.VenousPressure) || 'N/A' }} mmHg</td>
+                      <td class="label">Arterial Pressure:</td>
+                      <td class="value">{{ (record.arterialPressure || record.ArterialPressure) || 'N/A' }} mmHg</td>
+                    </tr>
+                    <tr>
+                      <td class="label">Blood Flow Rate (BFR):</td>
+                      <td class="value">{{ (record.bloodFlowRate || record.BloodFlowRate) || 'N/A' }} mL/min</td>
+                      <td class="label">Current UFR:</td>
+                      <td class="value">{{ (record.currentUFR || record.CurrentUFR) || 'N/A' }} mL/hr</td>
+                    </tr>
+                    <tr>
+                      <td class="label">TMP Pressure:</td>
+                      <td class="value">{{ (record.tmpPressure || record.TMPPressure) || 'N/A' }} mmHg</td>
+                      <td class="label">Staff Initials:</td>
+                      <td class="value">{{ (record.staffInitials || record.StaffInitials) || 'N/A' }}</td>
+                    </tr>
+                    @if ((record.symptoms || record.Symptoms)) {
+                      <tr>
+                        <td class="label">Symptoms:</td>
+                        <td class="value" colspan="3">{{ record.symptoms || record.Symptoms }}</td>
+                      </tr>
+                    }
+                    @if ((record.interventions || record.Interventions)) {
+                      <tr>
+                        <td class="label">Interventions:</td>
+                        <td class="value" colspan="3">{{ record.interventions || record.Interventions }}</td>
+                      </tr>
+                    }
+                    @if ((record.notes || record.Notes)) {
+                      <tr>
+                        <td class="label">Additional Notes:</td>
+                        <td class="value" colspan="3">{{ record.notes || record.Notes }}</td>
+                      </tr>
+                    }
+                    @if ((record.recordedBy || record.RecordedBy)) {
+                      <tr>
+                        <td class="label">Recorded By:</td>
+                        <td class="value" colspan="3">{{ record.recordedBy || record.RecordedBy }}</td>
+                      </tr>
+                    }
+                  </table>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="no-data-message">
+              <mat-icon>info</mat-icon>
+              <p>No monitoring records were recorded during this treatment session.</p>
+              <p class="hint">Monitoring entries are added during treatment using the "New Monitoring Entry" button.</p>
+            </div>
+          }
         </div>
 
         <!-- Post-Dialysis Medications -->
@@ -238,28 +358,67 @@
           </table>
         </div>
 
-        <!-- Post-Dialysis Vitals -->
+        <!-- Post-Dialysis Assessment -->
         <div class="section">
           <h3><mat-icon>assignment_turned_in</mat-icon> Post-Dialysis Assessment</h3>
           <table class="data-table">
             <tr>
               <td class="label">Post-Weight:</td>
-              <td class="value">{{ sessionData.sessionLog?.postWeight || 'N/A' }} kg</td>
+              <td class="value">{{ sessionData.sessionInfo?.postWeight || sessionData.sessionLog?.postWeight || 'N/A' }} kg</td>
               <td class="label">Weight Loss:</td>
-              <td class="value">{{ sessionData.sessionLog?.weightLoss || 'N/A' }} kg</td>
+              <td class="value">{{ sessionData.sessionInfo?.weightLoss || sessionData.sessionLog?.weightLoss || 'N/A' }} kg</td>
             </tr>
             <tr>
               <td class="label">Post-BP:</td>
-              <td class="value">{{ sessionData.sessionLog?.bloodPressurePost || 'N/A' }}</td>
-              <td class="label">Temperature:</td>
-              <td class="value">{{ sessionData.sessionLog?.temperature || 'N/A' }}°C</td>
+              <td class="value">{{ sessionData.sessionInfo?.bloodPressurePost || sessionData.sessionLog?.bloodPressurePost || 'N/A' }}</td>
+              <td class="label">Post-SBP:</td>
+              <td class="value">{{ sessionData.sessionInfo?.postSBP || 'N/A' }} mmHg</td>
             </tr>
-            @if (sessionData.sessionLog?.notes) {
+            <tr>
+              <td class="label">Post-DBP:</td>
+              <td class="value">{{ sessionData.sessionInfo?.postDBP || 'N/A' }} mmHg</td>
+              <td class="label">Post-HR:</td>
+              <td class="value">{{ sessionData.sessionInfo?.postHR || 'N/A' }} bpm</td>
+            </tr>
+            <tr>
+              <td class="label">Temperature:</td>
+              <td class="value">{{ sessionData.sessionInfo?.temperature || sessionData.sessionLog?.temperature || 'N/A' }}°C</td>
+              <td class="label">Session Status:</td>
+              <td class="value">
+                <mat-chip [color]="sessionData.sessionInfo?.sessionStatus === 'Completed' ? 'accent' : 'primary'" highlighted>
+                  {{ sessionData.sessionInfo?.sessionStatus || 'Active' }}
+                </mat-chip>
+              </td>
+            </tr>
+            @if (sessionData.sessionInfo?.notes || sessionData.sessionLog?.notes) {
               <tr>
                 <td class="label">Notes:</td>
-                <td class="value" colspan="3">{{ sessionData.sessionLog.notes }}</td>
+                <td class="value" colspan="3">{{ sessionData.sessionInfo?.notes || sessionData.sessionLog?.notes }}</td>
               </tr>
             }
+          </table>
+        </div>
+
+        <!-- Treatment Timestamps -->
+        <div class="section">
+          <h3><mat-icon>access_time</mat-icon> Treatment Timestamps</h3>
+          <table class="data-table">
+            <tr>
+              <td class="label">Created At:</td>
+              <td class="value">{{ sessionData.sessionInfo?.createdAt | date:'medium' }}</td>
+              <td class="label">Updated At:</td>
+              <td class="value">{{ sessionData.sessionInfo?.updatedAt | date:'medium' }}</td>
+            </tr>
+            <tr>
+              <td class="label">Is Moved to History:</td>
+              <td class="value">
+                <mat-chip [color]="sessionData.sessionInfo?.isMovedToHistory ? 'accent' : 'basic'" highlighted>
+                  {{ sessionData.sessionInfo?.isMovedToHistory ? 'Yes' : 'No' }}
+                </mat-chip>
+              </td>
+              <td class="label">Monitoring Records:</td>
+              <td class="value">{{ sessionData.sessionInfo?.intraDialyticRecordsCount || 0 }}</td>
+            </tr>
           </table>
         </div>
       }

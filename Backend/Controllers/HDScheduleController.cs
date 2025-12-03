@@ -249,6 +249,8 @@ public class HDScheduleController : ControllerBase
                 DryWeight = request.DryWeight,
                 HDStartDate = request.HDStartDate,
                 HDCycle = request.HDCycle,
+                HDFrequency = request.HDFrequency,
+                SessionsPerWeek = request.SessionsPerWeek,
                 WeightGain = request.WeightGain,
                 DialyserType = request.DialyserType,
                 DialyserModel = request.DialyserModel,
@@ -373,20 +375,27 @@ public class HDScheduleController : ControllerBase
             _logger.LogInformation("HD Schedule created successfully with ID {ScheduleId} by {Username}", scheduleId, username);
             
             // Generate recurring sessions if HD Cycle is specified
+            _logger.LogInformation("Checking HD Cycle for recurring sessions: HDCycle={HDCycle}", request.HDCycle);
             if (!string.IsNullOrEmpty(request.HDCycle))
             {
                 try
                 {
+                    _logger.LogInformation("🔄 Generating recurring sessions for HDCycle={HDCycle}, ScheduleId={ScheduleId}", 
+                        request.HDCycle, scheduleId);
                     schedule.ScheduleID = scheduleId; // Set the ID for the base session
                     var recurringSessionIds = await _recurringSessionService.GenerateRecurringSessions(schedule, weeksAhead: 1);
-                    _logger.LogInformation("Created {Count} recurring sessions for schedule {ScheduleId}", 
-                        recurringSessionIds.Count, scheduleId);
+                    _logger.LogInformation("✅ Created {Count} recurring sessions for schedule {ScheduleId}: {SessionIds}", 
+                        recurringSessionIds.Count, scheduleId, string.Join(", ", recurringSessionIds));
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to create recurring sessions for schedule {ScheduleId}", scheduleId);
+                    _logger.LogError(ex, "❌ Failed to create recurring sessions for schedule {ScheduleId}", scheduleId);
                     // Don't fail the main request if recurring creation fails
                 }
+            }
+            else
+            {
+                _logger.LogInformation("⏭️ No HD Cycle specified, skipping recurring session generation");
             }
             
             return CreatedAtAction(nameof(GetSchedule), new { id = scheduleId }, 
@@ -833,6 +842,46 @@ public class HDScheduleController : ControllerBase
             _logger.LogError(ex, "Error creating monitoring record");
             return StatusCode(500, ApiResponse<int>.ErrorResponse(
                 "An error occurred while saving the monitoring record"));
+        }
+    }
+
+    /// <summary>
+    /// Force discharge a patient session (mark as complete)
+    /// </summary>
+    [HttpPost("force-discharge/{scheduleId}")]
+    [Authorize(Roles = "Admin,Doctor,Nurse")]
+    public async Task<ActionResult<ApiResponse<bool>>> ForceDischargeSession(int scheduleId)
+    {
+        try
+        {
+            var schedule = await _scheduleRepository.GetByIdAsync(scheduleId);
+            if (schedule == null)
+            {
+                return NotFound(ApiResponse<bool>.ErrorResponse("Schedule not found"));
+            }
+
+            if (schedule.IsDischarged)
+            {
+                return BadRequest(ApiResponse<bool>.ErrorResponse("Session is already discharged"));
+            }
+
+            // Mark session as discharged
+            var result = await _scheduleRepository.DischargeAsync(scheduleId);
+            
+            if (result)
+            {
+                _logger.LogInformation("Session {ScheduleId} force discharged successfully", scheduleId);
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "Session discharged successfully"));
+            }
+            else
+            {
+                return StatusCode(500, ApiResponse<bool>.ErrorResponse("Failed to discharge session"));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error force discharging session {ScheduleId}", scheduleId);
+            return StatusCode(500, ApiResponse<bool>.ErrorResponse("An error occurred while discharging the session"));
         }
     }
 

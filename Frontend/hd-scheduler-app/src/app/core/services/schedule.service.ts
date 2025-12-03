@@ -83,6 +83,7 @@ export class ScheduleService {
   }
 
   updateSchedule(scheduleId: number, scheduleData: any): Observable<ApiResponse<boolean>> {
+    // Backend expects data wrapped in 'request' object
     return this.http.put<ApiResponse<boolean>>(`${environment.apiUrl}/hdschedule/${scheduleId}`, scheduleData);
   }
 
@@ -136,5 +137,19 @@ export class ScheduleService {
 
   deleteIntraDialyticRecord(recordId: number): Observable<ApiResponse<boolean>> {
     return this.http.delete<ApiResponse<boolean>>(`${environment.apiUrl}/hdschedule/monitoring/${recordId}`);
+  }
+
+  // ==================== PATIENT STATISTICS ====================
+  
+  getPatientStatistics(date?: string): Observable<ApiResponse<any>> {
+    let params = new HttpParams();
+    if (date) {
+      params = params.set('date', date);
+    }
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/patient-statistics`, { params });
+  }
+
+  getAutoDischargeInfo(): Observable<ApiResponse<any>> {
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/auto-discharge-info`);
   }
 }

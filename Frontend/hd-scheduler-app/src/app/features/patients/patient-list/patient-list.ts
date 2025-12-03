@@ -11,6 +11,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatTabsModule } from '@angular/material/tabs';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { FormsModule } from '@angular/forms';
 import { PatientService } from '../../../core/services/patient.service';
 import { ScheduleService } from '../../../core/services/schedule.service';
@@ -31,7 +34,10 @@ import { Patient } from '../../../core/models/patient.model';
     MatInputModule,
     MatChipsModule,
     MatTooltipModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatTabsModule,
+    MatExpansionModule,
+    MatProgressBarModule
   ],
   templateUrl: './patient-list.html',
   styleUrl: './patient-list.scss',
@@ -42,6 +48,14 @@ export class PatientList implements OnInit {
   loading = false;
   errorMessage = '';
   searchTerm = '';
+  
+  // Discharged patients tab
+  selectedTabIndex = 0;
+  dischargedPatients: Patient[] = [];
+  filteredDischargedPatients: Patient[] = [];
+  loadingDischarged = false;
+  dischargedErrorMessage = '';
+  dischargedSearchTerm = '';
   
   // Role-based access control
   canEdit = false;
@@ -110,11 +124,13 @@ export class PatientList implements OnInit {
     this.loading = true;
     this.errorMessage = '';
     
-    this.patientService.getAllPatients().subscribe({
+    // Load only active patients with non-discharged sessions
+    this.patientService.getActivePatients().subscribe({
       next: (response) => {
         if (response.success && response.data) {
-          this.patients = response.data;
-          this.filteredPatients = response.data;
+          // Filter out patients with discharged sessions
+          this.patients = response.data.filter(p => !p.isDischarged);
+          this.filteredPatients = this.patients;
         } else {
           this.errorMessage = response.message || 'Failed to load patients';
         }
@@ -185,29 +201,75 @@ export class PatientList implements OnInit {
   }
 
   onDischargePatient(patient: Patient): void {
-    if (!patient.scheduleID) {
-      alert('No active session found for this patient');
-      return;
-    }
-
-    if (confirm(`Mark ${patient.name}'s dialysis session as complete?`)) {
+    // Allow discharge even without active session
+    const message = patient.scheduleID 
+      ? `Mark ${patient.name}'s current dialysis session as complete and discharge?`
+      : `Discharge ${patient.name} without an active session?`;
+    
+    if (confirm(message)) {
       this.loading = true;
-      this.scheduleService.forceDischargeSession(patient.scheduleID).subscribe({
-        next: (response) => {
-          if (response.success) {
-            alert('Session marked as complete successfully');
-            this.loadPatients();
-          } else {
-            this.errorMessage = response.message || 'Failed to complete session';
+      
+      if (patient.scheduleID) {
+        // If there's an active session, complete it first
+        this.scheduleService.forceDischargeSession(patient.scheduleID).subscribe({
+          next: (response) => {
+            if (response.success) {
+              this.snackBar.open('Patient session completed and discharged successfully', 'Close', {
+                duration: 3000
+              });
+              // Small delay to ensure database transaction completes
+              setTimeout(() => {
+                // Reload both active and discharged patient lists
+                this.loadPatients();
+                // Always load discharged patients to ensure the tab is updated
+                this.loadDischargedPatients();
+              }, 500);
+            } else {
+              this.snackBar.open(response.message || 'Failed to complete session', 'Close', {
+                duration: 3000
+              });
+              this.loading = false;
+            }
+          },
+          error: (error: any) => {
+            console.error('Error completing session:', error);
+            this.snackBar.open('Failed to complete session. Please try again.', 'Close', {
+              duration: 3000
+            });
             this.loading = false;
           }
-        },
-        error: (error) => {
-          console.error('Error completing session:', error);
-          this.errorMessage = 'Failed to complete session. Please try again.';
-          this.loading = false;
-        }
-      });
+        });
+      } else {
+        // No active session, just mark patient as discharged
+        this.patientService.dischargePatient(patient.patientID).subscribe({
+          next: (response: any) => {
+            if (response.success) {
+              this.snackBar.open('Patient discharged successfully', 'Close', {
+                duration: 3000
+              });
+              // Small delay to ensure database transaction completes
+              setTimeout(() => {
+                // Reload both active and discharged patient lists
+                this.loadPatients();
+                // Always load discharged patients to ensure the tab is updated
+                this.loadDischargedPatients();
+              }, 500);
+            } else {
+              this.snackBar.open(response.message || 'Failed to discharge patient', 'Close', {
+                duration: 3000
+              });
+              this.loading = false;
+            }
+          },
+          error: (error: any) => {
+            console.error('Error discharging patient:', error);
+            this.snackBar.open('Failed to discharge patient. Please try again.', 'Close', {
+              duration: 3000
+            });
+            this.loading = false;
+          }
+        });
+      }
     }
   }
 
@@ -264,5 +326,66 @@ export class PatientList implements OnInit {
       default:
         return 'status-active';
     }
+  }
+
+  onTabChange(index: number): void {
+    this.selectedTabIndex = index;
+    if (index === 1) {
+      // Load discharged patients when switching to History tab
+      this.loadDischargedPatients();
+    }
+  }
+
+  loadDischargedPatients(): void {
+    this.loadingDischarged = true;
+    this.dischargedErrorMessage = '';
+    
+    console.log('Loading discharged patients...');
+    
+    // Load all patients including inactive and filter for discharged ones
+    this.patientService.getAllIncludingInactive().subscribe({
+      next: (response) => {
+        console.log('Discharged patients response:', response);
+        if (response.success && response.data) {
+          console.log('Total patients received:', response.data.length);
+          console.log('Patient IsActive values:', response.data.map(p => ({ id: p.patientID, name: p.name, isActive: p.isActive })));
+          
+          // Filter patients who are inactive (IsActive = false or 0)
+          // Handle both boolean false and numeric 0 by converting to boolean
+          this.dischargedPatients = response.data.filter(
+            (p: Patient) => !p.isActive
+          );
+          console.log('Filtered discharged patients:', this.dischargedPatients.length);
+          console.log('Discharged patients:', this.dischargedPatients);
+          this.filteredDischargedPatients = this.dischargedPatients;
+        } else {
+          this.dischargedErrorMessage = 'Failed to load discharged patients';
+        }
+        this.loadingDischarged = false;
+      },
+      error: (error) => {
+        console.error('Error loading discharged patients:', error);
+        this.dischargedErrorMessage = 'Failed to load discharged patients. Please try again.';
+        this.loadingDischarged = false;
+      }
+    });
+  }
+
+  onDischargedSearch(): void {
+    const term = this.dischargedSearchTerm.toLowerCase().trim();
+    if (!term) {
+      this.filteredDischargedPatients = this.dischargedPatients;
+      return;
+    }
+    
+    this.filteredDischargedPatients = this.dischargedPatients.filter(patient =>
+      patient.name.toLowerCase().includes(term) ||
+      (patient.mrn && patient.mrn.toLowerCase().includes(term)) ||
+      patient.contactNumber.includes(term)
+    );
+  }
+
+  viewFullHistory(patientId: number): void {
+    this.router.navigate(['/patients', patientId, 'history']);
   }
 }

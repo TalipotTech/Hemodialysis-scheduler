@@ -21,8 +21,12 @@ public class TreatmentSessionSummary
     public int? BedNumber { get; set; }
     
     // Prescription
+    public string? HDCycle { get; set; }
     public string? DialyserType { get; set; }
     public string? DialyserModel { get; set; }
+    public int? DialyserReuseCount { get; set; }
+    public int? BloodTubingReuse { get; set; }
+    public int? HDUnitNumber { get; set; }
     public decimal? PrescribedDuration { get; set; }
     public decimal? UFGoal { get; set; }
     public string? DialysatePrescription { get; set; }
@@ -30,6 +34,15 @@ public class TreatmentSessionSummary
     public string? AccessType { get; set; }
     public string? AccessLocation { get; set; }
     public string? DryWeight { get; set; }
+    public decimal? WeightGain { get; set; }
+    public DateTime? HDStartDate { get; set; }
+    
+    // Anticoagulation
+    public string? AnticoagulationType { get; set; }
+    public decimal? HeparinDose { get; set; }
+    public string? SyringeType { get; set; }
+    public decimal? BolusDose { get; set; }
+    public decimal? HeparinInfusionRate { get; set; }
     
     // Session Timing
     public string? StartTime { get; set; }
@@ -83,6 +96,17 @@ public class TreatmentSessionSummary
     public string? BloodPressurePost { get; set; }
     public decimal? Temperature { get; set; }
     
+    // Post-Dialysis Vitals
+    public int? PostSBP { get; set; }
+    public int? PostDBP { get; set; }
+    public int? PostHR { get; set; }
+    public string? PostAccessStatus { get; set; }
+    public decimal? TotalFluidRemoved { get; set; }
+    
+    // Additional Session Info
+    public string? SessionStatus { get; set; }
+    public bool? BloodTestDone { get; set; }
+    
     // Related Records Count
     public int IntraDialyticRecordsCount { get; set; }
     public int MedicationsCount { get; set; }
@@ -112,7 +136,7 @@ public class TreatmentStatistics
 public class DetailedSessionView
 {
     public TreatmentSessionSummary? SessionInfo { get; set; }
-    public List<IntraDialyticRecord> IntraDialyticRecords { get; set; } = new();
+    public List<object> IntraDialyticRecords { get; set; } = new(); // Using object to support dynamic mapping
     public List<PostDialysisMedication> Medications { get; set; } = new();
     public HDLog? SessionLog { get; set; }
 }

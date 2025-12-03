@@ -108,8 +108,9 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<EquipmentUsageService>();
 builder.Services.AddScoped<IRecurringSessionService, RecurringSessionService>();
 
-// Register background service for auto-moving completed sessions to history
+// Register background services
 builder.Services.AddHostedService<SessionHistoryBackgroundService>();
+builder.Services.AddHostedService<SessionCompletionService>(); // Auto-marks sessions as Ready-For-Discharge
 
 var app = builder.Build();
 
@@ -118,6 +119,16 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 if (connectionString != null)
 {
     DatabaseInitializer.Initialize(connectionString);
+    
+    // Apply migration to add HD treatment fields to Patients table
+    try
+    {
+        PatientFieldsMigration.ApplyMigration(connectionString);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"⚠️  Migration already applied or error: {ex.Message}");
+    }
 }
 
 // Configure the HTTP request pipeline

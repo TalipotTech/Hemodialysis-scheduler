@@ -1,39 +1,5 @@
 <div class="hd-session-schedule-container">
   <mat-card>
-    <mat-card-header>
-      <mat-card-title>
-        <div class="header-row">
-          <div class="header-left">
-            <button mat-icon-button (click)="goHome()" class="home-button" matTooltip="Home">
-              <mat-icon>home</mat-icon>
-            </button>
-            <button mat-icon-button (click)="goBack()" class="back-button" matTooltip="Back">
-              <mat-icon>arrow_back</mat-icon>
-            </button>
-            <h2>{{ isEditMode ? 'Edit HD Treatment Session' : 'Schedule HD Treatment Session' }}</h2>
-            @if (isEditMode) {
-              <span class="edit-mode-badge">EDIT MODE - Auto-saving enabled</span>
-            }
-            <!-- Start Workflow button removed -->
-          </div>
-          
-          <!-- Auto-save indicator for new sessions -->
-          @if (!isEditMode && saveStatus !== 'idle') {
-            <div class="auto-save-indicator" [class.saving]="saveStatus === 'saving'" [class.saved]="saveStatus === 'saved'">
-              @if (saveStatus === 'saving') {
-                <mat-spinner diameter="16"></mat-spinner>
-                <span>Saving draft...</span>
-              }
-              @if (saveStatus === 'saved') {
-                <mat-icon>check_circle</mat-icon>
-                <span>Saved {{ lastSavedTime | date:'shortTime' }}</span>
-              }
-            </div>
-          }
-        </div>
-      </mat-card-title>
-    </mat-card-header>
-
     <mat-card-content>
       @if (loading && !patient) {
         <div class="loading-container">
@@ -48,9 +14,51 @@
         </div>
       }
 
+      <!-- Authentication Warning Banner -->
+      @if (!isAuthenticated) {
+        <div class="auth-warning-banner">
+          <mat-icon class="warning-icon">lock</mat-icon>
+          <div class="warning-content">
+            <h3>🔐 Authentication Required</h3>
+            <p><strong>You must log in to save HD session data.</strong></p>
+            <p>Any changes you make will NOT be saved until you authenticate.</p>
+            <button mat-raised-button color="primary" (click)="goToLogin()">
+              <mat-icon>login</mat-icon>
+              Log In Now
+            </button>
+          </div>
+        </div>
+      }
+
       @if (patient) {
-        <!-- Enhanced Patient Info Card -->
-        <div class="patient-info-card">
+        <!-- Combined Patient Info Card with Auto-filled Fields -->
+        <div class="patient-info-card-combined">
+          <!-- Single Navigation Header -->
+          <div class="card-navigation">
+            <div class="nav-left">
+              <button mat-icon-button (click)="goHome()" class="home-button" matTooltip="Home">
+                <mat-icon>home</mat-icon>
+              </button>
+              <button mat-icon-button (click)="goBack()" class="back-button" matTooltip="Back">
+                <mat-icon>arrow_back</mat-icon>
+              </button>
+              <h1 class="card-title">HD Session Schedule</h1>
+            </div>
+            
+            <!-- Auto-save indicator -->
+            <div class="auto-save-indicator" [class.saving]="saveStatus === 'saving'" [class.saved]="saveStatus === 'saved'" [class.visible]="saveStatus !== 'idle'">
+              @if (saveStatus === 'saving') {
+                <mat-spinner diameter="16"></mat-spinner>
+                <span>Saving...</span>
+              }
+              @if (saveStatus === 'saved') {
+                <mat-icon>check_circle</mat-icon>
+                <span>Saved</span>
+              }
+            </div>
+          </div>
+
+          <!-- Patient Header Section -->
           <div class="patient-header">
             <div class="patient-name-section">
               <mat-icon class="person-icon">person</mat-icon>
@@ -59,47 +67,53 @@
                 <p class="patient-subtitle">MRN: {{ patient.mrn || 'Not Assigned' }} | Age: {{ patient.age ? (patient.age + ' years') : 'N/A' }} | {{ patient.gender || 'N/A' }}</p>
               </div>
             </div>
-            <!-- Removed View History button -->
           </div>
           
-          <div class="patient-details-grid">
-            <div class="detail-item">
-              <span class="detail-label">Contact Number:</span>
-              <span class="detail-value">{{ patient.contactNumber || 'N/A' }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">HD Cycle:</span>
-              <span class="detail-value">{{ patient.hdCycle || 'N/A' }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">HD Frequency:</span>
-              <span class="detail-value">{{ patient.hdFrequency ? patient.hdFrequency + 'x/week' : 'N/A' }}</span>
-            </div>
-            @if (patient.guardianName) {
-              <div class="detail-item">
-                <span class="detail-label">Guardian:</span>
-                <span class="detail-value">{{ patient.guardianName }}</span>
-              </div>
-            }
-            @if (patient.emergencyContact) {
-              <div class="detail-item">
-                <span class="detail-label">Emergency Contact:</span>
-                <span class="detail-value">{{ patient.emergencyContact }}</span>
-              </div>
-            }
-            @if (patient.assignedDoctorName) {
-              <div class="detail-item">
-                <span class="detail-label">Assigned Doctor:</span>
-                <span class="detail-value">{{ patient.assignedDoctorName }}</span>
-              </div>
-            }
-            @if (patient.assignedNurseName) {
-              <div class="detail-item">
-                <span class="detail-label">Assigned Nurse:</span>
-                <span class="detail-value">{{ patient.assignedNurseName }}</span>
-              </div>
-            }
+          <!-- Patient Details Table -->
+          <div class="patient-details-table-container">
+            <table class="patient-details-table">
+              <tbody>
+                <tr>
+                  <td class="label-cell">Contact Number</td>
+                  <td class="value-cell">{{ patient.contactNumber || 'N/A' }}</td>
+                  <td class="label-cell">HD Cycle</td>
+                  <td class="value-cell">{{ patient.hdCycle || 'N/A' }}</td>
+                </tr>
+                <tr>
+                  <td class="label-cell">Dry Weight</td>
+                  <td class="value-cell">{{ patient.dryWeight ? (patient.dryWeight + ' kg') : 'N/A' }}</td>
+                  <td class="label-cell">Sessions Per Week</td>
+                  <td class="value-cell">{{ patient.hdFrequency || 'N/A' }}</td>
+                </tr>
+                <tr>
+                  <td class="label-cell">Dialyser Type</td>
+                  <td class="value-cell">{{ patient.dialyserType || 'N/A' }}</td>
+                  <td class="label-cell">Dialyser Model</td>
+                  <td class="value-cell">{{ patient.dialyserModel || 'N/A' }}</td>
+                </tr>
+                <tr>
+                  <td class="label-cell">Prescribed BFR</td>
+                  <td class="value-cell">{{ patient.prescribedBFR ? (patient.prescribedBFR + ' mL/min') : 'N/A' }}</td>
+                  <td class="label-cell">Prescribed Duration</td>
+                  <td class="value-cell">{{ patient.prescribedDuration ? (patient.prescribedDuration + ' hours') : 'N/A' }}</td>
+                </tr>
+                <tr>
+                  <td class="label-cell">Dialysate</td>
+                  <td class="value-cell">{{ patient.dialysatePrescription || 'N/A' }}</td>
+                  <td class="label-cell">HD Start Date</td>
+                  <td class="value-cell">{{ patient.hdStartDate ? (patient.hdStartDate | date:'MMM d, y') : 'N/A' }}</td>
+                </tr>
+                <tr>
+                  <td class="label-cell">Guardian</td>
+                  <td class="value-cell">{{ patient.guardianName || 'N/A' }}</td>
+                  <td class="label-cell">Emergency Contact</td>
+                  <td class="value-cell">{{ patient.emergencyContact || 'N/A' }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
+
+
         </div>
 
         <!-- Patient History Expansion Panel -->
@@ -298,9 +312,12 @@
                 <div class="form-row">
                   <mat-form-field appearance="outline">
                     <mat-label>Treatment Date*</mat-label>
-                    <input matInput [matDatepicker]="picker" formControlName="treatmentDate" required>
+                    <input matInput [matDatepicker]="picker" formControlName="treatmentDate" [max]="today" required>
                     <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
                     <mat-datepicker #picker></mat-datepicker>
+                    <mat-error *ngIf="sessionForm.get('treatmentDate')?.hasError('matDatepickerMax')">
+                      Cannot select future dates
+                    </mat-error>
                   </mat-form-field>
 
                   <mat-form-field appearance="outline">
@@ -364,67 +381,6 @@
                 }
               </div>
 
-              <!-- Basic HD Info -->
-              <div class="section-card">
-                <h4>Basic HD Information</h4>
-                <div class="form-row">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Dry Weight (kg)*</mat-label>
-                    <input matInput type="number" formControlName="dryWeight" step="0.01" required>
-                    <mat-hint>Target weight after dialysis</mat-hint>
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>HD Start Date*</mat-label>
-                    <input matInput [matDatepicker]="hdStartPicker" formControlName="hdStartDate" required>
-                    <mat-datepicker-toggle matSuffix [for]="hdStartPicker"></mat-datepicker-toggle>
-                    <mat-datepicker #hdStartPicker></mat-datepicker>
-                    <mat-hint>When HD treatment began</mat-hint>
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>HD Cycle (Days Pattern)</mat-label>
-                    <mat-select formControlName="hdCycle" (selectionChange)="onHDCycleChange()">
-                      <mat-option value="">Not Set</mat-option>
-                      @for (cycle of hdCycles; track cycle.value) {
-                        <mat-option [value]="cycle.value">{{ cycle.label }}</mat-option>
-                      }
-                    </mat-select>
-                    <mat-hint>Select the weekly dialysis pattern</mat-hint>
-                  </mat-form-field>
-                  
-                  @if (sessionForm.get('hdCycle')?.value === 'Custom') {
-                    <mat-form-field appearance="outline">
-                      <mat-label>Custom Days</mat-label>
-                      <input matInput formControlName="hdCustomDays" placeholder="e.g., Mon-Wed-Fri or Tue-Thu-Sat">
-                      <mat-hint>Enter the specific days for dialysis (e.g., Mon-Wed-Fri)</mat-hint>
-                    </mat-form-field>
-                  }
-                </div>
-
-                <div class="form-row">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Sessions Per Week</mat-label>
-                    <input matInput formControlName="hdFrequency" type="number" min="1" max="7" placeholder="e.g., 3">
-                    <mat-hint>
-                      @if (sessionForm.get('hdCycle')?.value === 'Custom') {
-                        Enter number of sessions per week manually
-                      } @else {
-                        Auto-filled based on HD Cycle
-                      }
-                    </mat-hint>
-                  </mat-form-field>
-                </div>
-
-                <div class="form-row">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Prescribed Duration (hours)*</mat-label>
-                    <input matInput type="number" formControlName="prescribedDuration" step="0.5" required>
-                    <mat-hint>Typically 3.5 - 5 hours</mat-hint>
-                  </mat-form-field>
-                </div>
-              </div>
-
               <!-- Vascular Access -->
               <div class="section-card">
                 <h4>Vascular Access</h4>
@@ -442,43 +398,6 @@
                   <mat-form-field appearance="outline">
                     <mat-label>Access Location</mat-label>
                     <input matInput formControlName="accessLocation" placeholder="e.g., Left radiocephalic">
-                  </mat-form-field>
-                </div>
-              </div>
-
-              <!-- Dialyser & Prescription -->
-              <div class="section-card">
-                <h4>Dialyser & Dialysate</h4>
-                <div class="form-row">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Dialyser Type*</mat-label>
-                    <mat-select formControlName="dialyserType" required>
-                      @for (type of dialyserTypes; track type) {
-                        <mat-option [value]="type">{{ type }}</mat-option>
-                      }
-                    </mat-select>
-                    <mat-hint>HI/LO flux</mat-hint>
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Dialyser Model</mat-label>
-                    <input matInput formControlName="dialyserModel">
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Prescribed BFR (mL/min)</mat-label>
-                    <input matInput type="number" formControlName="prescribedBFR">
-                  </mat-form-field>
-                </div>
-
-                <div class="form-row">
-                  <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>Dialysate Prescription</mat-label>
-                    <mat-select formControlName="dialysatePrescription">
-                      @for (prescription of dialysatePrescriptions; track prescription) {
-                        <mat-option [value]="prescription">{{ prescription }}</mat-option>
-                      }
-                    </mat-select>
                   </mat-form-field>
                 </div>
               </div>
@@ -561,37 +480,7 @@
                     <mat-label>Pre-Temperature (°C)</mat-label>
                     <input matInput type="number" formControlName="preTemperature" step="0.1">
                   </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Dialyser Reuse Number</mat-label>
-                    <input matInput type="number" formControlName="dialyserReuseNumber" min="0" max="10">
-                    <mat-hint>Auto-loaded from previous session</mat-hint>
-                  </mat-form-field>
                 </div>
-
-                <div class="form-row">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Blood Tubing Reuse Number</mat-label>
-                    <input matInput type="number" formControlName="bloodTubingReuse" min="0" max="15">
-                    <mat-hint>Auto-loaded from previous session</mat-hint>
-                  </mat-form-field>
-                  
-                  <button mat-raised-button 
-                          type="button"
-                          color="accent"
-                          (click)="loadSuggestedEquipmentCounts()"
-                          style="margin-top: 8px;">
-                    <mat-icon>refresh</mat-icon>
-                    Reload Counts
-                  </button>
-                </div>
-
-                <!-- Equipment Usage Alerts -->
-                <app-equipment-usage-alert 
-                  [dialyserCount]="sessionForm.get('dialyserReuseNumber')?.value || 0"
-                  [bloodTubingCount]="sessionForm.get('bloodTubingReuse')?.value || 0"
-                  [showDetails]="true">
-                </app-equipment-usage-alert>
 
                 <div class="form-row">
                   <mat-form-field appearance="outline">
@@ -655,28 +544,70 @@
                         <div class="record-details">
                           <div class="vital-row">
                             <span class="vital-label">BP:</span>
-                            <span class="vital-value">{{ record.bloodPressure || 'N/A' }}</span>
+                            <span class="vital-value">{{ (record.bloodPressure || record.BloodPressure) || 'N/A' }}</span>
                           </div>
                           <div class="vital-row">
                             <span class="vital-label">HR:</span>
-                            <span class="vital-value">{{ record.pulseRate || 'N/A' }} bpm</span>
+                            <span class="vital-value">{{ (record.pulseRate || record.PulseRate) || 'N/A' }} bpm</span>
                           </div>
                           <div class="vital-row">
                             <span class="vital-label">Temp:</span>
-                            <span class="vital-value">{{ record.temperature || 'N/A' }}°C</span>
+                            <span class="vital-value">{{ (record.temperature || record.Temperature) || 'N/A' }}°C</span>
                           </div>
                           <div class="vital-row">
                             <span class="vital-label">UF Volume:</span>
-                            <span class="vital-value">{{ record.ufVolume || 'N/A' }} L</span>
+                            <span class="vital-value">{{ (record.ufVolume || record.UFVolume) || 'N/A' }} L</span>
                           </div>
                           <div class="vital-row">
                             <span class="vital-label">VP:</span>
-                            <span class="vital-value">{{ record.venousPressure || 'N/A' }} mmHg</span>
+                            <span class="vital-value">{{ (record.venousPressure || record.VenousPressure) || 'N/A' }} mmHg</span>
                           </div>
-                          @if (record.notes) {
+                          @if (record.arterialPressure || record.ArterialPressure) {
+                            <div class="vital-row">
+                              <span class="vital-label">AP:</span>
+                              <span class="vital-value">{{ record.arterialPressure || record.ArterialPressure }} mmHg</span>
+                            </div>
+                          }
+                          @if (record.bloodFlowRate || record.BloodFlowRate) {
+                            <div class="vital-row">
+                              <span class="vital-label">BFR:</span>
+                              <span class="vital-value">{{ record.bloodFlowRate || record.BloodFlowRate }} mL/min</span>
+                            </div>
+                          }
+                          @if (record.currentUFR || record.CurrentUFR) {
+                            <div class="vital-row">
+                              <span class="vital-label">UFR:</span>
+                              <span class="vital-value">{{ record.currentUFR || record.CurrentUFR }} mL/hr</span>
+                            </div>
+                          }
+                          @if (record.tmpPressure || record.TMPPressure) {
+                            <div class="vital-row">
+                              <span class="vital-label">TMP:</span>
+                              <span class="vital-value">{{ record.tmpPressure || record.TMPPressure }} mmHg</span>
+                            </div>
+                          }
+                          @if (record.symptoms || record.Symptoms) {
+                            <div class="vital-row full-width">
+                              <span class="vital-label">Symptoms:</span>
+                              <span class="vital-value">{{ record.symptoms || record.Symptoms }}</span>
+                            </div>
+                          }
+                          @if (record.interventions || record.Interventions) {
+                            <div class="vital-row full-width">
+                              <span class="vital-label">Interventions:</span>
+                              <span class="vital-value">{{ record.interventions || record.Interventions }}</span>
+                            </div>
+                          }
+                          @if (record.staffInitials || record.StaffInitials) {
+                            <div class="vital-row">
+                              <span class="vital-label">Staff:</span>
+                              <span class="vital-value">{{ record.staffInitials || record.StaffInitials }}</span>
+                            </div>
+                          }
+                          @if (record.notes || record.Notes) {
                             <div class="vital-row full-width">
                               <span class="vital-label">Notes:</span>
-                              <span class="vital-value">{{ record.notes }}</span>
+                              <span class="vital-value">{{ record.notes || record.Notes }}</span>
                             </div>
                           }
                         </div>
@@ -686,8 +617,23 @@
                 </div>
               }
 
+              <!-- Session Must Be Saved First Warning -->
+              @if (!scheduleId) {
+                <div class="warning-banner" style="margin-bottom: 20px; padding: 16px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <mat-icon style="color: #ff9800;">warning</mat-icon>
+                    <div>
+                      <strong>Session Not Saved Yet</strong>
+                      <p style="margin: 4px 0 0 0; font-size: 14px; color: #666;">
+                        Please scroll up and click the <strong>"Save HD Session"</strong> button before adding monitoring records.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              }
+              
               <!-- New Monitoring Entry Form -->
-              <div class="section-card monitoring-entry-card">
+              <div class="section-card monitoring-entry-card" [class.disabled-section]="!scheduleId">
                 <div class="card-header">
                   <mat-icon>add_circle</mat-icon>
                   <h4>New Monitoring Entry #{{ (monitoringRecords?.length || 0) + 1 }}</h4>
@@ -957,12 +903,20 @@
                 <button mat-button matStepperPrevious type="button">
                   <mat-icon>arrow_back</mat-icon> Previous
                 </button>
-                <button mat-raised-button color="accent" (click)="onSubmit()" type="button" [disabled]="loading || sessionForm.invalid">
+                <button mat-raised-button color="accent" (click)="saveCurrentStep()" type="button" [disabled]="loading">
                   @if (loading) {
                     <mat-spinner diameter="20"></mat-spinner>
                   } @else {
                     <mat-icon>save</mat-icon>
-                    Save HD Session
+                    Save Progress
+                  }
+                </button>
+                <button mat-raised-button color="primary" (click)="onSubmit()" type="button" [disabled]="loading || sessionForm.invalid">
+                  @if (loading) {
+                    <mat-spinner diameter="20"></mat-spinner>
+                  } @else {
+                    <mat-icon>check_circle</mat-icon>
+                    Complete & Submit
                   }
                 </button>
               </div>

@@ -25,8 +25,15 @@ public class PatientHistoryRepository : IPatientHistoryRepository
     {
         using var connection = _context.CreateConnection();
         
-        // Get patient info
-        var patientQuery = "SELECT * FROM Patients WHERE PatientID = @PatientID";
+        // Get patient info with all fields including purchase tracking
+        var patientQuery = @"
+            SELECT PatientID, MRN, Name, Age, Gender, ContactNumber, EmergencyContact, Address, GuardianName,
+                   HDCycle, HDFrequency, DryWeight, HDStartDate, DialyserType,
+                   DialyserCount, BloodTubingCount, TotalDialysisCompleted,
+                   DialysersPurchased, BloodTubingPurchased,
+                   IsActive, CreatedAt, UpdatedAt
+            FROM Patients 
+            WHERE PatientID = @PatientID";
         var patient = await connection.QueryFirstOrDefaultAsync<Patient>(patientQuery, new { PatientID = patientId });
         
         if (patient == null) return null;
@@ -62,7 +69,8 @@ public class PatientHistoryRepository : IPatientHistoryRepository
             LEFT JOIN Staff d ON h.AssignedDoctor = d.StaffID
             LEFT JOIN Staff n ON h.AssignedNurse = n.StaffID
             LEFT JOIN HDLogs l ON h.ScheduleID = l.ScheduleID
-            WHERE h.PatientID = @PatientID
+            WHERE h.PatientID = @PatientID 
+                AND date(h.SessionDate) <= date('now')
             ORDER BY h.SessionDate DESC";
 
         var sessions = (await connection.QueryAsync<TreatmentSessionSummary>(sessionsQuery, new { PatientID = patientId })).ToList();
@@ -117,19 +125,43 @@ public class PatientHistoryRepository : IPatientHistoryRepository
         
         if (session == null) return null;
 
-        // Get intra-dialytic records - use empty list if table doesn't exist
-        List<IntraDialyticRecord> intraRecords = new List<IntraDialyticRecord>();
+        // Get intra-dialytic records - only query columns that actually exist in the table
+        List<object> intraRecords = new List<object>();
         try
         {
+            // First check total count in table for debugging
+            var totalCountQuery = "SELECT COUNT(*) FROM IntraDialyticRecords";
+            var totalCount = await connection.ExecuteScalarAsync<int>(totalCountQuery);
+            Console.WriteLine($"Total monitoring records in database: {totalCount}");
+            
+            // Check if any records exist for this schedule
+            var scheduleCountQuery = "SELECT COUNT(*) FROM IntraDialyticRecords WHERE ScheduleID = @ScheduleID";
+            var scheduleCount = await connection.ExecuteScalarAsync<int>(scheduleCountQuery, new { ScheduleID = scheduleId });
+            Console.WriteLine($"Monitoring records for ScheduleID {scheduleId}: {scheduleCount}");
+            
             var intraRecordsQuery = @"
-                SELECT * FROM IntraDialyticRecords 
+                SELECT 
+                    RecordID, ScheduleID, PatientID, SessionDate, TimeRecorded,
+                    BloodPressure, PulseRate, Temperature, UFVolume, VenousPressure,
+                    ArterialPressure, BloodFlowRate, DialysateFlowRate, CurrentUFR,
+                    TMPPressure, Symptoms, Interventions, StaffInitials, RecordedBy,
+                    Notes, CreatedAt
+                FROM IntraDialyticRecords 
                 WHERE ScheduleID = @ScheduleID 
                 ORDER BY TimeRecorded";
-            intraRecords = (await connection.QueryAsync<IntraDialyticRecord>(intraRecordsQuery, new { ScheduleID = scheduleId })).ToList();
+            var records = await connection.QueryAsync(intraRecordsQuery, new { ScheduleID = scheduleId });
+            intraRecords = records.Cast<object>().ToList();
+            Console.WriteLine($"✓ Loaded {intraRecords.Count} intra-dialytic records for ScheduleID: {scheduleId}");
+            
+            if (intraRecords.Count > 0)
+            {
+                Console.WriteLine($"First record: {System.Text.Json.JsonSerializer.Serialize(intraRecords[0])}");
+            }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // Table might not exist, use empty list
+            Console.WriteLine($"❌ Error loading intra-dialytic records: {ex.Message}");
         }
 
         // Get medications - use empty list if table doesn't exist or has no data

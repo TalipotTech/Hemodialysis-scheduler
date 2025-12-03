@@ -10,6 +10,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatTableModule } from '@angular/material/table';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../../../environments/environment.development';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
@@ -28,7 +29,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
     MatTableModule,
     MatTabsModule,
     MatSnackBarModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatProgressBarModule
   ],
   templateUrl: './patient-history.component.html',
   styleUrl: './patient-history.component.scss'
@@ -77,8 +79,13 @@ export class PatientHistoryComponent implements OnInit {
     this.http.get<any>(`${environment.apiUrl}/PatientHistory/${this.patientId}`, { headers })
       .subscribe({
         next: (response) => {
+          console.log('Patient History API Response:', response);
           if (response.success && response.data) {
             const data = response.data;
+            console.log('Sessions data:', data.sessions || data.Sessions);
+            if ((data.sessions || data.Sessions) && (data.sessions || data.Sessions).length > 0) {
+              console.log('First session details:', (data.sessions || data.Sessions)[0]);
+            }
             
             // Set patient info - handle both PascalCase (from API) and camelCase
             const pInfo = data.patientInfo || data.PatientInfo;
@@ -92,7 +99,10 @@ export class PatientHistoryComponent implements OnInit {
             }
             
             // Set sessions - handle both cases
-            this.sessions = data.sessions || data.Sessions || [];
+            const rawSessions = data.sessions || data.Sessions || [];
+            
+            // Store sessions directly - template will handle both cases
+            this.sessions = rawSessions;
             
             // Set statistics - handle both cases
             const stats = data.statistics || data.Statistics;
@@ -193,5 +203,10 @@ export class PatientHistoryComponent implements OnInit {
 
   getStatusClass(isDischarged: boolean): string {
     return isDischarged ? 'status-discharged' : 'status-active';
+  }
+
+  getUsagePercentage(current: number, max: number): number {
+    if (!max || max === 0) return 0;
+    return (current / max) * 100;
   }
 }

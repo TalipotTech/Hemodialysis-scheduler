@@ -340,19 +340,22 @@ export class ScheduleGrid implements OnInit, OnDestroy {
   onBedClick(slotId: number, bedNumber: number): void {
     const bed = this.getBed(slotId, bedNumber);
     
+    console.log('Bed clicked:', { slotId, bedNumber, bed });
+    
     if (!bed) {
       this.snackBar.open('Bed information not available', 'Close', { duration: 3000 });
       return;
     }
 
-    if (bed.status === 'occupied' && bed.patient && bed.scheduleId) {
+    if ((bed.status === 'occupied' || bed.status === 'pre-scheduled') && bed.patient && bed.scheduleId) {
       // Navigate to HD session form in EDIT mode - shows all fields (filled and empty)
       // Staff can view/edit all data and it will auto-save
+      console.log('Navigating to edit session:', bed.scheduleId);
       this.router.navigate(['/schedule/hd-session/edit', bed.scheduleId]);
     } else if (bed.status === 'available') {
       this.snackBar.open('This bed is available. Please select a patient first.', 'Close', { duration: 3000 });
     } else {
-      this.snackBar.open('Bed is reserved', 'Close', { duration: 3000 });
+      this.snackBar.open(`Cannot edit ${bed.status} bed. Status: ${bed.status}`, 'Close', { duration: 3000 });
     }
   }
 

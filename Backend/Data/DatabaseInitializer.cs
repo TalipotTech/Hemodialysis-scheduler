@@ -176,6 +176,48 @@ public static class DatabaseInitializer
                 Console.WriteLine($"Monitoring fields migration failed: {ex.Message}");
             }
         }
+
+        // Migrate IntraDialyticRecords table to add extended monitoring columns
+        try
+        {
+            Console.WriteLine("\nMigrating IntraDialyticRecords table with extended monitoring fields...");
+            
+            var extendedMonitoringColumns = new[]
+            {
+                "ALTER TABLE IntraDialyticRecords ADD COLUMN ArterialPressure INTEGER;",
+                "ALTER TABLE IntraDialyticRecords ADD COLUMN BloodFlowRate INTEGER;",
+                "ALTER TABLE IntraDialyticRecords ADD COLUMN DialysateFlowRate INTEGER;",
+                "ALTER TABLE IntraDialyticRecords ADD COLUMN CurrentUFR REAL;",
+                "ALTER TABLE IntraDialyticRecords ADD COLUMN TMPPressure INTEGER;",
+                "ALTER TABLE IntraDialyticRecords ADD COLUMN Symptoms TEXT;",
+                "ALTER TABLE IntraDialyticRecords ADD COLUMN Interventions TEXT;",
+                "ALTER TABLE IntraDialyticRecords ADD COLUMN StaffInitials TEXT;",
+                "ALTER TABLE IntraDialyticRecords ADD COLUMN RecordedBy INTEGER;"
+            };
+            
+            foreach (var sql in extendedMonitoringColumns)
+            {
+                try
+                {
+                    connection.Execute(sql);
+                }
+                catch (Exception ex)
+                {
+                    // Ignore "duplicate column" errors
+                    if (!ex.Message.Contains("duplicate column"))
+                    {
+                        throw;
+                    }
+                }
+            }
+            
+            Console.WriteLine("✓ IntraDialyticRecords migration completed successfully!");
+            Console.WriteLine("  Added 9 new columns for comprehensive monitoring data");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"IntraDialyticRecords migration failed: {ex.Message}");
+        }
         
         // Check if EquipmentUsageAlerts table exists
         var equipmentAlertsTableExists = connection.ExecuteScalar<int>(@"
@@ -271,6 +313,243 @@ public static class DatabaseInitializer
             {
                 Console.WriteLine($"Post-Dialysis Vital Signs migration failed: {ex.Message}");
             }
+        }
+        
+        // Check if TreatmentStartTime column exists in HDSchedule (Treatment Timing for Hybrid Discharge)
+        var treatmentStartTimeExists = connection.ExecuteScalar<int>(@"
+            SELECT COUNT(*) 
+            FROM pragma_table_info('HDSchedule') 
+            WHERE name='TreatmentStartTime'
+        ");
+        
+        if (treatmentStartTimeExists == 0)
+        {
+            Console.WriteLine("Running migration: Adding Treatment Timing columns for Hybrid Discharge approach...");
+            
+            try
+            {
+                var alterStatements = new[]
+                {
+                    "ALTER TABLE HDSchedule ADD COLUMN TreatmentStartTime TEXT",
+                    "ALTER TABLE HDSchedule ADD COLUMN TreatmentCompletionTime TEXT",
+                    "ALTER TABLE HDSchedule ADD COLUMN DischargeTime TEXT"
+                };
+                
+                foreach (var sql in alterStatements)
+                {
+                    try
+                    {
+                        connection.Execute(sql);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Ignore "duplicate column" errors
+                        if (!ex.Message.Contains("duplicate column"))
+                        {
+                            throw;
+                        }
+                    }
+                }
+                
+                // Update existing active sessions to set TreatmentStartTime if they have a StartTime
+                connection.Execute(@"
+                    UPDATE HDSchedule 
+                    SET TreatmentStartTime = datetime('now')
+                    WHERE SessionStatus = 'Active' 
+                      AND TreatmentStartTime IS NULL
+                      AND StartTime IS NOT NULL");
+                
+                Console.WriteLine("✓ Treatment Timing columns added successfully!");
+                Console.WriteLine("  Added 3 new columns: TreatmentStartTime, TreatmentCompletionTime, DischargeTime");
+                Console.WriteLine("  Enabled Hybrid Discharge: Auto-completion + Manual discharge confirmation");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Treatment Timing migration failed: {ex.Message}");
+            }
+        }
+        
+        // Check if ArterialPressure column exists in IntraDialyticRecords (Detailed Monitoring)
+        var arterialPressureExists = connection.ExecuteScalar<int>(@"
+            SELECT COUNT(*) 
+            FROM pragma_table_info('IntraDialyticRecords') 
+            WHERE name='ArterialPressure'
+        ");
+        
+        if (arterialPressureExists == 0)
+        {
+            Console.WriteLine("Running migration: Adding detailed monitoring columns to IntraDialyticRecords...");
+            
+            try
+            {
+                var alterStatements = new[]
+                {
+                    "ALTER TABLE IntraDialyticRecords ADD COLUMN ArterialPressure INTEGER",
+                    "ALTER TABLE IntraDialyticRecords ADD COLUMN BloodFlowRate INTEGER",
+                    "ALTER TABLE IntraDialyticRecords ADD COLUMN DialysateFlowRate INTEGER",
+                    "ALTER TABLE IntraDialyticRecords ADD COLUMN CurrentUFR REAL",
+                    "ALTER TABLE IntraDialyticRecords ADD COLUMN TMPPressure INTEGER",
+                    "ALTER TABLE IntraDialyticRecords ADD COLUMN Symptoms TEXT",
+                    "ALTER TABLE IntraDialyticRecords ADD COLUMN Interventions TEXT",
+                    "ALTER TABLE IntraDialyticRecords ADD COLUMN StaffInitials TEXT",
+                    "ALTER TABLE IntraDialyticRecords ADD COLUMN RecordedBy TEXT"
+                };
+                
+                foreach (var sql in alterStatements)
+                {
+                    try
+                    {
+                        connection.Execute(sql);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Ignore "duplicate column" errors
+                        if (!ex.Message.Contains("duplicate column"))
+                        {
+                            throw;
+                        }
+                    }
+                }
+                
+                Console.WriteLine("✓ Detailed monitoring columns added successfully!");
+                Console.WriteLine("  Added 9 columns to IntraDialyticRecords for comprehensive vital tracking");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Detailed monitoring migration failed: {ex.Message}");
+            }
+        }
+        
+        // Check if SessionStatus column exists in HDSchedule (Recurring Sessions Support)
+        var sessionStatusExists = connection.ExecuteScalar<int>(@"
+            SELECT COUNT(*) 
+            FROM pragma_table_info('HDSchedule') 
+            WHERE name='SessionStatus'
+        ");
+        
+        if (sessionStatusExists == 0)
+        {
+            Console.WriteLine("Running migration: Adding Recurring Sessions support columns...");
+            
+            try
+            {
+                var alterStatements = new[]
+                {
+                    "ALTER TABLE HDSchedule ADD COLUMN SessionStatus TEXT DEFAULT 'Active'",
+                    "ALTER TABLE HDSchedule ADD COLUMN IsAutoGenerated INTEGER DEFAULT 0",
+                    "ALTER TABLE HDSchedule ADD COLUMN ParentScheduleID INTEGER",
+                    "ALTER TABLE HDSchedule ADD COLUMN DialyserModel TEXT",
+                    "ALTER TABLE HDSchedule ADD COLUMN AccessLocation TEXT"
+                };
+                
+                foreach (var sql in alterStatements)
+                {
+                    try
+                    {
+                        connection.Execute(sql);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Ignore "duplicate column" errors
+                        if (!ex.Message.Contains("duplicate column"))
+                        {
+                            throw;
+                        }
+                    }
+                }
+                
+                // Update existing sessions to have 'Active' status
+                connection.Execute(@"
+                    UPDATE HDSchedule 
+                    SET SessionStatus = 'Active' 
+                    WHERE SessionStatus IS NULL OR SessionStatus = ''");
+                
+                Console.WriteLine("✓ Recurring Sessions support added successfully!");
+                Console.WriteLine("  Added SessionStatus, IsAutoGenerated, ParentScheduleID columns");
+                Console.WriteLine("  Enabled automatic pre-scheduling for HD Cycles (MWF, TTS, etc.)");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Recurring Sessions migration failed: {ex.Message}");
+            }
+        }
+        
+        // IMPORTANT: Run TreatmentAlerts migration BEFORE verification
+        // Check if TreatmentAlerts table exists
+        var treatmentAlertsExists = connection.ExecuteScalar<int>(@"
+            SELECT COUNT(*) 
+            FROM sqlite_master 
+            WHERE type='table' AND name='TreatmentAlerts'");
+        
+        if (treatmentAlertsExists == 0)
+        {
+            Console.WriteLine("Running migration: Creating TreatmentAlerts table...");
+            
+            try
+            {
+                connection.Execute(@"
+                    CREATE TABLE TreatmentAlerts (
+                        AlertID INTEGER PRIMARY KEY AUTOINCREMENT,
+                        PatientID INTEGER NOT NULL,
+                        ScheduleID INTEGER NOT NULL,
+                        SessionDate TEXT NOT NULL,
+                        AlertType TEXT NOT NULL,
+                        AlertMessage TEXT,
+                        Severity TEXT CHECK (Severity IN ('Low', 'Medium', 'High', 'Critical')),
+                        OccurredAt TEXT DEFAULT (datetime('now')),
+                        Resolution TEXT,
+                        ResolvedAt TEXT,
+                        ResolvedBy TEXT,
+                        CreatedAt TEXT DEFAULT (datetime('now')),
+                        FOREIGN KEY (PatientID) REFERENCES Patients(PatientID),
+                        FOREIGN KEY (ScheduleID) REFERENCES HDSchedule(ScheduleID)
+                    );
+                    
+                    CREATE INDEX idx_treatment_alerts_patientid ON TreatmentAlerts(PatientID);
+                    CREATE INDEX idx_treatment_alerts_scheduleid ON TreatmentAlerts(ScheduleID);
+                    CREATE INDEX idx_treatment_alerts_severity ON TreatmentAlerts(Severity);
+                ");
+                
+                Console.WriteLine("✓ TreatmentAlerts table created successfully!");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"TreatmentAlerts migration failed: {ex.Message}");
+            }
+        }
+        
+        // Verify all required tables exist
+        Console.WriteLine("\nVerifying database schema...");
+        var requiredTables = new[] { "Users", "Patients", "Staff", "HDSchedule", "HDLogs", 
+            "IntraDialyticRecords", "PostDialysisMedications", "TreatmentAlerts", 
+            "BedAssignments", "AuditLogs", "EquipmentUsageAlerts" };
+        
+        int missingCount = 0;
+        foreach (var tableName in requiredTables)
+        {
+            var exists = connection.ExecuteScalar<int>($@"
+                SELECT COUNT(*) 
+                FROM sqlite_master 
+                WHERE type='table' AND name='{tableName}'");
+            
+            if (exists > 0)
+            {
+                Console.WriteLine($"  ✓ {tableName}");
+            }
+            else
+            {
+                Console.WriteLine($"  ✗ {tableName} (MISSING)");
+                missingCount++;
+            }
+        }
+        
+        if (missingCount == 0)
+        {
+            Console.WriteLine("\n✓ All required tables exist!");
+        }
+        else
+        {
+            Console.WriteLine($"\n⚠ {missingCount} table(s) missing!");
         }
     }
     
@@ -417,7 +696,7 @@ public static class DatabaseInitializer
                 FOREIGN KEY (ScheduleID) REFERENCES HDSchedule(ScheduleID)
             );
 
-            -- IntraDialyticRecords Table
+            -- IntraDialyticRecords Table (Extended with all monitoring fields)
             CREATE TABLE IF NOT EXISTS IntraDialyticRecords (
                 RecordID INTEGER PRIMARY KEY AUTOINCREMENT,
                 PatientID INTEGER NOT NULL,
@@ -429,10 +708,20 @@ public static class DatabaseInitializer
                 Temperature REAL,
                 UFVolume REAL,
                 VenousPressure INTEGER,
+                ArterialPressure INTEGER,
+                BloodFlowRate INTEGER,
+                DialysateFlowRate INTEGER,
+                CurrentUFR REAL,
+                TMPPressure INTEGER,
+                Symptoms TEXT,
+                Interventions TEXT,
+                StaffInitials TEXT,
+                RecordedBy INTEGER,
                 Notes TEXT,
                 CreatedAt TEXT DEFAULT (datetime('now')),
                 FOREIGN KEY (PatientID) REFERENCES Patients(PatientID),
-                FOREIGN KEY (ScheduleID) REFERENCES HDSchedule(ScheduleID)
+                FOREIGN KEY (ScheduleID) REFERENCES HDSchedule(ScheduleID),
+                FOREIGN KEY (RecordedBy) REFERENCES Staff(StaffID)
             );
 
             -- PostDialysisMedications Table
@@ -468,6 +757,24 @@ public static class DatabaseInitializer
                 FOREIGN KEY (ScheduleID) REFERENCES HDSchedule(ScheduleID)
             );
 
+            -- TreatmentAlerts Table (Track alerts during HD sessions)
+            CREATE TABLE IF NOT EXISTS TreatmentAlerts (
+                AlertID INTEGER PRIMARY KEY AUTOINCREMENT,
+                PatientID INTEGER NOT NULL,
+                ScheduleID INTEGER NOT NULL,
+                SessionDate TEXT NOT NULL,
+                AlertType TEXT NOT NULL,
+                AlertMessage TEXT,
+                Severity TEXT CHECK (Severity IN ('Low', 'Medium', 'High', 'Critical')),
+                OccurredAt TEXT DEFAULT (datetime('now')),
+                Resolution TEXT,
+                ResolvedAt TEXT,
+                ResolvedBy TEXT,
+                CreatedAt TEXT DEFAULT (datetime('now')),
+                FOREIGN KEY (PatientID) REFERENCES Patients(PatientID),
+                FOREIGN KEY (ScheduleID) REFERENCES HDSchedule(ScheduleID)
+            );
+
             -- Indexes for performance
             CREATE INDEX IF NOT EXISTS idx_patients_mrn ON Patients(MRN);
             CREATE INDEX IF NOT EXISTS idx_patients_contact ON Patients(ContactNumber);
@@ -490,6 +797,9 @@ public static class DatabaseInitializer
             CREATE INDEX IF NOT EXISTS idx_equipment_alerts_schedule ON EquipmentUsageAlerts(ScheduleID);
             CREATE INDEX IF NOT EXISTS idx_equipment_alerts_unacknowledged ON EquipmentUsageAlerts(IsAcknowledged, PatientID);
             CREATE INDEX IF NOT EXISTS idx_equipment_alerts_severity ON EquipmentUsageAlerts(Severity, IsAcknowledged);
+            CREATE INDEX IF NOT EXISTS idx_treatment_alerts_patientid ON TreatmentAlerts(PatientID);
+            CREATE INDEX IF NOT EXISTS idx_treatment_alerts_scheduleid ON TreatmentAlerts(ScheduleID);
+            CREATE INDEX IF NOT EXISTS idx_treatment_alerts_severity ON TreatmentAlerts(Severity);
         ";
         
         connection.Execute(sql);
