@@ -39,21 +39,41 @@
           <!-- Statistics -->
           @if (schedule && !loading) {
             <div class="stats-row">
-              <div class="stat-card">
-                <div class="stat-value">{{ getTotalOccupied() }}</div>
-                <div class="stat-label">Occupied Beds</div>
+              <div class="stat-card occupied-stat">
+                <div class="stat-icon">
+                  <mat-icon>person</mat-icon>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-value">{{ getTotalOccupied() }}</div>
+                  <div class="stat-label">Occupied Beds</div>
+                </div>
               </div>
               <div class="stat-card pre-scheduled-stat">
-                <div class="stat-value">{{ getTotalPreScheduled() }}</div>
-                <div class="stat-label">Pre-Scheduled</div>
+                <div class="stat-icon">
+                  <mat-icon>event</mat-icon>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-value">{{ getTotalPreScheduled() }}</div>
+                  <div class="stat-label">Pre-Scheduled</div>
+                </div>
               </div>
-              <div class="stat-card">
-                <div class="stat-value">{{ getTotalCapacity() - getTotalOccupied() }}</div>
-                <div class="stat-label">Available Beds</div>
+              <div class="stat-card available-stat">
+                <div class="stat-icon">
+                  <mat-icon>check_circle</mat-icon>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-value">{{ getTotalCapacity() - getTotalOccupied() }}</div>
+                  <div class="stat-label">Available Beds</div>
+                </div>
               </div>
-              <div class="stat-card">
-                <div class="stat-value">{{ getOccupancyRate() }}%</div>
-                <div class="stat-label">Occupancy Rate</div>
+              <div class="stat-card occupancy-stat">
+                <div class="stat-icon">
+                  <mat-icon>pie_chart</mat-icon>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-value">{{ getOccupancyRate() }}%</div>
+                  <div class="stat-label">Occupancy Rate</div>
+                </div>
               </div>
             </div>
           }
@@ -81,105 +101,96 @@
           </button>
           
           <div class="schedule-grid">
-          <!-- Color Legend with Descriptions -->
-          <div class="color-legend-info">
-            <div class="legend-title">
-              <mat-icon>info</mat-icon>
-              <span>Color Guide:</span>
-            </div>
-            <div class="legend-items">
-              <div class="legend-detail">
-                <div class="color-box green"></div>
-                <div class="legend-text">
-                  <strong>Green</strong> - Available beds (empty, ready for assignment)
+          <!-- Compact Legend with Filters -->
+          <div class="legend-bar">
+            <div class="legend-section">
+              <span class="legend-title">
+                <mat-icon>palette</mat-icon>
+                Bed Status:
+              </span>
+              <div class="legend-items">
+                <div class="legend-chip available">
+                  <mat-icon>check_circle</mat-icon>
+                  <span>Available</span>
                 </div>
-              </div>
-              <div class="legend-detail">
-                <div class="color-box red"></div>
-                <div class="legend-text">
-                  <strong>Red</strong> - Occupied (active session today)
+                <div class="legend-chip occupied">
+                  <mat-icon>person</mat-icon>
+                  <span>Occupied</span>
                 </div>
-              </div>
-              <div class="legend-detail">
-                <div class="color-box purple"></div>
-                <div class="legend-text">
-                  <strong>Purple</strong> - Pre-Scheduled (future sessions or pre-booked)
+                <div class="legend-chip pre-scheduled">
+                  <mat-icon>event</mat-icon>
+                  <span>Pre-Scheduled</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Legend with Filters -->
-          <div class="legend">
-            <div class="legend-item">
-              <div class="legend-box bed-empty"></div>
-              <mat-checkbox [(ngModel)]="showAvailable" (change)="onFilterChange()">
-                Available
-              </mat-checkbox>
-            </div>
-            <div class="legend-item">
-              <div class="legend-box bed-occupied"></div>
-              <mat-checkbox [(ngModel)]="showOccupied" (change)="onFilterChange()">
-                Occupied
-              </mat-checkbox>
-            </div>
-            <div class="legend-item">
-              <div class="legend-box bed-pre-scheduled"></div>
-              <mat-checkbox [(ngModel)]="showOccupied" (change)="onFilterChange()">
-                Pre-Scheduled
-              </mat-checkbox>
-            </div>
-            <div class="legend-item">
-              <div class="legend-box bed-reserved"></div>
-              <mat-checkbox [(ngModel)]="showReserved" (change)="onFilterChange()">
-                Reserved
-              </mat-checkbox>
-            </div>
-          </div>
-
-          <!-- Schedule Table -->
-          <div class="grid-table">
-            <!-- Header Row -->
-            <div class="grid-row header-row">
-              <div class="grid-cell slot-header">Time Slot</div>
-              @for (bed of beds; track bed) {
-                <div class="grid-cell bed-header">Bed {{ bed }}</div>
-              }
-            </div>
-
-            <!-- Slot Rows -->
+          <!-- Schedule Cards -->
+          <div class="slots-container">
             @for (slot of schedule.slots; track slot.slotID) {
-              <div class="grid-row">
-                <div class="grid-cell slot-cell">
-                  <div class="slot-name">{{ slot.slotName }}</div>
-                  <div class="slot-time">{{ slot.timeRange }}</div>
+              <div class="slot-card">
+                <!-- Slot Header -->
+                <div class="slot-card-header">
+                  <div class="slot-info">
+                    <h3>{{ slot.slotName }}</h3>
+                    <span class="time-range">
+                      <mat-icon>schedule</mat-icon>
+                      {{ slot.timeRange }}
+                    </span>
+                  </div>
+                  <div class="slot-stats">
+                    <span class="stat-badge occupied">
+                      <mat-icon>person</mat-icon>
+                      {{ getSlotOccupied(slot) }}
+                    </span>
+                    <span class="stat-badge available">
+                      <mat-icon>check_circle</mat-icon>
+                      {{ getSlotAvailable(slot) }}
+                    </span>
+                  </div>
                 </div>
-                @for (bed of beds; track bed) {
-                  <div class="grid-cell bed-cell" 
-                       [class]="getBedClass(slot.slotID, bed)"
-                       [class.clickable]="getBed(slot.slotID, bed)?.status === 'occupied'"
-                       [matTooltip]="getBedTooltip(slot.slotID, bed)"
-                       (click)="onBedClick(slot.slotID, bed)">
-                    @if (getBed(slot.slotID, bed)?.patient) {
-                      <div class="bed-content">
-                        <div class="patient-info-compact">
-                          <div class="patient-name-age">{{ getBed(slot.slotID, bed)?.patient?.name }} ({{ getBed(slot.slotID, bed)?.patient?.age }})</div>
-                          <div class="session-date">{{ getSessionInfo(getBed(slot.slotID, bed)) }}</div>
-                        </div>
-                        <div class="bed-actions">
-                          <button mat-icon-button 
-                                  class="edit-btn"
-                                  matTooltip="Edit Session"
+
+                <!-- Beds Grid -->
+                <div class="beds-grid">
+                  @for (bed of getBedsForSlot(slot); track bed) {
+                    <div class="bed-card" 
+                         [class]="getBedClass(slot.slotID, bed)"
+                         [class.clickable]="getBed(slot.slotID, bed)?.status === 'occupied' || getBed(slot.slotID, bed)?.status === 'pre-scheduled'"
+                         [matTooltip]="getBedTooltip(slot.slotID, bed)"
+                         (click)="onBedClick(slot.slotID, bed)">
+                      
+                      <div class="bed-number">
+                        <mat-icon>hotel</mat-icon>
+                        <span>{{ bed }}</span>
+                      </div>
+
+                      @if (getBed(slot.slotID, bed)?.patient) {
+                        <div class="patient-card-info">
+                          <div class="patient-name">{{ getBed(slot.slotID, bed)?.patient?.name }}</div>
+                          <div class="patient-details">
+                            <span class="age">
+                              <mat-icon>cake</mat-icon>
+                              {{ getBed(slot.slotID, bed)?.patient?.age }} yrs
+                            </span>
+                          </div>
+                          <div class="session-info">{{ getSessionInfo(getBed(slot.slotID, bed)) }}</div>
+                          <button mat-mini-fab 
+                                  class="action-btn"
+                                  color="primary"
+                                  matTooltip="View Details"
                                   (click)="$event.stopPropagation(); onBedClick(slot.slotID, bed)">
-                            <mat-icon>edit</mat-icon>
+                            <mat-icon>visibility</mat-icon>
                           </button>
                         </div>
-                      </div>
-                    } @else {
-                      <div class="bed-empty-text">—</div>
-                    }
-                  </div>
-                }
+                      } @else {
+                        <div class="empty-bed">
+                          <mat-icon>event_available</mat-icon>
+                          <span>Available</span>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
               </div>
             }
           </div>

@@ -20,12 +20,20 @@ export interface BedAssignment {
 export interface DailyScheduleResponse {
   date: Date;
   slots: SlotSchedule[];
+  statistics?: {
+    totalActivePatients: number;
+    totalReservedPatients: number;
+    activeSessionsToday: number;
+    preScheduledSessionsToday: number;
+    futureSessionsCount: number;
+  };
 }
 
 export interface SlotSchedule {
   slotID: number;
   slotName: string;
   timeRange: string;
+  maxBeds?: number;
   beds: BedStatus[];
 }
 

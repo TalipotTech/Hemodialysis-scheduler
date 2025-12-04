@@ -201,11 +201,15 @@ public class SystemSettingsController : ControllerBase
                     s.SlotID,
                     s.SlotName,
                     s.MaxBeds,
-                    COUNT(ba.BedID) as UsedBeds,
-                    (s.MaxBeds - COUNT(ba.BedID)) as AvailableBeds,
-                    CAST(COUNT(ba.BedID) * 100.0 / s.MaxBeds as decimal(5,2)) as OccupancyRate
+                    COALESCE(COUNT(CASE WHEN hs.SessionDate = date('now') AND hs.SessionStatus = 'Active' AND hs.IsDischarged = 0 AND hs.IsMovedToHistory = 0 THEN hs.ScheduleID END), 0) as UsedBeds,
+                    COALESCE(COUNT(CASE WHEN hs.SessionDate > date('now') AND hs.IsDischarged = 0 AND hs.IsMovedToHistory = 0 THEN hs.ScheduleID END), 0) as ReservedBeds,
+                    (s.MaxBeds - COALESCE(COUNT(CASE WHEN hs.SessionDate = date('now') AND hs.IsDischarged = 0 AND hs.IsMovedToHistory = 0 THEN hs.ScheduleID END), 0)) as AvailableBeds,
+                    CASE 
+                        WHEN s.MaxBeds > 0 THEN CAST(COALESCE(COUNT(CASE WHEN hs.SessionDate = date('now') AND hs.SessionStatus = 'Active' AND hs.IsDischarged = 0 AND hs.IsMovedToHistory = 0 THEN hs.ScheduleID END), 0) * 100.0 / s.MaxBeds as decimal(5,2))
+                        ELSE 0
+                    END as OccupancyRate
                 FROM Slots s
-                LEFT JOIN BedAssignments ba ON s.SlotID = ba.SlotID AND ba.IsActive = 1
+                LEFT JOIN HDSchedule hs ON s.SlotID = hs.SlotID
                 WHERE s.IsActive = 1
                 GROUP BY s.SlotID, s.SlotName, s.MaxBeds
                 ORDER BY s.SlotID";
@@ -353,6 +357,7 @@ public class BedCapacity
     public string SlotName { get; set; } = string.Empty;
     public int MaxBeds { get; set; }
     public int UsedBeds { get; set; }
+    public int ReservedBeds { get; set; }
     public int AvailableBeds { get; set; }
     public decimal OccupancyRate { get; set; }
 }

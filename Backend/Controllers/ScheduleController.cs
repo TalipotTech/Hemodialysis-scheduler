@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using HDScheduler.API.Repositories;
 using HDScheduler.API.DTOs;
+using HDScheduler.API.Services;
+using HDScheduler.API.Data;
+using Dapper;
 
 namespace HDScheduler.API.Controllers;
 
@@ -12,16 +15,22 @@ public class ScheduleController : ControllerBase
 {
     private readonly IHDScheduleRepository _scheduleRepository;
     private readonly IPatientRepository _patientRepository;
+    private readonly IHDCycleService _hdCycleService;
     private readonly ILogger<ScheduleController> _logger;
+    private readonly DapperContext _context;
 
     public ScheduleController(
         IHDScheduleRepository scheduleRepository,
         IPatientRepository patientRepository,
-        ILogger<ScheduleController> logger)
+        IHDCycleService hdCycleService,
+        ILogger<ScheduleController> logger,
+        DapperContext context)
     {
         _scheduleRepository = scheduleRepository;
         _patientRepository = patientRepository;
+        _hdCycleService = hdCycleService;
         _logger = logger;
+        _context = context;
     }
 
     [HttpGet("daily")]
@@ -55,28 +64,36 @@ public class ScheduleController : ControllerBase
                 _logger.LogInformation($"  - ScheduleID: {schedule.ScheduleID}, Patient: {schedule.PatientName}, Slot: {schedule.SlotID}, Bed: {schedule.BedNumber}, Status: {schedule.SessionStatus}");
             }
 
-            // Define slots
-            var slots = new[]
-            {
-                new { slotID = 1, slotName = "Morning Shift", timeRange = "06:00 - 10:00" },
-                new { slotID = 2, slotName = "Afternoon Shift", timeRange = "11:00 - 15:00" },
-                new { slotID = 3, slotName = "Evening Shift", timeRange = "16:00 - 20:00" },
-                new { slotID = 4, slotName = "Night Shift", timeRange = "21:00 - 01:00" }
-            };
+            // Get slots from database with MaxBeds
+            using var connection = _context.CreateConnection();
+            var slotsQuery = @"
+                SELECT SlotID, SlotName, 
+                       CASE SlotID
+                           WHEN 1 THEN '06:00 - 10:00'
+                           WHEN 2 THEN '11:00 - 15:00'
+                           WHEN 3 THEN '16:00 - 20:00'
+                           WHEN 4 THEN '21:00 - 01:00'
+                           ELSE 'Unknown'
+                       END as TimeRange,
+                       MaxBeds
+                FROM Slots 
+                WHERE IsActive = 1
+                ORDER BY SlotID";
+            var slots = await connection.QueryAsync<SlotInfo>(slotsQuery);
 
             // Build slot schedules
             var slotSchedules = new List<object>();
             foreach (var slot in slots)
             {
-                var slotSchedulesForSlot = daySchedules.Where(s => s.SlotID == slot.slotID).ToList();
+                var slotSchedulesForSlot = daySchedules.Where(s => s.SlotID == slot.SlotID).ToList();
                 
-                // Create bed status array for 10 beds
+                // Create bed status array dynamically based on MaxBeds
                 var beds = new List<object>();
                 
                 // Track which schedules have been assigned to beds
                 var assignedScheduleIds = new HashSet<int>();
                 
-                for (int bedNum = 1; bedNum <= 10; bedNum++)
+                for (int bedNum = 1; bedNum <= slot.MaxBeds; bedNum++)
                 {
                     var schedule = slotSchedulesForSlot.FirstOrDefault(s => s.BedNumber == bedNum);
                     
@@ -146,7 +163,7 @@ public class ScheduleController : ControllerBase
                 foreach (var schedule in unassignedSchedules)
                 {
                     // Find first available bed
-                    for (int bedNum = 1; bedNum <= 10; bedNum++)
+                    for (int bedNum = 1; bedNum <= slot.MaxBeds; bedNum++)
                     {
                         var bedIndex = bedNum - 1;
                         if (bedIndex < beds.Count)
@@ -196,17 +213,41 @@ public class ScheduleController : ControllerBase
 
                 slotSchedules.Add(new
                 {
-                    slotID = slot.slotID,
-                    slotName = slot.slotName,
-                    timeRange = slot.timeRange,
+                    slotID = slot.SlotID,
+                    slotName = slot.SlotName,
+                    timeRange = slot.TimeRange,
+                    maxBeds = slot.MaxBeds,
                     beds = beds
                 });
             }
 
+            // Calculate reservation statistics
+            var allSchedulesToday = daySchedules;
+            var allSchedulesFuture = allSchedules.Where(s => 
+                s.SessionDate.Date > targetDate && 
+                !s.IsDischarged && 
+                !s.IsMovedToHistory).ToList();
+
+            var activePatientIds = allSchedulesToday.Select(s => s.PatientID).Distinct().ToList();
+            var reservedPatientIds = allSchedulesFuture.Select(s => s.PatientID).Distinct().ToList();
+
+            // Count by status
+            var activeCount = allSchedulesToday.Count(s => s.SessionStatus != "Pre-Scheduled");
+            var preScheduledCount = allSchedulesToday.Count(s => s.SessionStatus == "Pre-Scheduled");
+
             var dailySchedule = new
             {
                 date = targetDate.ToString("yyyy-MM-dd"),
-                slots = slotSchedules
+                slots = slotSchedules,
+                statistics = new
+                {
+                    totalActivePatients = activePatientIds.Count,
+                    totalReservedPatients = reservedPatientIds.Count,
+                    activeSessionsToday = activeCount,
+                    preScheduledSessionsToday = preScheduledCount,
+                    totalSessionsToday = allSchedulesToday.Count,
+                    futureSessionsCount = allSchedulesFuture.Count
+                }
             };
 
             return Ok(ApiResponse<object>.SuccessResponse(dailySchedule));
@@ -513,4 +554,12 @@ public class ScheduleController : ControllerBase
         // This is a placeholder - you should get actual patient birth date
         return 0;
     }
+}
+
+public class SlotInfo
+{
+    public int SlotID { get; set; }
+    public string SlotName { get; set; } = string.Empty;
+    public string TimeRange { get; set; } = string.Empty;
+    public int MaxBeds { get; set; }
 }

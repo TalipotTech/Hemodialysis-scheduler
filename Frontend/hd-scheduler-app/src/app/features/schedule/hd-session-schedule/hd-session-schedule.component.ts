@@ -111,12 +111,14 @@ export class HdSessionScheduleComponent implements OnInit {
   today: Date = new Date();
   
   hdCycles = [
-    { value: 'MWF', label: 'Monday, Wednesday, Friday (3x/week)', frequency: 3 },
-    { value: 'TTS', label: 'Tuesday, Thursday, Saturday (3x/week)', frequency: 3 },
-    { value: 'MTW', label: 'Monday, Tuesday, Wednesday (3x/week)', frequency: 3 },
-    { value: 'MTWTHF', label: 'Monday to Friday (5x/week)', frequency: 5 },
-    { value: 'MTWTHFS', label: 'Monday to Saturday (6x/week)', frequency: 6 },
-    { value: 'Daily', label: 'Daily (7x/week)', frequency: 7 },
+    { value: 'Daily', label: 'Every Day (Daily)', frequency: 7 },
+    { value: 'Every 2 days', label: 'Every 2 Days (Alternate Days)', frequency: 3 },
+    { value: 'Every 3 days', label: 'Every 3 Days (Twice Weekly)', frequency: 2 },
+    { value: 'Every 4 days', label: 'Every 4 Days', frequency: 2 },
+    { value: 'Every 5 days', label: 'Every 5 Days', frequency: 1 },
+    { value: 'Every 7 days', label: 'Every 7 Days (Weekly)', frequency: 1 },
+    { value: '3x/week', label: '3 Times Per Week', frequency: 3 },
+    { value: '2x/week', label: '2 Times Per Week', frequency: 2 },
     { value: 'Custom', label: 'Custom Schedule', frequency: null }
   ];
 

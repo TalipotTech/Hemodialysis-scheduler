@@ -107,6 +107,7 @@ builder.Services.AddScoped<IPatientHistoryRepository, PatientHistoryRepository>(
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<EquipmentUsageService>();
 builder.Services.AddScoped<IRecurringSessionService, RecurringSessionService>();
+builder.Services.AddScoped<IHDCycleService, HDCycleService>();
 
 // Register background services
 builder.Services.AddHostedService<SessionHistoryBackgroundService>();
@@ -128,6 +129,15 @@ if (connectionString != null)
     catch (Exception ex)
     {
         Console.WriteLine($"⚠️  Migration already applied or error: {ex.Message}");
+    }
+
+    // Initialize default time slots if needed
+    using (var scope = app.Services.CreateScope())
+    {
+        var context = scope.ServiceProvider.GetRequiredService<DapperContext>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<HDScheduler.API.DatabaseInitializer>>();
+        var slotInitializer = new HDScheduler.API.DatabaseInitializer(context, logger);
+        await slotInitializer.InitializeSlotsAsync();
     }
 }
 

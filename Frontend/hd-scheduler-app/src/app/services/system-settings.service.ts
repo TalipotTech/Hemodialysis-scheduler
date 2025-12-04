@@ -32,6 +32,7 @@ export interface BedCapacity {
   slotName: string;
   maxBeds: number;
   usedBeds: number;
+  reservedBeds: number;
   availableBeds: number;
   occupancyRate: number;
 }

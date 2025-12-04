@@ -91,10 +91,20 @@ export class PatientHistoryComponent implements OnInit {
             const pInfo = data.patientInfo || data.PatientInfo;
             if (pInfo) {
               this.patientInfo = {
+                patientID: pInfo.patientID || pInfo.PatientID,
                 name: pInfo.name || pInfo.Name,
                 mrn: pInfo.mrn || pInfo.MRN,
                 age: pInfo.age || pInfo.Age,
-                gender: pInfo.gender || pInfo.Gender
+                gender: pInfo.gender || pInfo.Gender,
+                dryWeight: pInfo.dryWeight || pInfo.DryWeight,
+                hdCycle: pInfo.hdCycle || pInfo.HDCycle,
+                hdStartDate: pInfo.hdStartDate || pInfo.HDStartDate,
+                dialyserType: pInfo.dialyserType || pInfo.DialyserType,
+                dialyserCount: pInfo.dialyserCount || pInfo.DialyserCount,
+                bloodTubingCount: pInfo.bloodTubingCount || pInfo.BloodTubingCount,
+                totalDialysisCompleted: pInfo.totalDialysisCompleted || pInfo.TotalDialysisCompleted,
+                dialysersPurchased: pInfo.dialysersPurchased || pInfo.DialysersPurchased,
+                bloodTubingPurchased: pInfo.bloodTubingPurchased || pInfo.BloodTubingPurchased
               };
             }
             

@@ -14,6 +14,7 @@ public interface IHDScheduleRepository
     Task<List<HDSchedule>> GetTodaySchedulesAsync();
     Task<List<HDSchedule>> GetHistorySessionsAsync(); // Get sessions moved to history
     Task<List<HDSchedule>> GetFutureScheduledSessionsAsync(); // Get future scheduled sessions for Bed Schedule
+    Task<HDSchedule?> GetByPatientAndDateAsync(int patientId, DateTime date); // Check if session exists for patient on specific date
     Task<bool> MoveCompletedSessionsToHistoryAsync(); // Auto-move completed slots to history
     Task<int> CreateAsync(HDSchedule schedule);
     Task<bool> UpdateAsync(HDSchedule schedule);

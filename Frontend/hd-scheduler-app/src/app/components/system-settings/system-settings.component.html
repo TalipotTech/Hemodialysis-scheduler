@@ -1,0 +1,156 @@
+<div class="container">
+  <mat-card class="settings-card">
+    <mat-card-header>
+      <div class="header-content">
+        <button mat-icon-button (click)="goBack()" class="back-button">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        <mat-card-title>System Settings</mat-card-title>
+      </div>
+    </mat-card-header>
+    
+    <mat-card-content>
+      <mat-tab-group animationDuration="300ms">
+        <!-- Bed Capacity Tab -->
+        <mat-tab label="Bed Capacity">
+          <div class="tab-content">
+            <h3>Bed Capacity Management</h3>
+            <p class="description">Configure maximum bed capacity per slot</p>
+            
+            <div *ngIf="loading" class="loading-container">
+              <mat-spinner></mat-spinner>
+            </div>
+
+            <div *ngIf="!loading && bedCapacities.length > 0" class="capacity-list">
+              <div *ngFor="let slot of bedCapacities" class="capacity-card">
+                <div class="slot-header">
+                  <div class="slot-info">
+                    <h4>{{ slot.slotName }}</h4>
+                    <span class="slot-id">Slot ID: {{ slot.slotID }}</span>
+                  </div>
+                  <div class="occupancy-badge" [class.high]="slot.occupancyRate > 80" [class.medium]="slot.occupancyRate > 50 && slot.occupancyRate <= 80">
+                    {{ slot.occupancyRate }}% Occupied
+                  </div>
+                </div>
+
+                <div class="capacity-stats">
+                  <div class="stat-item">
+                    <mat-icon>hotel</mat-icon>
+                    <div class="stat-content">
+                      <span class="stat-label">Max Beds</span>
+                      <span class="stat-value">{{ slot.maxBeds }}</span>
+                    </div>
+                  </div>
+                  <div class="stat-item">
+                    <mat-icon class="used-icon">person</mat-icon>
+                    <div class="stat-content">
+                      <span class="stat-label">Used Beds</span>
+                      <span class="stat-value used">{{ slot.usedBeds }}</span>
+                    </div>
+                  </div>
+                  <div class="stat-item">
+                    <mat-icon class="reserved-icon">event_busy</mat-icon>
+                    <div class="stat-content">
+                      <span class="stat-label">Reserved</span>
+                      <span class="stat-value reserved">{{ slot.reservedBeds }}</span>
+                    </div>
+                  </div>
+                  <div class="stat-item">
+                    <mat-icon class="available-icon">check_circle</mat-icon>
+                    <div class="stat-content">
+                      <span class="stat-label">Available</span>
+                      <span class="stat-value available">{{ slot.availableBeds }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="capacity-edit" *ngIf="editingSlotId !== slot.slotID">
+                  <button mat-raised-button color="primary" (click)="startEdit(slot.slotID)">
+                    <mat-icon>edit</mat-icon>
+                    Edit Capacity
+                  </button>
+                </div>
+
+                <div class="capacity-edit-form" *ngIf="editingSlotId === slot.slotID">
+                  <div class="capacity-control">
+                    <button mat-mini-fab color="accent" (click)="decrementBeds(slot.slotID)" 
+                            [disabled]="tempMaxBeds[slot.slotID] <= slot.usedBeds || loading">
+                      <mat-icon>remove</mat-icon>
+                    </button>
+                    
+                    <mat-form-field appearance="outline" class="capacity-input">
+                      <mat-label>Maximum Beds</mat-label>
+                      <input matInput type="number" [(ngModel)]="tempMaxBeds[slot.slotID]" 
+                             min="{{ slot.usedBeds }}" max="100" placeholder="Bed capacity">
+                      <mat-icon matPrefix>hotel</mat-icon>
+                    </mat-form-field>
+                    
+                    <button mat-mini-fab color="accent" (click)="incrementBeds(slot.slotID)" 
+                            [disabled]="tempMaxBeds[slot.slotID] >= 100 || loading">
+                      <mat-icon>add</mat-icon>
+                    </button>
+                  </div>
+                  <div class="capacity-hint">
+                    <mat-icon class="info-icon">info</mat-icon>
+                    <span>Current usage: {{ slot.usedBeds }} beds | Min: {{ slot.usedBeds }}, Max: 100</span>
+                  </div>
+                  <div class="edit-actions">
+                    <button mat-raised-button color="primary" (click)="saveBedCapacity(slot.slotID)" [disabled]="loading">
+                      <mat-icon>save</mat-icon>
+                      Save Changes
+                    </button>
+                    <button mat-button (click)="cancelEdit(slot.slotID)" [disabled]="loading">
+                      <mat-icon>close</mat-icon>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+
+                <div class="progress-bar">
+                  <div class="progress-fill" [style.width.%]="slot.occupancyRate"></div>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="!loading && bedCapacities.length === 0" class="empty-state">
+              <mat-icon>info</mat-icon>
+              <p>No slot configurations found</p>
+            </div>
+          </div>
+        </mat-tab>
+
+        <!-- System Parameters Tab -->
+        <mat-tab label="System Parameters">
+          <div class="tab-content">
+            <h3>System Overview</h3>
+            <p class="description">View key system statistics</p>
+
+            <div *ngIf="systemParameters" class="parameters-grid simplified">
+              <div class="parameter-card featured">
+                <mat-icon class="param-icon beds">hotel</mat-icon>
+                <div class="param-content">
+                  <span class="param-label">Total Bed Capacity</span>
+                  <span class="param-value">{{ systemParameters.totalBedCapacity }}</span>
+                  <span class="param-subtitle">beds across all slots</span>
+                </div>
+              </div>
+
+              <div class="parameter-card featured">
+                <mat-icon class="param-icon patients">people</mat-icon>
+                <div class="param-content">
+                  <span class="param-label">Active Patients</span>
+                  <span class="param-value">{{ systemParameters.totalActivePatients }}</span>
+                  <span class="param-subtitle">currently in system</span>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="!systemParameters" class="loading-container">
+              <mat-spinner diameter="40"></mat-spinner>
+            </div>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </mat-card-content>
+  </mat-card>
+</div>

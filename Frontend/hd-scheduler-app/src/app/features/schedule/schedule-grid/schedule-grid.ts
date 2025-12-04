@@ -55,8 +55,6 @@ export class ScheduleGrid implements OnInit, OnDestroy {
   showOccupied = true;
   showReserved = true;
 
-  beds = Array.from({ length: 10 }, (_, i) => i + 1);
-  
   // Auto-refresh settings
   autoRefreshEnabled = false;
   private refreshInterval: any;
@@ -190,6 +188,20 @@ export class ScheduleGrid implements OnInit, OnDestroy {
   getBed(slotId: number, bedNumber: number): BedStatus | undefined {
     const slot = this.getSlot(slotId);
     return slot?.beds.find((b: BedStatus) => b.bedNumber === bedNumber);
+  }
+
+  getBedsForSlot(slot: SlotSchedule): number[] {
+    const maxBeds = slot.maxBeds || 10; // Default to 10 if not provided
+    return Array.from({ length: maxBeds }, (_, i) => i + 1);
+  }
+
+  getSlotOccupied(slot: SlotSchedule): number {
+    return slot.beds.filter(b => b.status === 'occupied' || b.status === 'pre-scheduled').length;
+  }
+
+  getSlotAvailable(slot: SlotSchedule): number {
+    const maxBeds = slot.maxBeds || 10;
+    return maxBeds - this.getSlotOccupied(slot);
   }
 
   getBedClass(slotId: number, bedNumber: number): string {

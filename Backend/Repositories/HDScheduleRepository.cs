@@ -105,6 +105,24 @@ public class HDScheduleRepository : IHDScheduleRepository
         return schedules.ToList();
     }
 
+    public async Task<HDSchedule?> GetByPatientAndDateAsync(int patientId, DateTime date)
+    {
+        var query = @"
+            SELECT h.*, p.Name as PatientName,
+                   d.Name as AssignedDoctorName,
+                   n.Name as AssignedNurseName
+            FROM HDSchedule h
+            INNER JOIN Patients p ON h.PatientID = p.PatientID
+            LEFT JOIN Staff d ON h.AssignedDoctor = d.StaffID
+            LEFT JOIN Staff n ON h.AssignedNurse = n.StaffID
+            WHERE h.PatientID = @PatientID 
+              AND DATE(h.SessionDate) = DATE(@Date)
+            LIMIT 1";
+        
+        using var connection = _context.CreateConnection();
+        return await connection.QueryFirstOrDefaultAsync<HDSchedule>(query, new { PatientID = patientId, Date = date });
+    }
+
     public async Task<List<HDSchedule>> GetActiveAsync()
     {
         // First, move completed sessions to history
