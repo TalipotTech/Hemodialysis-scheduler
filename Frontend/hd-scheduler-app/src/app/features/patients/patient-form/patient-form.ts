@@ -102,6 +102,7 @@ export class PatientForm implements OnInit, OnDestroy {
       hdStartDate: [''], // Date when HD treatment started
       hdCycle: [''], // HD frequency pattern
       hdFrequency: [''], // Sessions per week
+      preferredSlotID: [1], // Preferred time slot (default to Morning)
       prescribedDuration: [''], // Duration in hours
       
       // Dialyser & Dialysate
@@ -316,6 +317,7 @@ export class PatientForm implements OnInit, OnDestroy {
       hdStartDate: formValue.hdStartDate || null,
       hdCycle: formValue.hdCycle || null,
       hdFrequency: formValue.hdFrequency ? Number(formValue.hdFrequency) : null,
+      preferredSlotID: formValue.preferredSlotID ? Number(formValue.preferredSlotID) : 1,
       prescribedDuration: formValue.prescribedDuration ? Number(formValue.prescribedDuration) : null,
       dialyserType: formValue.dialyserType || null,
       dialyserModel: formValue.dialyserModel || null,

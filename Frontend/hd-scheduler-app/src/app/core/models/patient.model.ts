@@ -62,6 +62,7 @@ export interface CreatePatientRequest {
   totalDialysisCompleted?: number | null;
   dialysersPurchased?: number | null;
   bloodTubingPurchased?: number | null;
+  preferredSlotID?: number | null;
   prescribedDuration?: number | null;
   dialyserModel?: string | null;
   prescribedBFR?: number | null;

@@ -312,12 +312,10 @@
                 <div class="form-row">
                   <mat-form-field appearance="outline">
                     <mat-label>Treatment Date*</mat-label>
-                    <input matInput [matDatepicker]="picker" formControlName="treatmentDate" [max]="today" required>
+                    <input matInput [matDatepicker]="picker" formControlName="treatmentDate" required>
                     <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
                     <mat-datepicker #picker></mat-datepicker>
-                    <mat-error *ngIf="sessionForm.get('treatmentDate')?.hasError('matDatepickerMax')">
-                      Cannot select future dates
-                    </mat-error>
+                    <mat-hint>For pre-scheduled sessions, future dates are allowed</mat-hint>
                   </mat-form-field>
 
                   <mat-form-field appearance="outline">

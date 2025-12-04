@@ -590,13 +590,19 @@ export class HdSessionScheduleComponent implements OnInit {
             this.onHDCycleChange();
           }
           
-          // DISABLE only the core registration fields that cannot be changed after initial bed assignment
-          // These are the mandatory setup fields that define the schedule slot/location
-          this.sessionForm.get('treatmentDate')?.disable();
-          this.sessionForm.get('slotID')?.disable();
-          this.sessionForm.get('bedNumber')?.disable();
-          this.sessionForm.get('accessType')?.disable();
-          this.sessionForm.get('dialyserType')?.disable();
+          // DISABLE only the core registration fields ONLY if they have values (i.e., session is already activated)
+          // For pre-scheduled sessions (no slot/bed assigned), keep these fields enabled
+          if (session.slotID || session.SlotID) {
+            this.sessionForm.get('treatmentDate')?.disable();
+            this.sessionForm.get('slotID')?.disable();
+            this.sessionForm.get('bedNumber')?.disable();
+          }
+          if (session.accessType || session.AccessType) {
+            this.sessionForm.get('accessType')?.disable();
+          }
+          if (session.dialyserType || session.DialyserType) {
+            this.sessionForm.get('dialyserType')?.disable();
+          }
           
           // Keep all treatment parameters EDITABLE so staff can update them during treatment
           // This includes: dryWeight, hdStartDate, hdCycle, prescribedDuration, prescribedBFR, 

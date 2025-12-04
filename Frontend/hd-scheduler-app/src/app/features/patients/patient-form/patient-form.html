@@ -175,6 +175,19 @@
           </mat-form-field>
 
           <mat-form-field appearance="outline">
+            <mat-label>Preferred Time Slot</mat-label>
+            <mat-select formControlName="preferredSlotID">
+              <mat-option [value]="1">Morning (06:00 - 10:00)</mat-option>
+              <mat-option [value]="2">Afternoon (11:00 - 15:00)</mat-option>
+              <mat-option [value]="3">Evening (16:00 - 20:00)</mat-option>
+              <mat-option [value]="4">Night (21:00 - 01:00)</mat-option>
+            </mat-select>
+            <mat-hint>Preferred time slot for recurring sessions</mat-hint>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
             <mat-label>Prescribed Duration (hours)</mat-label>
             <input matInput type="number" formControlName="prescribedDuration" step="0.5" placeholder="4">
             <mat-hint>Typically 3.5 - 5 hours</mat-hint>
