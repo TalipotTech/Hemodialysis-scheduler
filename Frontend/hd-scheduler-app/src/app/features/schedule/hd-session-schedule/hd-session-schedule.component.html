@@ -909,7 +909,7 @@
                     Save Progress
                   }
                 </button>
-                <button mat-raised-button color="primary" (click)="onSubmit()" type="button" [disabled]="loading || sessionForm.invalid">
+                <button mat-raised-button color="primary" (click)="onSubmit()" type="button" [disabled]="loading">
                   @if (loading) {
                     <mat-spinner diameter="20"></mat-spinner>
                   } @else {

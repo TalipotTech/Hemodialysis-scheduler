@@ -121,6 +121,10 @@
                   <mat-icon>event</mat-icon>
                   <span>Pre-Scheduled</span>
                 </div>
+                <div class="legend-chip completed">
+                  <mat-icon>verified</mat-icon>
+                  <span>Completed</span>
+                </div>
               </div>
             </div>
           </div>
@@ -155,7 +159,7 @@
                   @for (bed of getBedsForSlot(slot); track bed) {
                     <div class="bed-card" 
                          [class]="getBedClass(slot.slotID, bed)"
-                         [class.clickable]="getBed(slot.slotID, bed)?.status === 'occupied' || getBed(slot.slotID, bed)?.status === 'pre-scheduled'"
+                         [class.clickable]="getBed(slot.slotID, bed)?.status === 'occupied' || getBed(slot.slotID, bed)?.status === 'pre-scheduled' || getBed(slot.slotID, bed)?.status === 'completed'"
                          [matTooltip]="getBedTooltip(slot.slotID, bed)"
                          (click)="onBedClick(slot.slotID, bed)">
                       

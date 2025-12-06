@@ -18,6 +18,11 @@ public interface IHDCycleService
     List<DateTime> GetUpcomingDialysisDates(string hdCycle, DateTime lastSessionDate, int daysAhead = 30);
     
     /// <summary>
+    /// Generate future scheduled sessions for a patient based on their HD cycle
+    /// </summary>
+    Task<List<HDSchedule>> GenerateFutureSessionsAsync(int patientId, string patientName, string hdCycle, DateTime startDate, int slotId, int daysAhead = 90);
+    
+    /// <summary>
     /// Check if a patient should have dialysis on a specific date based on their HD cycle
     /// </summary>
     bool ShouldHaveDialysisOnDate(string hdCycle, DateTime sessionDate, DateTime hdStartDate);
@@ -217,5 +222,35 @@ public class HDCycleService : IHDCycleService
             nextDate = nextDate.AddDays(1);
         }
         return nextDate;
+    }
+
+    public async Task<List<HDSchedule>> GenerateFutureSessionsAsync(int patientId, string patientName, string hdCycle, DateTime startDate, int slotId, int daysAhead = 90)
+    {
+        var futureSessions = new List<HDSchedule>();
+        
+        if (string.IsNullOrEmpty(hdCycle))
+            return futureSessions;
+
+        var upcomingDates = GetUpcomingDialysisDates(hdCycle, startDate, daysAhead);
+
+        foreach (var sessionDate in upcomingDates)
+        {
+            var schedule = new HDSchedule
+            {
+                PatientID = patientId,
+                PatientName = patientName,
+                SlotID = slotId,
+                SessionDate = sessionDate,
+                BedNumber = null, // Unassigned - will be assigned when patient comes
+                SessionStatus = "Pre-Scheduled",
+                IsDischarged = false,
+                IsMovedToHistory = false,
+                CreatedAt = DateTime.Now
+            };
+
+            futureSessions.Add(schedule);
+        }
+
+        return futureSessions;
     }
 }

@@ -5,8 +5,8 @@ namespace HDScheduler.API.Services;
 
 public interface IRecurringSessionService
 {
-    Task<List<int>> GenerateRecurringSessions(HDSchedule baseSession, int weeksAhead = 1);
-    List<DateTime> CalculateNextSessionDates(string hdCycle, DateTime startDate, int sessionsCount);
+    Task<List<int>> GenerateRecurringSessions(HDSchedule baseSession, int daysAhead = 90);
+    List<DateTime> CalculateNextSessionDates(string hdCycle, DateTime startDate, int daysAhead);
     Task<bool> ActivatePreScheduledSession(int scheduleId);
     Task<bool> MarkSessionAsMissed(int scheduleId, bool autoReschedule = false);
 }
@@ -24,7 +24,7 @@ public class RecurringSessionService : IRecurringSessionService
         _logger = logger;
     }
 
-    public async Task<List<int>> GenerateRecurringSessions(HDSchedule baseSession, int weeksAhead = 1)
+    public async Task<List<int>> GenerateRecurringSessions(HDSchedule baseSession, int daysAhead = 90)
     {
         var createdSessionIds = new List<int>();
 
@@ -33,12 +33,8 @@ public class RecurringSessionService : IRecurringSessionService
             return createdSessionIds; // No recurring schedule
         }
 
-        // Calculate how many sessions to create (sessions per week * weeks ahead)
-        var sessionsPerWeek = GetSessionsPerWeek(baseSession.HDCycle);
-        var totalSessions = sessionsPerWeek * weeksAhead;
-
-        // Calculate next session dates
-        var nextDates = CalculateNextSessionDates(baseSession.HDCycle, baseSession.SessionDate, totalSessions);
+        // Calculate next session dates up to daysAhead (until discharge)
+        var nextDates = CalculateNextSessionDates(baseSession.HDCycle, baseSession.SessionDate, daysAhead);
 
         foreach (var nextDate in nextDates)
         {
@@ -92,7 +88,7 @@ public class RecurringSessionService : IRecurringSessionService
         return createdSessionIds;
     }
 
-    public List<DateTime> CalculateNextSessionDates(string hdCycle, DateTime startDate, int sessionsCount)
+    public List<DateTime> CalculateNextSessionDates(string hdCycle, DateTime startDate, int daysAhead)
     {
         var dates = new List<DateTime>();
         var daysOfWeek = ParseHDCycleToDays(hdCycle);
@@ -101,9 +97,9 @@ public class RecurringSessionService : IRecurringSessionService
             return dates;
 
         var currentDate = startDate.AddDays(1); // Start from next day
-        var endDate = startDate.AddDays(7 * 2); // Look ahead 2 weeks max
+        var endDate = startDate.AddDays(daysAhead); // Look ahead until discharge (90 days default)
 
-        while (dates.Count < sessionsCount && currentDate <= endDate)
+        while (currentDate <= endDate)
         {
             if (daysOfWeek.Contains(currentDate.DayOfWeek))
             {
@@ -161,11 +157,18 @@ public class RecurringSessionService : IRecurringSessionService
         // Parse common HD cycle patterns
         hdCycle = hdCycle.ToUpper();
 
-        if (hdCycle.Contains("MWF") || hdCycle.Contains("MONDAY") && hdCycle.Contains("WEDNESDAY") && hdCycle.Contains("FRIDAY"))
+        // Check for "Every day" (Daily - 7 days including Sunday)
+        if (hdCycle.Contains("EVERY DAY") || hdCycle.Contains("DAILY"))
+        {
+            days.AddRange(new[] { DayOfWeek.Sunday, DayOfWeek.Monday, DayOfWeek.Tuesday, 
+                                  DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday });
+        }
+        // Check for specific day patterns (MWF, TTS)
+        else if (hdCycle.Contains("MWF") || (hdCycle.Contains("MONDAY") && hdCycle.Contains("WEDNESDAY") && hdCycle.Contains("FRIDAY")))
         {
             days.AddRange(new[] { DayOfWeek.Monday, DayOfWeek.Wednesday, DayOfWeek.Friday });
         }
-        else if (hdCycle.Contains("TTS") || hdCycle.Contains("TUESDAY") && hdCycle.Contains("THURSDAY") && hdCycle.Contains("SATURDAY"))
+        else if (hdCycle.Contains("TTS") || (hdCycle.Contains("TUESDAY") && hdCycle.Contains("THURSDAY") && hdCycle.Contains("SATURDAY")))
         {
             days.AddRange(new[] { DayOfWeek.Tuesday, DayOfWeek.Thursday, DayOfWeek.Saturday });
         }
@@ -173,7 +176,29 @@ public class RecurringSessionService : IRecurringSessionService
         {
             days.AddRange(new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday });
         }
-        else if (hdCycle.Contains("DAILY") || hdCycle.Contains("6X"))
+        // Check for "Every X days" patterns
+        else if (hdCycle.Contains("EVERY 2 DAYS"))
+        {
+            // Every 2 days ~= 3-4x/week, use MWF pattern
+            days.AddRange(new[] { DayOfWeek.Monday, DayOfWeek.Wednesday, DayOfWeek.Friday });
+        }
+        else if (hdCycle.Contains("EVERY 3 DAYS"))
+        {
+            // Every 3 days ~= 2-3x/week
+            days.AddRange(new[] { DayOfWeek.Monday, DayOfWeek.Thursday });
+        }
+        else if (hdCycle.Contains("EVERY 4 DAYS") || hdCycle.Contains("EVERY 5 DAYS"))
+        {
+            // Every 4-5 days ~= 1-2x/week
+            days.AddRange(new[] { DayOfWeek.Monday });
+        }
+        else if (hdCycle.Contains("EVERY WEEK"))
+        {
+            // Once per week
+            days.AddRange(new[] { DayOfWeek.Monday });
+        }
+        // Legacy patterns for backward compatibility
+        else if (hdCycle.Contains("6X"))
         {
             days.AddRange(new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, 
                                   DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday });
@@ -187,13 +212,31 @@ public class RecurringSessionService : IRecurringSessionService
         if (string.IsNullOrEmpty(hdCycle))
             return 0;
 
+        hdCycle = hdCycle.ToUpper();
+
+        // Check for "Every day" (Daily - 7 days)
+        if (hdCycle.Contains("EVERY DAY") || hdCycle.Contains("DAILY"))
+            return 7;
+        
         // Extract number from cycle string (e.g., "3x/week" => 3)
-        if (hdCycle.Contains("3x") || hdCycle.Contains("3X"))
+        if (hdCycle.Contains("3X"))
             return 3;
-        if (hdCycle.Contains("6x") || hdCycle.Contains("6X") || hdCycle.Contains("DAILY"))
+        if (hdCycle.Contains("6X"))
             return 6;
-        if (hdCycle.Contains("2x") || hdCycle.Contains("2X"))
+        if (hdCycle.Contains("2X"))
             return 2;
+        if (hdCycle.Contains("1X"))
+            return 1;
+        
+        // Check for "Every X days" patterns
+        if (hdCycle.Contains("EVERY 2 DAYS"))
+            return 3;  // ~3-4x/week
+        if (hdCycle.Contains("EVERY 3 DAYS"))
+            return 2;  // ~2-3x/week
+        if (hdCycle.Contains("EVERY 4 DAYS") || hdCycle.Contains("EVERY 5 DAYS"))
+            return 2;  // ~1-2x/week
+        if (hdCycle.Contains("EVERY WEEK"))
+            return 1;  // Once per week
 
         // Default to 3 for common patterns like MWF or TTS
         return 3;

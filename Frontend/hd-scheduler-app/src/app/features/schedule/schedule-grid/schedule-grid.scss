@@ -573,6 +573,21 @@
                 box-shadow: 0 4px 12px rgba(106, 27, 154, 0.2);
               }
             }
+
+            &.completed {
+              background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+              color: #1565c0;
+              border: 1px solid #42a5f5;
+
+              mat-icon {
+                color: #1565c0;
+              }
+
+              &:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
+              }
+            }
           }
         }
       }
@@ -915,6 +930,31 @@
                 box-shadow: 0 8px 24px rgba(156, 39, 176, 0.5);
                 transform: translateY(-4px);
                 border-color: #ba68c8;
+              }
+            }
+
+            &.bed-completed {
+              background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+              color: white;
+              border: 3px solid #42a5f5;
+              box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+              opacity: 0.9;
+
+              .bed-number {
+                color: white;
+                border-bottom-color: rgba(255, 255, 255, 0.2);
+
+                mat-icon {
+                  color: white;
+                }
+              }
+
+              &:hover {
+                background: linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%);
+                box-shadow: 0 8px 24px rgba(33, 150, 243, 0.5);
+                transform: translateY(-4px);
+                border-color: #64b5f6;
+                opacity: 1;
               }
             }
 

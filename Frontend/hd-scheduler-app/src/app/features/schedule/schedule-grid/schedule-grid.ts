@@ -216,6 +216,9 @@ export class ScheduleGrid implements OnInit, OnDestroy {
       case 'pre-scheduled':
         className = 'bed-pre-scheduled';
         break;
+      case 'completed':
+        className = 'bed-completed';
+        break;
       case 'reserved':
         className = 'bed-reserved';
         break;
@@ -239,6 +242,8 @@ export class ScheduleGrid implements OnInit, OnDestroy {
         return this.showOccupied;
       case 'pre-scheduled':
         return this.showOccupied; // Use same filter as occupied
+      case 'completed':
+        return this.showOccupied; // Show completed sessions with occupied filter
       case 'reserved':
         return this.showReserved;
       default:
@@ -359,15 +364,16 @@ export class ScheduleGrid implements OnInit, OnDestroy {
       return;
     }
 
-    if ((bed.status === 'occupied' || bed.status === 'pre-scheduled') && bed.patient && bed.scheduleId) {
+    if ((bed.status === 'occupied' || bed.status === 'pre-scheduled' || bed.status === 'completed') && bed.patient && bed.scheduleId) {
       // Navigate to HD session form in EDIT mode - shows all fields (filled and empty)
-      // Staff can view/edit all data and it will auto-save
+      // For completed sessions, staff can view the historical data
       console.log('Navigating to edit session:', bed.scheduleId);
       this.router.navigate(['/schedule/hd-session/edit', bed.scheduleId]);
     } else if (bed.status === 'available') {
       this.snackBar.open('This bed is available. Please select a patient first.', 'Close', { duration: 3000 });
     } else {
-      this.snackBar.open(`Cannot edit ${bed.status} bed. Status: ${bed.status}`, 'Close', { duration: 3000 });
+      // For any other status, show a generic message
+      this.snackBar.open(`Bed is ${bed.status}. No action available.`, 'Close', { duration: 3000 });
     }
   }
 

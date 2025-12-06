@@ -1,6 +1,7 @@
 using HDScheduler.API.Data;
 using HDScheduler.API.Models;
 using Dapper;
+using Microsoft.Extensions.Logging;
 
 namespace HDScheduler.API.Repositories;
 
@@ -15,10 +16,12 @@ public interface IPatientHistoryRepository
 public class PatientHistoryRepository : IPatientHistoryRepository
 {
     private readonly DapperContext _context;
+    private readonly ILogger<PatientHistoryRepository> _logger;
 
-    public PatientHistoryRepository(DapperContext context)
+    public PatientHistoryRepository(DapperContext context, ILogger<PatientHistoryRepository> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     public async Task<PatientTreatmentHistory?> GetPatientHistoryAsync(int patientId)
@@ -39,6 +42,8 @@ public class PatientHistoryRepository : IPatientHistoryRepository
         if (patient == null) return null;
 
         // Get all sessions with related data - include ALL fields from HDSchedule
+        // Show only completed/discharged sessions for patient history
+        // Filter out pre-scheduled future sessions - only show sessions that have been completed
         var sessionsQuery = @"
             SELECT 
                 h.ScheduleID, h.SessionDate, h.PatientID, h.SlotID, h.BedNumber,
@@ -69,11 +74,20 @@ public class PatientHistoryRepository : IPatientHistoryRepository
             LEFT JOIN Staff d ON h.AssignedDoctor = d.StaffID
             LEFT JOIN Staff n ON h.AssignedNurse = n.StaffID
             LEFT JOIN HDLogs l ON h.ScheduleID = l.ScheduleID
-            WHERE h.PatientID = @PatientID 
-                AND date(h.SessionDate) <= date('now')
+            WHERE h.PatientID = @PatientID
+                AND h.IsDischarged = 1
             ORDER BY h.SessionDate DESC";
 
         var sessions = (await connection.QueryAsync<TreatmentSessionSummary>(sessionsQuery, new { PatientID = patientId })).ToList();
+        
+        _logger.LogInformation("Patient {PatientId} history: Found {SessionCount} sessions. Today is {Today}", 
+            patientId, sessions.Count, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+        
+        foreach (var session in sessions.Take(5))
+        {
+            _logger.LogInformation("  Session {ScheduleId}: Date={SessionDate}, Status={SessionStatus}, Discharged={IsDischarged}", 
+                session.ScheduleID, session.SessionDate, session.SessionStatus, session.IsDischarged);
+        }
 
         // Get statistics
         var statistics = await GetTreatmentStatisticsAsync(patientId);

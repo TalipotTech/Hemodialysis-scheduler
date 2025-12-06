@@ -186,11 +186,13 @@
   }
 
   .step-actions {
-    display: flex;
-    justify-content: space-between;
+    display: flex !important;
+    justify-content: space-between !important;
     margin-top: 32px;
     padding-top: 24px;
     border-top: 2px solid #e3e8ef;
+    visibility: visible !important;
+    opacity: 1 !important;
 
     button {
       min-width: 140px;
@@ -201,6 +203,9 @@
       transition: all 0.3s ease;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      display: inline-flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
 
       &:hover {
         transform: translateY(-2px);

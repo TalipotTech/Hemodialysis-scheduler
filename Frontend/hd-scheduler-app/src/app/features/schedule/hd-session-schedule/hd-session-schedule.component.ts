@@ -133,27 +133,27 @@ export class HdSessionScheduleComponent implements OnInit {
     private snackBar: MatSnackBar
   ) {
     this.sessionForm = this.fb.group({
-      treatmentDate: [new Date(), Validators.required],
-      slotID: ['', Validators.required],
-      bedNumber: ['', Validators.required],
-      dryWeight: ['', [Validators.required, Validators.min(1)]],
-      hdStartDate: [new Date(), Validators.required],
+      treatmentDate: [new Date()],
+      slotID: [''],
+      bedNumber: [''],
+      dryWeight: ['', [Validators.min(1)]],
+      hdStartDate: [new Date()],
       hdCycle: [''],
       hdFrequency: [''],
       hdCustomDays: [''],
-      accessType: ['', Validators.required],
+      accessType: [''],
       accessLocation: [''],
-      prescribedDuration: [4.0, [Validators.required, Validators.min(1), Validators.max(8)]],
-      dialyserType: ['', Validators.required],
+      prescribedDuration: [4.0],  // Removed validators
+      dialyserType: [''],
       dialyserModel: [''],
-      prescribedBFR: [400, [Validators.min(100), Validators.max(600)]],
+      prescribedBFR: [400],  // Removed validators
       dialysatePrescription: [''],
       anticoagulationType: [''],
       heparinBolusDose: [''],
       heparinInfusionRate: [''],
       // HDTreatmentSession fields
       startTime: [''],
-      preWeight: ['', [Validators.required, Validators.min(1)]],
+      preWeight: [''],  // Removed validators
       ufGoal: [''],
       preBPSitting: [''],
       preTemperature: [''],
@@ -296,8 +296,13 @@ export class HdSessionScheduleComponent implements OnInit {
             }
             
             if (this.patient.hdStartDate) {
-              this.sessionForm.patchValue({ hdStartDate: new Date(this.patient.hdStartDate) });
-              this.autoFilledFields.push({ label: 'HD Start Date', value: new Date(this.patient.hdStartDate).toLocaleDateString() });
+              const hdStartDate = new Date(this.patient.hdStartDate);
+              this.sessionForm.patchValue({ 
+                hdStartDate: hdStartDate,
+                treatmentDate: hdStartDate // Set treatment date to HD start date
+              });
+              this.autoFilledFields.push({ label: 'HD Start Date', value: hdStartDate.toLocaleDateString() });
+              this.autoFilledFields.push({ label: 'Treatment Date', value: hdStartDate.toLocaleDateString() });
             }
             
             if (this.patient.hdCycle) {
@@ -409,6 +414,16 @@ export class HdSessionScheduleComponent implements OnInit {
             dialyserType: this.patient.dialyserType
           });
           console.log('🔍 isEditMode:', this.isEditMode, '| patient exists:', !!this.patient);
+          
+          // Update treatment date to match HD Start Date if available
+          if (this.patient.hdStartDate && this.isEditMode) {
+            const hdStartDate = new Date(this.patient.hdStartDate);
+            this.sessionForm.patchValue({ 
+              treatmentDate: hdStartDate,
+              hdStartDate: hdStartDate
+            });
+            console.log('📅 Updated treatment date to HD Start Date:', hdStartDate);
+          }
         }
       },
       error: (error) => {
@@ -494,15 +509,19 @@ export class HdSessionScheduleComponent implements OnInit {
           console.log('Loading session data:', session);
           
           // Backend returns PascalCase from database, so use PascalCase property names
+          // Use HD Start Date as treatment date if available, otherwise use session date
+          const hdStartDate = session.hdStartDate || session.HDStartDate;
+          const treatmentDate = hdStartDate ? new Date(hdStartDate) : (session.sessionDate ? new Date(session.sessionDate) : new Date());
+          
           this.sessionForm.patchValue({
             // Core fields
-            treatmentDate: session.sessionDate ? new Date(session.sessionDate) : new Date(),
+            treatmentDate: treatmentDate,
             slotID: session.slotID || session.SlotID || '',
             bedNumber: session.bedNumber || session.BedNumber || '',
             
             // Basic HD Info
             dryWeight: session.dryWeight || session.DryWeight || '',
-            hdStartDate: session.hdStartDate || session.HDStartDate ? new Date(session.hdStartDate || session.HDStartDate) : null,
+            hdStartDate: hdStartDate ? new Date(hdStartDate) : null,
             hdCycle: session.hdCycle || session.HDCycle || '',
             hdFrequency: session.hdFrequency || session.HDFrequency || session.hdFrequency || '',
             hdCustomDays: session.hdCustomDays || session.HDCustomDays || '',
@@ -753,6 +772,19 @@ export class HdSessionScheduleComponent implements OnInit {
       },
       error: (error) => {
         console.error('Auto-save failed:', error);
+        console.error('Error details:', error.error);
+        
+        // Extract error message from backend
+        let errorMessage = 'Failed to save changes';
+        if (error.error?.message) {
+          errorMessage = error.error.message;
+        } else if (error.error?.errors) {
+          errorMessage = Object.values(error.error.errors).join(', ');
+        } else if (typeof error.error === 'string') {
+          errorMessage = error.error;
+        }
+        
+        console.error('Backend error message:', errorMessage);
         
         // Handle 401 Unauthorized specifically
         if (error.status === 401) {
@@ -764,8 +796,15 @@ export class HdSessionScheduleComponent implements OnInit {
           }).onAction().subscribe(() => {
             this.router.navigate(['/login'], { queryParams: { returnUrl: this.router.url } });
           });
+        } else if (error.status === 400) {
+          // Show specific error message for 400 Bad Request
+          this.snackBar.open(`❌ ${errorMessage}`, 'OK', { 
+            duration: 6000,
+            horizontalPosition: 'center',
+            verticalPosition: 'top'
+          });
         } else {
-          this.snackBar.open('Failed to save changes', 'Retry', { duration: 3000 }).onAction().subscribe(() => {
+          this.snackBar.open(errorMessage, 'Retry', { duration: 3000 }).onAction().subscribe(() => {
             this.autoSaveData();
           });
         }
@@ -1047,11 +1086,12 @@ export class HdSessionScheduleComponent implements OnInit {
   }
 
   onSubmit(): void {
-    if (this.sessionForm.invalid) {
-      this.sessionForm.markAllAsTouched();
-      this.snackBar.open('Please fill in all required fields', 'Close', { duration: 3000 });
-      return;
-    }
+    // Removed form validation check - allow submission with any data entered
+    // if (this.sessionForm.invalid) {
+    //   this.sessionForm.markAllAsTouched();
+    //   this.snackBar.open('Please fill in all required fields', 'Close', { duration: 3000 });
+    //   return;
+    // }
 
     // Only check bed selection in create mode, not in edit mode
     if (!this.isEditMode && !this.selectedBed) {

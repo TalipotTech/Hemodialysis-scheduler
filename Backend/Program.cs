@@ -107,6 +107,7 @@ builder.Services.AddScoped<IPatientHistoryRepository, PatientHistoryRepository>(
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<EquipmentUsageService>();
 builder.Services.AddScoped<IRecurringSessionService, RecurringSessionService>();
+builder.Services.AddScoped<IBedAssignmentService, BedAssignmentService>();
 builder.Services.AddScoped<IHDCycleService, HDCycleService>();
 
 // Register background services

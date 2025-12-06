@@ -132,6 +132,7 @@ public class CreatePatientRequest
     public string? GuardianName { get; set; } // Guardian name
     public string? HDCycle { get; set; } // HD Cycle pattern (e.g., "3x/week", "2x/week")
     public int? HDFrequency { get; set; } // Number of sessions per week
+    public int? PreferredSlotID { get; set; } // Preferred time slot for recurring sessions (1=Morning, 2=Afternoon, 3=Evening, 4=Night)
     
     // HD Treatment Information (added 2025-11-28)
     public decimal? DryWeight { get; set; } // Dry weight in kg

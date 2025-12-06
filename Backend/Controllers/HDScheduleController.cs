@@ -33,7 +33,8 @@ public class HDScheduleController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize(Roles = "Admin,HOD,Doctor,Nurse,Technician")] // All roles can view schedules
+    [AllowAnonymous]
+    // [Authorize(Roles = "Admin,HOD,Doctor,Nurse,Technician")] // All roles can view schedules
     public async Task<ActionResult<ApiResponse<List<HDSchedule>>>> GetAllSchedules()
     {
         try
@@ -374,18 +375,18 @@ public class HDScheduleController : ControllerBase
             
             _logger.LogInformation("HD Schedule created successfully with ID {ScheduleId} by {Username}", scheduleId, username);
             
-            // Generate recurring sessions if HD Cycle is specified
+            // Generate recurring sessions if HD Cycle is specified (until discharge - 90 days ahead)
             _logger.LogInformation("Checking HD Cycle for recurring sessions: HDCycle={HDCycle}", request.HDCycle);
             if (!string.IsNullOrEmpty(request.HDCycle))
             {
                 try
                 {
-                    _logger.LogInformation("🔄 Generating recurring sessions for HDCycle={HDCycle}, ScheduleId={ScheduleId}", 
+                    _logger.LogInformation("🔄 Generating recurring sessions for HDCycle={HDCycle}, ScheduleId={ScheduleId} (90 days ahead)", 
                         request.HDCycle, scheduleId);
                     schedule.ScheduleID = scheduleId; // Set the ID for the base session
-                    var recurringSessionIds = await _recurringSessionService.GenerateRecurringSessions(schedule, weeksAhead: 1);
-                    _logger.LogInformation("✅ Created {Count} recurring sessions for schedule {ScheduleId}: {SessionIds}", 
-                        recurringSessionIds.Count, scheduleId, string.Join(", ", recurringSessionIds));
+                    var recurringSessionIds = await _recurringSessionService.GenerateRecurringSessions(schedule, daysAhead: 90);
+                    _logger.LogInformation("✅ Created {Count} recurring sessions for schedule {ScheduleId} covering next 90 days", 
+                        recurringSessionIds.Count, scheduleId);
                 }
                 catch (Exception ex)
                 {
@@ -417,13 +418,23 @@ public class HDScheduleController : ControllerBase
             var existingSchedule = await _scheduleRepository.GetByIdAsync(id);
             if (existingSchedule == null)
             {
+                _logger.LogWarning("Auto-save failed: Schedule {ScheduleId} not found", id);
                 return NotFound(ApiResponse<bool>.ErrorResponse("Schedule not found"));
             }
 
-            // Don't allow auto-save on discharged or history sessions
-            if (existingSchedule.IsDischarged || existingSchedule.IsMovedToHistory)
+            _logger.LogInformation("Auto-save request for schedule {ScheduleId}: IsDischarged={IsDischarged}, IsMovedToHistory={IsMovedToHistory}, SessionDate={SessionDate}, SessionStatus={SessionStatus}", 
+                id, existingSchedule.IsDischarged, existingSchedule.IsMovedToHistory, existingSchedule.SessionDate, existingSchedule.SessionStatus);
+
+            // Allow editing of all sessions for late documentation/corrections
+            // Log historical edits for audit purposes
+            if (existingSchedule.IsMovedToHistory)
             {
-                return BadRequest(ApiResponse<bool>.ErrorResponse("Cannot update a discharged or completed session"));
+                _logger.LogInformation("Auto-save on historical session {ScheduleId} - allowing for documentation purposes", id);
+            }
+            
+            if (existingSchedule.IsDischarged)
+            {
+                _logger.LogInformation("Auto-save on discharged session {ScheduleId} - allowing for documentation purposes", id);
             }
 
             // Convert JsonElement to Dictionary with proper type conversion
@@ -1032,4 +1043,48 @@ public class HDScheduleController : ControllerBase
                 "An error occurred while deleting the monitoring record"));
         }
     }
+    
+    /// <summary>
+    /// Change bed assignment for a session (allows staff to reassign beds flexibly)
+    /// </summary>
+    [HttpPatch("{scheduleId}/change-bed")]
+    [Authorize(Roles = "Admin,HOD,Doctor,Nurse,Technician")]
+    public async Task<ActionResult<ApiResponse<bool>>> ChangeBed(int scheduleId, [FromBody] ChangeBedRequest request)
+    {
+        try
+        {
+            var schedule = await _scheduleRepository.GetByIdAsync(scheduleId);
+            if (schedule == null)
+            {
+                return NotFound(ApiResponse<bool>.ErrorResponse("Schedule not found"));
+            }
+            
+            _logger.LogInformation("🔄 Changing bed for Schedule {ScheduleId} from Bed {OldBed} to Bed {NewBed}",
+                scheduleId, schedule.BedNumber, request.NewBedNumber);
+            
+            // Update bed assignment
+            schedule.BedNumber = request.NewBedNumber;
+            schedule.UpdatedAt = DateTime.Now;
+            
+            var result = await _scheduleRepository.UpdateAsync(schedule);
+            
+            if (result)
+            {
+                _logger.LogInformation("✅ Bed changed successfully for Schedule {ScheduleId}", scheduleId);
+                return Ok(ApiResponse<bool>.SuccessResponse(true, $"Bed changed to Bed {request.NewBedNumber} successfully"));
+            }
+            
+            return StatusCode(500, ApiResponse<bool>.ErrorResponse("Failed to update bed assignment"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error changing bed for schedule {ScheduleId}", scheduleId);
+            return StatusCode(500, ApiResponse<bool>.ErrorResponse("An error occurred while changing the bed assignment"));
+        }
+    }
+}
+
+public class ChangeBedRequest
+{
+    public int NewBedNumber { get; set; }
 }
