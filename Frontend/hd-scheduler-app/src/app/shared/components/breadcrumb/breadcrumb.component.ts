@@ -158,4 +158,9 @@ export class BreadcrumbComponent implements OnInit {
         this.router.navigate(['/login']);
     }
   }
+
+  toggleMenu(): void {
+    // Emit event to toggle sidebar
+    window.dispatchEvent(new CustomEvent('toggleSidebar'));
+  }
 }

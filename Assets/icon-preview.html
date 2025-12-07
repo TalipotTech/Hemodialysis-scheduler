@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HD Scheduler - Logo & Icon Preview</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+            color: white;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #007BBD, #00B050);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+        
+        .section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .section-title {
+            font-size: 1.5em;
+            margin-bottom: 25px;
+            color: #00B050;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section-title::before {
+            content: '';
+            width: 5px;
+            height: 25px;
+            background: linear-gradient(180deg, #007BBD, #00B050);
+            border-radius: 3px;
+        }
+        
+        .icon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 25px;
+        }
+        
+        .icon-card {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .icon-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.12);
+            box-shadow: 0 10px 40px rgba(0, 123, 189, 0.3);
+        }
+        
+        .icon-card img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .icon-card .size {
+            font-size: 0.9em;
+            color: #00B050;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .icon-card .filename {
+            font-size: 0.75em;
+            color: #666;
+            word-break: break-all;
+        }
+        
+        .design-option {
+            margin-bottom: 40px;
+        }
+        
+        .option-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px 20px;
+            background: rgba(0, 123, 189, 0.2);
+            border-radius: 10px;
+        }
+        
+        .option-number {
+            background: linear-gradient(135deg, #007BBD, #00B050);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        
+        .option-title {
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+        
+        .svg-preview {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin: 30px 0;
+        }
+        
+        .svg-card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        .svg-card img {
+            width: 200px;
+            height: 200px;
+        }
+        
+        .svg-card .label {
+            color: #333;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        
+        .usage-section {
+            background: linear-gradient(135deg, rgba(0, 123, 189, 0.1), rgba(0, 176, 80, 0.1));
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+        
+        .usage-section h3 {
+            color: #00B050;
+            margin-bottom: 15px;
+        }
+        
+        .code-block {
+            background: #1a1a1a;
+            border-radius: 10px;
+            padding: 15px;
+            overflow-x: auto;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.85em;
+            color: #00B050;
+        }
+        
+        .sizes-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .sizes-table th,
+        .sizes-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .sizes-table th {
+            background: rgba(0, 123, 189, 0.2);
+            color: #00B050;
+            font-weight: 600;
+        }
+        
+        .sizes-table tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.75em;
+            font-weight: bold;
+        }
+        
+        .badge-required {
+            background: #00B050;
+            color: white;
+        }
+        
+        .badge-optional {
+            background: #666;
+            color: white;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>HD Scheduler</h1>
+        <p class="subtitle">Logo & App Icon Design Options</p>
+        
+        <!-- Design Option 1: Original (Kidneys + Clock) -->
+        <section class="section design-option">
+            <div class="option-header">
+                <span class="option-number">1</span>
+                <span class="option-title">Original Design - Kidneys with Clock (Recommended)</span>
+            </div>
+            
+            <div class="svg-preview">
+                <div class="svg-card">
+                    <img src="hd-scheduler-logo.svg" alt="HD Scheduler Logo">
+                    <div class="label">Full Logo</div>
+                </div>
+                <div class="svg-card">
+                    <img src="hd-scheduler-icon.svg" alt="HD Scheduler Icon">
+                    <div class="label">App Icon</div>
+                </div>
+            </div>
+            
+            <div class="icon-grid">
+                <div class="icon-card">
+                    <img src="hd-scheduler-icon-512.png" alt="512x512">
+                    <div class="size">512x512</div>
+                    <div class="filename">hd-scheduler-icon-512.png</div>
+                </div>
+                <div class="icon-card">
+                    <img src="hd-scheduler-icon-192.png" alt="192x192" style="width: 192px;">
+                    <div class="size">192x192</div>
+                    <div class="filename">hd-scheduler-icon-192.png</div>
+                </div>
+                <div class="icon-card">
+                    <img src="hd-scheduler-icon-128.png" alt="128x128" style="width: 128px;">
+                    <div class="size">128x128</div>
+                    <div class="filename">hd-scheduler-icon-128.png</div>
+                </div>
+                <div class="icon-card">
+                    <img src="hd-scheduler-favicon-32.png" alt="32x32" style="width: 64px; image-rendering: pixelated;">
+                    <div class="size">32x32 (Favicon)</div>
+                    <div class="filename">hd-scheduler-favicon-32.png</div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Design Option 2: Modern Clock Focus -->
+        <section class="section design-option">
+            <div class="option-header">
+                <span class="option-number">2</span>
+                <span class="option-title">Modern Design - Clock Focus with HD Badge</span>
+            </div>
+            
+            <div class="svg-preview">
+                <div class="svg-card">
+                    <img src="hd-scheduler-icon-modern.svg" alt="Modern Icon">
+                    <div class="label">Modern App Icon</div>
+                </div>
+            </div>
+            
+            <div class="icon-grid">
+                <div class="icon-card">
+                    <img src="hd-scheduler-modern-512.png" alt="512x512">
+                    <div class="size">512x512</div>
+                    <div class="filename">hd-scheduler-modern-512.png</div>
+                </div>
+                <div class="icon-card">
+                    <img src="hd-scheduler-modern-192.png" alt="192x192" style="width: 192px;">
+                    <div class="size">192x192</div>
+                    <div class="filename">hd-scheduler-modern-192.png</div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Design Option 3: Typography Based -->
+        <section class="section design-option">
+            <div class="option-header">
+                <span class="option-number">3</span>
+                <span class="option-title">Typography Design - HD Letters with Clock</span>
+            </div>
+            
+            <div class="svg-preview">
+                <div class="svg-card">
+                    <img src="hd-scheduler-icon-alt.svg" alt="Alt Icon">
+                    <div class="label">Typography App Icon</div>
+                </div>
+            </div>
+            
+            <div class="icon-grid">
+                <div class="icon-card">
+                    <img src="hd-scheduler-alt-512.png" alt="512x512">
+                    <div class="size">512x512</div>
+                    <div class="filename">hd-scheduler-alt-512.png</div>
+                </div>
+                <div class="icon-card">
+                    <img src="hd-scheduler-alt-192.png" alt="192x192" style="width: 192px;">
+                    <div class="size">192x192</div>
+                    <div class="filename">hd-scheduler-alt-192.png</div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Icon Sizes Reference -->
+        <section class="section">
+            <h2 class="section-title">Icon Sizes Reference</h2>
+            
+            <table class="sizes-table">
+                <thead>
+                    <tr>
+                        <th>Size</th>
+                        <th>Purpose</th>
+                        <th>Platform</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>512x512</td>
+                        <td>PWA Install, App Store</td>
+                        <td>All platforms</td>
+                        <td><span class="badge badge-required">Required</span></td>
+                    </tr>
+                    <tr>
+                        <td>192x192</td>
+                        <td>PWA Manifest</td>
+                        <td>Android, Chrome</td>
+                        <td><span class="badge badge-required">Required</span></td>
+                    </tr>
+                    <tr>
+                        <td>180x180</td>
+                        <td>Apple Touch Icon</td>
+                        <td>iOS Safari</td>
+                        <td><span class="badge badge-required">Required</span></td>
+                    </tr>
+                    <tr>
+                        <td>128x128</td>
+                        <td>Chrome Web Store</td>
+                        <td>Chrome</td>
+                        <td><span class="badge badge-optional">Optional</span></td>
+                    </tr>
+                    <tr>
+                        <td>96x96</td>
+                        <td>Android Legacy</td>
+                        <td>Android</td>
+                        <td><span class="badge badge-optional">Optional</span></td>
+                    </tr>
+                    <tr>
+                        <td>72x72</td>
+                        <td>Android Legacy</td>
+                        <td>Android</td>
+                        <td><span class="badge badge-optional">Optional</span></td>
+                    </tr>
+                    <tr>
+                        <td>48x48</td>
+                        <td>Windows Tile</td>
+                        <td>Windows</td>
+                        <td><span class="badge badge-optional">Optional</span></td>
+                    </tr>
+                    <tr>
+                        <td>32x32</td>
+                        <td>Favicon</td>
+                        <td>Browsers</td>
+                        <td><span class="badge badge-required">Required</span></td>
+                    </tr>
+                    <tr>
+                        <td>16x16</td>
+                        <td>Favicon</td>
+                        <td>Browsers</td>
+                        <td><span class="badge badge-required">Required</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+        
+        <!-- Usage Instructions -->
+        <section class="section">
+            <h2 class="section-title">Usage Instructions</h2>
+            
+            <div class="usage-section">
+                <h3>1. Add to HTML &lt;head&gt;</h3>
+                <div class="code-block">
+&lt;!-- Favicon --&gt;
+&lt;link rel="icon" type="image/png" sizes="32x32" href="/icons/hd-scheduler-favicon-32.png"&gt;
+&lt;link rel="icon" type="image/png" sizes="16x16" href="/icons/hd-scheduler-favicon-16.png"&gt;
+
+&lt;!-- Apple Touch Icon --&gt;
+&lt;link rel="apple-touch-icon" sizes="180x180" href="/icons/hd-scheduler-icon-180.png"&gt;
+
+&lt;!-- PWA Manifest --&gt;
+&lt;link rel="manifest" href="/manifest.json"&gt;
+
+&lt;!-- Theme Color --&gt;
+&lt;meta name="theme-color" content="#007BBD"&gt;
+                </div>
+            </div>
+            
+            <div class="usage-section">
+                <h3>2. manifest.json Icons Array</h3>
+                <div class="code-block">
+"icons": [
+  { "src": "/icons/hd-scheduler-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+  { "src": "/icons/hd-scheduler-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+  { "src": "/icons/hd-scheduler-icon-128.png", "sizes": "128x128", "type": "image/png" },
+  { "src": "/icons/hd-scheduler-icon-96.png", "sizes": "96x96", "type": "image/png" },
+  { "src": "/icons/hd-scheduler-icon-72.png", "sizes": "72x72", "type": "image/png" },
+  { "src": "/icons/hd-scheduler-icon-48.png", "sizes": "48x48", "type": "image/png" }
+]
+                </div>
+            </div>
+        </section>
+        
+        <footer>
+            <p>HD Scheduler - Logo & Icons Package</p>
+            <p>Created for PWA Desktop App Installation</p>
+        </footer>
+    </div>
+</body>
+</html>

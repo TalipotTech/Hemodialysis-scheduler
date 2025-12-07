@@ -8,7 +8,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
 import { AuthService } from '../../../core/services/auth.service';
+import { ThemeService, Theme } from '../../../core/services/theme.service';
 
 interface MenuItem {
   label: string;
@@ -30,7 +32,8 @@ interface MenuItem {
     MatButtonModule,
     MatToolbarModule,
     MatExpansionModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatMenuModule
   ],
   templateUrl: './sidebar-nav.component.html',
   styleUrls: ['./sidebar-nav.component.scss']
@@ -43,6 +46,8 @@ export class SidebarNavComponent implements OnInit {
   userName = '';
   isMobile = false;
   sidenavMode: 'side' | 'over' = 'side';
+  themes: Theme[] = [];
+  currentTheme: Theme;
   
   menuItems: MenuItem[] = [
     {
@@ -108,14 +113,27 @@ export class SidebarNavComponent implements OnInit {
 
   constructor(
     private authService: AuthService,
-    private router: Router
-  ) {}
+    private router: Router,
+    public themeService: ThemeService
+  ) {
+    this.themes = this.themeService.getThemes();
+    this.currentTheme = this.themeService.currentTheme;
+  }
 
   ngOnInit(): void {
     this.userRole = this.authService.getUserRole() || '';
     this.userName = this.authService.getUsername();
     this.filterMenuByRole();
     this.checkScreenSize();
+    
+    this.themeService.currentTheme$.subscribe(theme => {
+      this.currentTheme = theme;
+    });
+
+    // Listen for toggle sidebar event from breadcrumb
+    window.addEventListener('toggleSidebar', () => {
+      this.toggleSidebar();
+    });
   }
 
   @HostListener('window:resize')
@@ -173,5 +191,9 @@ export class SidebarNavComponent implements OnInit {
 
   hasChildren(item: MenuItem): boolean {
     return !!(item.children && item.children.length > 0);
+  }
+
+  changeTheme(themeName: string): void {
+    this.themeService.setTheme(themeName);
   }
 }

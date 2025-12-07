@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="brandGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0077B6"/>
+      <stop offset="50%" style="stop-color:#00A896"/>
+      <stop offset="100%" style="stop-color:#02C39A"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background rounded square -->
+  <rect x="0" y="0" width="512" height="512" rx="96" ry="96" fill="url(#brandGradient)"/>
+  
+  <!-- Simplified kidney + flow symbol -->
+  <g transform="translate(96, 96) scale(0.625)">
+    <!-- Left kidney -->
+    <path d="M155 100 
+             C95 150, 70 300, 155 380 
+             C210 430, 260 410, 290 350
+             C305 305, 290 240, 260 200
+             C240 165, 240 130, 260 100
+             C290 50, 220 30, 155 100Z" 
+          fill="rgba(255,255,255,0.95)"/>
+    
+    <!-- Right kidney -->
+    <path d="M357 100 
+             C417 150, 442 300, 357 380 
+             C302 430, 252 410, 222 350
+             C207 305, 222 240, 252 200
+             C272 165, 272 130, 252 100
+             C222 50, 292 30, 357 100Z" 
+          fill="rgba(255,255,255,0.95)"/>
+    
+    <!-- Flow wave -->
+    <path d="M100 240 Q256 180, 412 240" 
+          fill="none" 
+          stroke="url(#brandGradient)" 
+          stroke-width="20" 
+          stroke-linecap="round"/>
+    
+    <path d="M100 280 Q256 340, 412 280" 
+          fill="none" 
+          stroke="url(#brandGradient)" 
+          stroke-width="20" 
+          stroke-linecap="round"/>
+    
+    <!-- Clock -->
+    <circle cx="256" cy="260" r="60" fill="white"/>
+    <circle cx="256" cy="260" r="48" fill="none" stroke="url(#brandGradient)" stroke-width="6"/>
+    <line x1="256" y1="260" x2="256" y2="225" stroke="#0077B6" stroke-width="7" stroke-linecap="round"/>
+    <line x1="256" y1="260" x2="288" y2="275" stroke="#02C39A" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="256" cy="260" r="10" fill="url(#brandGradient)"/>
+  </g>
+</svg>

@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <!-- Main gradient - Blue to Teal to Green -->
+    <linearGradient id="brandGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0077B6"/>
+      <stop offset="50%" style="stop-color:#00A896"/>
+      <stop offset="100%" style="stop-color:#02C39A"/>
+    </linearGradient>
+    
+    <!-- Reverse gradient -->
+    <linearGradient id="reverseGradient" x1="100%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#0077B6"/>
+      <stop offset="100%" style="stop-color:#02C39A"/>
+    </linearGradient>
+    
+    <!-- Shadow filter -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+  
+  <!-- Background rounded square -->
+  <rect x="16" y="16" width="480" height="480" rx="96" ry="96" fill="url(#brandGradient)" filter="url(#shadow)"/>
+  
+  <!-- Inner subtle circle -->
+  <circle cx="256" cy="256" r="180" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3"/>
+  
+  <!-- Left kidney shape -->
+  <path d="M155 160 
+           C115 195, 95 290, 155 350 
+           C190 390, 225 375, 245 330
+           C255 300, 245 255, 225 225
+           C210 200, 210 175, 225 155
+           C245 120, 200 105, 155 160Z" 
+        fill="rgba(255,255,255,0.95)"/>
+  
+  <!-- Right kidney shape -->
+  <path d="M357 160 
+           C397 195, 417 290, 357 350 
+           C322 390, 287 375, 267 330
+           C257 300, 267 255, 287 225
+           C302 200, 302 175, 287 155
+           C267 120, 312 105, 357 160Z" 
+        fill="rgba(255,255,255,0.95)"/>
+  
+  <!-- Flow wave 1 - top -->
+  <path d="M130 235 
+           Q190 205, 256 235 
+           Q322 265, 382 235" 
+        fill="none" 
+        stroke="url(#brandGradient)" 
+        stroke-width="14" 
+        stroke-linecap="round"/>
+  
+  <!-- Flow wave 2 - bottom -->
+  <path d="M130 285 
+           Q190 315, 256 285 
+           Q322 255, 382 285" 
+        fill="none" 
+        stroke="url(#brandGradient)" 
+        stroke-width="14" 
+        stroke-linecap="round"/>
+  
+  <!-- Center clock circle -->
+  <circle cx="256" cy="260" r="55" fill="white"/>
+  <circle cx="256" cy="260" r="45" fill="none" stroke="url(#reverseGradient)" stroke-width="5"/>
+  
+  <!-- Clock hour markers -->
+  <circle cx="256" cy="222" r="5" fill="#0077B6"/>
+  <circle cx="294" cy="260" r="5" fill="#00A896"/>
+  <circle cx="256" cy="298" r="5" fill="#02C39A"/>
+  <circle cx="218" cy="260" r="5" fill="#00A896"/>
+  
+  <!-- Clock hands -->
+  <line x1="256" y1="260" x2="256" y2="230" stroke="#0077B6" stroke-width="6" stroke-linecap="round"/>
+  <line x1="256" y1="260" x2="282" y2="272" stroke="#02C39A" stroke-width="4" stroke-linecap="round"/>
+  
+  <!-- Clock center -->
+  <circle cx="256" cy="260" r="8" fill="url(#brandGradient)"/>
+  
+  <!-- DF text at bottom -->
+  <text x="256" y="440" 
+        font-family="Arial Black, Arial, sans-serif" 
+        font-size="70" 
+        font-weight="900" 
+        fill="white" 
+        text-anchor="middle" 
+        letter-spacing="3">DF</text>
+</svg>

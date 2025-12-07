@@ -12,14 +12,15 @@
     
     <!-- Logo & Toggle -->
     <div class="sidenav-header">
-      @if (isExpanded) {
-        <div class="logo-section">
-          <mat-icon class="logo-icon">local_hospital</mat-icon>
-          <h2 class="logo-text">HD Scheduler</h2>
-        </div>
-      }
+      <div class="logo-section">
+        @if (isExpanded) {
+          <img src="/assets/dialyzeflow-logo.svg?v=2" alt="DialyzeFlow" class="logo-full-img" width="160" height="48">
+        } @else {
+          <img src="/assets/dialyzeflow-icon.svg?v=2" alt="DialyzeFlow" class="logo-icon-img" width="48" height="48">
+        }
+      </div>
       <button mat-icon-button (click)="toggleSidebar()" class="toggle-btn">
-        <mat-icon>{{ isExpanded ? 'chevron_left' : 'menu' }}</mat-icon>
+        <mat-icon>{{ isExpanded ? 'chevron_left' : 'chevron_right' }}</mat-icon>
       </button>
     </div>
 
@@ -86,8 +87,24 @@
       }
     </mat-nav-list>
 
-    <!-- Logout Button -->
+    <!-- Theme Selector & Logout -->
     <div class="sidenav-footer">
+      @if (isExpanded) {
+        <button mat-list-item [matMenuTriggerFor]="themeMenu" class="theme-btn">
+          <mat-icon matListItemIcon>palette</mat-icon>
+          <span matListItemTitle>Theme</span>
+        </button>
+        
+        <mat-menu #themeMenu="matMenu">
+          @for (theme of themes; track theme.name) {
+            <button mat-menu-item (click)="changeTheme(theme.name)" [class.active-theme]="currentTheme.name === theme.name">
+              <mat-icon>{{ currentTheme.name === theme.name ? 'check_circle' : 'circle' }}</mat-icon>
+              <span>{{ theme.displayName }}</span>
+            </button>
+          }
+        </mat-menu>
+      }
+      
       <button mat-list-item (click)="logout()" class="logout-btn">
         <mat-icon matListItemIcon>logout</mat-icon>
         @if (isExpanded) {
@@ -99,22 +116,6 @@
 
   <!-- Main Content -->
   <mat-sidenav-content class="main-content">
-    <!-- Mobile Top Bar (only visible on mobile) -->
-    @if (isMobile) {
-      <div class="mobile-top-bar">
-        <button mat-icon-button (click)="toggleSidebar()" class="mobile-menu-btn">
-          <mat-icon>menu</mat-icon>
-        </button>
-        <div class="mobile-logo">
-          <mat-icon class="mobile-logo-icon">local_hospital</mat-icon>
-          <span class="mobile-logo-text">HD Scheduler</span>
-        </div>
-        <div class="mobile-user-info">
-          <mat-icon>account_circle</mat-icon>
-        </div>
-      </div>
-    }
-    
     <ng-content></ng-content>
   </mat-sidenav-content>
 </mat-sidenav-container>

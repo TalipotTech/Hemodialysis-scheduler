@@ -41,10 +41,11 @@
 .sidenav-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  flex-direction: column;
   padding: 16px;
-  min-height: 64px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 80px;
+  background: linear-gradient(135deg, var(--theme-gradient-start, #667eea) 0%, var(--theme-gradient-end, #764ba2) 100%);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   position: sticky;
   top: 0;
@@ -53,38 +54,37 @@
   .logo-section {
     display: flex;
     align-items: center;
-    gap: 12px;
+    justify-content: center;
+    margin-bottom: 8px;
     flex: 1;
+    min-width: 0;
 
-    .logo-icon {
-      font-size: 32px;
-      width: 32px;
-      height: 32px;
-      color: #ffffff;
+    .logo-icon-img {
+      width: 48px !important;
+      height: 48px !important;
+      display: block !important;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+      object-fit: contain;
       
       // Tablet: Smaller icon
       @media (max-width: 1024px) {
-        font-size: 28px;
-        width: 28px;
-        height: 28px;
+        width: 44px !important;
+        height: 44px !important;
       }
     }
 
-    .logo-text {
-      margin: 0;
-      font-size: 20px;
-      font-weight: 600;
-      color: #ffffff;
-      white-space: nowrap;
+    .logo-full-img {
+      max-width: 160px;
+      width: auto !important;
+      height: auto !important;
+      max-height: 48px;
+      display: block !important;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+      object-fit: contain;
       
-      // Tablet: Smaller text
       @media (max-width: 1024px) {
-        font-size: 18px;
-      }
-      
-      // Mobile: Slightly smaller
-      @media (max-width: 768px) {
-        font-size: 18px;
+        max-width: 140px;
+        max-height: 44px;
       }
     }
   }
@@ -207,30 +207,43 @@
 }
 
 .nav-item {
-  color: #555555 !important;
+  color: #333333 !important;
   margin: 4px 12px;
   border-radius: 8px;
   transition: all 0.2s ease;
   min-height: 48px;
+  font-size: 14px !important;
+  font-weight: 500 !important;
 
   &:hover {
     background: #f0f0f0 !important;
-    color: #333333 !important;
+    color: #1976d2 !important;
   }
 
   mat-icon {
-    color: #667eea;
+    color: var(--theme-primary, #667eea) !important;
     margin-right: 16px;
   }
 
+  span {
+    color: #333333 !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+  }
+
   &.active-link {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    background: linear-gradient(135deg, var(--theme-gradient-start, #667eea) 0%, var(--theme-gradient-end, #764ba2) 100%) !important;
     color: #ffffff !important;
     font-weight: 600;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 119, 182, 0.3);
 
     mat-icon {
-      color: #ffffff;
+      color: #ffffff !important;
+    }
+
+    span {
+      color: #ffffff !important;
+      font-weight: 600 !important;
     }
   }
   
@@ -276,7 +289,7 @@
       gap: 16px;
 
       .nav-expansion-icon {
-        color: #667eea;
+        color: var(--theme-primary, #667eea);
       }
 
       .nav-expansion-label {
@@ -309,7 +322,7 @@
     transition: all 0.2s ease;
 
     .sub-nav-icon {
-      color: #667eea;
+      color: var(--theme-primary, #667eea);
       font-size: 20px;
       width: 20px;
       height: 20px;
@@ -348,6 +361,24 @@
   bottom: 0;
   z-index: 10;
 
+  .theme-btn {
+    color: #555555 !important;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    min-height: 48px;
+    width: 100%;
+    margin-bottom: 4px;
+
+    &:hover {
+      background: #f0f0f0 !important;
+    }
+
+    mat-icon {
+      color: var(--theme-primary, #667eea);
+      margin-right: 16px;
+    }
+  }
+
   .logout-btn {
     color: #555555 !important;
     border-radius: 8px;
@@ -365,7 +396,7 @@
     }
 
     mat-icon {
-      color: #667eea;
+      color: #d32f2f;
       margin-right: 16px;
     }
   }
@@ -375,11 +406,12 @@
     padding: 10px;
   }
   
-  // Mobile: Touch-friendly logout button
+  // Mobile: Touch-friendly buttons
   @media (max-width: 768px) {
     padding: 12px 8px;
     box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
     
+    .theme-btn,
     .logout-btn {
       min-height: 52px; // Larger tap target
       font-size: 15px;
@@ -388,15 +420,41 @@
   }
 }
 
+.active-theme {
+  background-color: rgba(0, 119, 182, 0.1);
+  
+  mat-icon {
+    color: var(--theme-primary, #667eea);
+  }
+}
+
 .main-content {
   background: #f5f5f5;
   min-height: 100vh;
   padding: 0;
+  position: relative;
   
   // Mobile: Account for potential mobile browser chrome
   @media (max-width: 768px) {
     min-height: 100dvh;
     padding-bottom: env(safe-area-inset-bottom, 0); // iOS safe area
+  }
+}
+
+.desktop-menu-toggle {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 1000;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  
+  mat-icon {
+    color: var(--theme-primary, #667eea);
+  }
+  
+  &:hover {
+    background: #f5f5f5;
   }
 }
 
@@ -429,70 +487,7 @@
   }
 }
 
-// Mobile Top Bar (visible only on mobile)
-.mobile-top-bar {
-  display: none;
-  
-  @media (max-width: 768px) {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #ffffff;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    min-height: 56px;
-    
-    .mobile-menu-btn {
-      color: #ffffff;
-      min-width: 48px;
-      min-height: 48px;
-      
-      mat-icon {
-        font-size: 24px;
-        width: 24px;
-        height: 24px;
-      }
-    }
-    
-    .mobile-logo {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex: 1;
-      justify-content: center;
-      
-      .mobile-logo-icon {
-        font-size: 28px;
-        width: 28px;
-        height: 28px;
-        color: #ffffff;
-      }
-      
-      .mobile-logo-text {
-        font-size: 18px;
-        font-weight: 600;
-        color: #ffffff;
-      }
-    }
-    
-    .mobile-user-info {
-      min-width: 48px;
-      display: flex;
-      justify-content: center;
-      
-      mat-icon {
-        font-size: 32px;
-        width: 32px;
-        height: 32px;
-        color: #ffffff;
-      }
-    }
-  }
-}
+
 
 // Backdrop overlay for mobile
 @media (max-width: 768px) {

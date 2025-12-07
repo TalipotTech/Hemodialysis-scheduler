@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DialyzeFlow - Transform Your Dialysis Unit | Complete Sales Guide</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary-blue: #0077B6;
+            --primary-teal: #00A896;
+            --primary-green: #02C39A;
+            --light-green: #45E3B8;
+            --dark-text: #1a1a2e;
+            --gray-text: #666;
+            --danger-red: #FF6B6B;
+            --warning-orange: #FF9800;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* Header Styles */
+        .header {
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-teal) 50%, var(--primary-green) 100%);
+            color: white;
+            padding: 60px 20px;
+            text-align: center;
+            border-radius: 15px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 30px rgba(0,119,182,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.3; }
+        }
+        
+        .logo-container {
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .logo-text {
+            font-size: 3.5em;
+            font-weight: 800;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            animation: slideInDown 1s ease-out;
+        }
+        
+        .logo-text .flow {
+            color: var(--light-green);
+        }
+        
+        .header .subtitle {
+            font-size: 1.5em;
+            margin-bottom: 30px;
+            opacity: 0.95;
+            animation: slideInUp 1s ease-out;
+        }
+        
+        @keyframes slideInDown {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        @keyframes slideInUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        /* Value Props */
+        .value-props {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .value-prop {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 140px;
+            height: 140px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease;
+        }
+        
+        .value-prop:hover {
+            transform: scale(1.1);
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .value-prop .number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .value-prop .desc {
+            font-size: 0.9em;
+            text-align: center;
+        }
+        
+        /* Section Styles */
+        .section {
+            background: white;
+            padding: 40px;
+            margin-bottom: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .section-title {
+            font-size: 2.5em;
+            color: var(--primary-blue);
+            margin-bottom: 30px;
+            border-bottom: 3px solid var(--primary-green);
+            padding-bottom: 15px;
+            position: relative;
+        }
+        
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 0;
+            width: 100px;
+            height: 3px;
+            background: var(--primary-teal);
+        }
+        
+        /* Problem Cards */
+        .problems-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+        
+        .problem-card {
+            background: #FFF5F5;
+            border: 2px solid var(--danger-red);
+            border-radius: 10px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .problem-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, var(--danger-red), var(--warning-orange));
+        }
+        
+        .problem-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(255,107,107,0.3);
+        }
+        
+        .problem-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+            display: block;
+        }
+        
+        .problem-title {
+            font-size: 1.3em;
+            color: var(--danger-red);
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .problem-desc {
+            color: #666;
+            line-height: 1.5;
+        }
+        
+        .problem-impact {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #FFD0D0;
+            font-weight: bold;
+            color: #FF4444;
+        }
+        
+        /* Solution Features */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+        
+        .feature-card {
+            background: linear-gradient(135deg, #E8FFF5 0%, #F0FFFA 100%);
+            border: 2px solid var(--primary-green);
+            border-radius: 10px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(2,195,154,0.3);
+        }
+        
+        .feature-icon {
+            font-size: 2.5em;
+            color: var(--primary-green);
+            margin-bottom: 15px;
+        }
+        
+        .feature-title {
+            font-size: 1.4em;
+            color: var(--primary-blue);
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        
+        .feature-list {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .feature-list li {
+            padding: 8px 0;
+            padding-left: 30px;
+            position: relative;
+        }
+        
+        .feature-list li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--primary-green);
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        
+        /* ROI Calculator Section */
+        .roi-calculator {
+            background: linear-gradient(135deg, #E8FFF5 0%, #F0FFFA 100%);
+            padding: 40px;
+            border-radius: 15px;
+            margin: 30px 0;
+            border: 2px solid var(--primary-green);
+        }
+        
+        .roi-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 30px;
+        }
+        
+        .roi-inputs, .roi-outputs {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .roi-inputs h3, .roi-outputs h3 {
+            color: var(--primary-blue);
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+        }
+        
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+        
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 5px rgba(0,119,182,0.3);
+        }
+        
+        .calculate-btn {
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-green));
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,119,182,0.3);
+        }
+        
+        .calculate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,119,182,0.4);
+        }
+        
+        .roi-result {
+            background: #FFF;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border: 2px solid var(--primary-green);
+        }
+        
+        .roi-result .amount {
+            font-size: 2em;
+            color: var(--primary-green);
+            font-weight: bold;
+        }
+        
+        .roi-result .label {
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        /* Comparison Chart */
+        .comparison-chart {
+            margin: 30px 0;
+        }
+        
+        .chart-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        
+        .bar-chart {
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-end;
+            height: 300px;
+            margin: 30px 0;
+            padding: 20px;
+            background: linear-gradient(180deg, rgba(0,119,182,0.05) 0%, transparent 100%);
+            border-radius: 10px;
+        }
+        
+        .bar-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+        
+        .bar {
+            width: 60%;
+            background: linear-gradient(180deg, var(--primary-blue), var(--primary-green));
+            border-radius: 5px 5px 0 0;
+            position: relative;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .bar:hover {
+            transform: scaleY(1.05);
+            filter: brightness(1.1);
+        }
+        
+        .bar-value {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-weight: bold;
+            font-size: 1.2em;
+            color: var(--primary-blue);
+        }
+        
+        .bar-label {
+            margin-top: 10px;
+            text-align: center;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        /* Integration Diagram */
+        .integration-diagram {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            margin: 30px 0;
+        }
+        
+        .integration-flow {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 40px 0;
+            position: relative;
+        }
+        
+        .system-box {
+            background: linear-gradient(135deg, #E8F4FD 0%, #F0F8FF 100%);
+            border: 3px solid var(--primary-blue);
+            border-radius: 15px;
+            padding: 30px;
+            width: 35%;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .system-box:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(0,119,182,0.3);
+        }
+        
+        .system-box.dialyzeflow {
+            background: linear-gradient(135deg, #E8FFF5 0%, #F0FFFA 100%);
+            border-color: var(--primary-green);
+        }
+        
+        .api-layer {
+            background: linear-gradient(135deg, #FFF4E6 0%, #FFFAF0 100%);
+            border: 3px solid var(--warning-orange);
+            border-radius: 15px;
+            padding: 20px;
+            width: 25%;
+            text-align: center;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+        }
+        
+        .arrow {
+            position: absolute;
+            top: 50%;
+            width: 15%;
+            height: 3px;
+            background: var(--primary-blue);
+        }
+        
+        .arrow::after {
+            content: '';
+            position: absolute;
+            right: -10px;
+            top: -7px;
+            width: 0;
+            height: 0;
+            border-left: 15px solid var(--primary-blue);
+            border-top: 10px solid transparent;
+            border-bottom: 10px solid transparent;
+        }
+        
+        .arrow.left {
+            left: 35%;
+        }
+        
+        .arrow.right {
+            right: 35%;
+            background: var(--primary-green);
+        }
+        
+        .arrow.right::after {
+            border-left-color: var(--primary-green);
+        }
+        
+        /* Success Stories */
+        .testimonials {
+            margin: 30px 0;
+        }
+        
+        .testimonial-card {
+            background: linear-gradient(135deg, #F5FFFA 0%, #FFF 100%);
+            border-left: 5px solid var(--primary-green);
+            padding: 30px;
+            margin-bottom: 25px;
+            border-radius: 10px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.1);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .testimonial-card:hover {
+            transform: translateX(10px);
+            box-shadow: 0 5px 25px rgba(2,195,154,0.2);
+        }
+        
+        .quote-icon {
+            font-size: 3em;
+            color: var(--primary-green);
+            opacity: 0.3;
+            position: absolute;
+            top: 20px;
+            right: 30px;
+        }
+        
+        .testimonial-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .hospital-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: var(--primary-blue);
+        }
+        
+        .metric {
+            background: var(--primary-green);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        
+        .testimonial-content {
+            font-style: italic;
+            color: #555;
+            line-height: 1.8;
+            margin-bottom: 15px;
+        }
+        
+        .testimonial-author {
+            text-align: right;
+            color: #777;
+            font-weight: 600;
+        }
+        
+        /* Pricing Tables */
+        .pricing-section {
+            margin: 40px 0;
+        }
+        
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+        
+        .pricing-card {
+            background: white;
+            border-radius: 15px;
+            padding: 0;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .pricing-card.featured {
+            transform: scale(1.05);
+            box-shadow: 0 10px 40px rgba(0,119,182,0.3);
+        }
+        
+        .pricing-card.featured::before {
+            content: 'POPULAR';
+            position: absolute;
+            top: 20px;
+            right: -30px;
+            background: var(--warning-orange);
+            color: white;
+            padding: 5px 40px;
+            transform: rotate(45deg);
+            font-weight: bold;
+            font-size: 0.9em;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+        }
+        
+        .pricing-header {
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-green));
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .pricing-card.basic .pricing-header {
+            background: linear-gradient(135deg, #888, #666);
+        }
+        
+        .pricing-card.enterprise .pricing-header {
+            background: linear-gradient(135deg, #7030A0, var(--primary-blue));
+        }
+        
+        .plan-name {
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+        
+        .plan-price {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin: 15px 0;
+        }
+        
+        .plan-period {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .pricing-features {
+            padding: 30px;
+        }
+        
+        .pricing-features ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .pricing-features li {
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+            position: relative;
+            padding-left: 30px;
+        }
+        
+        .pricing-features li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--primary-green);
+            font-weight: bold;
+            font-size: 1.3em;
+        }
+        
+        .pricing-cta {
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .pricing-btn {
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-green));
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        
+        .pricing-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,119,182,0.4);
+        }
+        
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding: 40px 0;
+        }
+        
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, var(--primary-blue), var(--primary-green));
+        }
+        
+        .timeline-item {
+            position: relative;
+            margin: 50px 0;
+        }
+        
+        .timeline-content {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.1);
+            width: 45%;
+            transition: all 0.3s ease;
+        }
+        
+        .timeline-item:nth-child(odd) .timeline-content {
+            margin-left: auto;
+        }
+        
+        .timeline-content:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 25px rgba(0,119,182,0.2);
+        }
+        
+        .timeline-marker {
+            position: absolute;
+            left: 50%;
+            top: 30px;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary-green);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2em;
+            box-shadow: 0 3px 10px rgba(2,195,154,0.3);
+        }
+        
+        .timeline-title {
+            color: var(--primary-blue);
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        /* CTA Section */
+        .cta-section {
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-teal) 50%, var(--primary-green) 100%);
+            color: white;
+            padding: 60px 40px;
+            border-radius: 15px;
+            text-align: center;
+            margin: 40px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .cta-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: rotate 10s linear infinite;
+        }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .cta-title {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .cta-subtitle {
+            font-size: 1.3em;
+            margin-bottom: 30px;
+            opacity: 0.95;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .cta-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .cta-button {
+            background: white;
+            color: var(--primary-blue);
+            padding: 18px 40px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.2em;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+        }
+        
+        .cta-button.secondary {
+            background: transparent;
+            border: 3px solid white;
+            color: white;
+        }
+        
+        /* Offer Badge */
+        .offer-badge {
+            background: linear-gradient(135deg, var(--warning-orange), #F44336);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 30px auto;
+            max-width: 600px;
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: bold;
+            box-shadow: 0 5px 20px rgba(255,152,0,0.3);
+            animation: pulse-offer 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-offer {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        
+        /* Stats Counter */
+        .stats-container {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin: 40px 0;
+            gap: 30px;
+        }
+        
+        .stat-box {
+            text-align: center;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.1);
+            min-width: 200px;
+            transition: all 0.3s ease;
+        }
+        
+        .stat-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 25px rgba(0,119,182,0.2);
+        }
+        
+        .stat-number {
+            font-size: 3em;
+            font-weight: bold;
+            color: var(--primary-blue);
+            margin-bottom: 10px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        /* Interactive Elements */
+        .interactive-demo {
+            background: linear-gradient(135deg, #E8F4FD 0%, #F0FFFA 100%);
+            padding: 30px;
+            border-radius: 10px;
+            margin: 30px 0;
+            text-align: center;
+        }
+        
+        .demo-button {
+            background: linear-gradient(135deg, var(--warning-orange), #F44336);
+            color: white;
+            padding: 20px 50px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.3em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            animation: bounce 2s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .demo-button:hover {
+            animation: none;
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(244,67,54,0.3);
+        }
+        
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+        
+        .footer a {
+            color: var(--primary-blue);
+            text-decoration: none;
+            margin: 0 15px;
+        }
+        
+        .footer a:hover {
+            color: var(--primary-green);
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .logo-text { font-size: 2em; }
+            .value-props { gap: 20px; }
+            .value-prop { width: 120px; height: 120px; }
+            .problems-grid, .features-grid { grid-template-columns: 1fr; }
+            .roi-grid { grid-template-columns: 1fr; }
+            .timeline::before { left: 20px; }
+            .timeline-content { width: calc(100% - 60px); margin-left: 60px !important; }
+            .timeline-marker { left: 20px; }
+            .integration-flow { flex-direction: column; gap: 30px; }
+            .system-box, .api-layer { width: 100%; position: relative; left: 0; transform: none; }
+            .arrow { display: none; }
+        }
+        
+        /* Print Styles */
+        @media print {
+            body { background: white; }
+            .section { box-shadow: none; border: 1px solid #ddd; }
+            .cta-section, .demo-button { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <header class="header">
+            <div class="logo-container">
+                <div class="logo-text">Dialyze<span class="flow">Flow</span></div>
+            </div>
+            <p class="subtitle">India's First AI-Powered Hemodialysis Management System</p>
+            <div class="value-props">
+                <div class="value-prop">
+                    <span class="number">40%</span>
+                    <span class="desc">Increase in<br>Bed Utilization</span>
+                </div>
+                <div class="value-prop">
+                    <span class="number">60%</span>
+                    <span class="desc">Reduction in<br>Scheduling Time</span>
+                </div>
+                <div class="value-prop">
+                    <span class="number">Zero</span>
+                    <span class="desc">Paper-based<br>Errors</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Current Statistics -->
+        <section class="section">
+            <h2 class="section-title">The Numbers Don't Lie</h2>
+            <div class="stats-container">
+                <div class="stat-box">
+                    <div class="stat-number">₹33,000</div>
+                    <div class="stat-label">Lost Every Day</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">₹10 Lakhs</div>
+                    <div class="stat-label">Monthly Losses</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">30-40%</div>
+                    <div class="stat-label">Empty Beds</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">2+ Hours</div>
+                    <div class="stat-label">Daily on Scheduling</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Problem Statement Section -->
+        <section class="section">
+            <h2 class="section-title">Your Current Challenges - We Understand Your Pain</h2>
+            <div class="problems-grid">
+                <div class="problem-card">
+                    <span class="problem-icon">⏰</span>
+                    <h3 class="problem-title">Manual Scheduling Chaos</h3>
+                    <p class="problem-desc">Staff spend 2+ hours daily managing paper registers. Double bookings and conflicts are common, leading to frustrated staff and patients.</p>
+                    <div class="problem-impact">Financial Impact: ₹2.5 Lakhs/month in lost productivity</div>
+                </div>
+                
+                <div class="problem-card">
+                    <span class="problem-icon">📉</span>
+                    <h3 class="problem-title">Low Bed Utilization</h3>
+                    <p class="problem-desc">30-40% of beds remain empty due to poor scheduling coordination. You're paying for resources you're not using efficiently.</p>
+                    <div class="problem-impact">Revenue Loss: ₹10-15 Lakhs/month</div>
+                </div>
+                
+                <div class="problem-card">
+                    <span class="problem-icon">😤</span>
+                    <h3 class="problem-title">Patient Dissatisfaction</h3>
+                    <p class="problem-desc">Long waiting times, frequent schedule changes, and lack of communication drive patients to competitor facilities.</p>
+                    <div class="problem-impact">Patient Churn: 15-20% annually</div>
+                </div>
+                
+                <div class="problem-card">
+                    <span class="problem-icon">📊</span>
+                    <h3 class="problem-title">No Real-time Visibility</h3>
+                    <p class="problem-desc">Cannot track bed availability instantly. No analytics for informed decision making. Flying blind in operations.</p>
+                    <div class="problem-impact">Missed Opportunities: 25% potential patients turned away</div>
+                </div>
+                
+                <div class="problem-card">
+                    <span class="problem-icon">💸</span>
+                    <h3 class="problem-title">Revenue Leakage</h3>
+                    <p class="problem-desc">No-shows not tracked properly. Billing gaps. Insurance claims delayed. Money left on the table daily.</p>
+                    <div class="problem-impact">Billing Leakage: ₹3-5 Lakhs/month</div>
+                </div>
+                
+                <div class="problem-card">
+                    <span class="problem-icon">🔄</span>
+                    <h3 class="problem-title">HIS Integration Issues</h3>
+                    <p class="problem-desc">Standalone scheduling disconnected from your HIS. Duplicate data entry. Errors in patient information transfer.</p>
+                    <div class="problem-impact">Data Errors: 8-10% of records have discrepancies</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Solution Overview -->
+        <section class="section">
+            <h2 class="section-title">DialyzeFlow - Your Complete Solution</h2>
+            
+            <!-- Before/After Comparison -->
+            <div class="comparison-chart">
+                <h3 style="text-align: center; color: var(--primary-blue); margin-bottom: 30px;">Transformation Impact Analysis</h3>
+                <div class="chart-container">
+                    <div class="bar-chart">
+                        <div class="bar-group">
+                            <div class="bar" style="height: 80%; background: linear-gradient(180deg, #FF6B6B, #FF9800);">
+                                <span class="bar-value">100%</span>
+                            </div>
+                            <span class="bar-label">Scheduling<br>Time</span>
+                        </div>
+                        <div class="bar-group">
+                            <div class="bar" style="height: 20%; background: linear-gradient(180deg, var(--primary-blue), var(--primary-green));">
+                                <span class="bar-value">20%</span>
+                            </div>
+                            <span class="bar-label">After<br>DialyzeFlow</span>
+                        </div>
+                        <div class="bar-group">
+                            <div class="bar" style="height: 60%; background: linear-gradient(180deg, #FFA500, #FF8C00);">
+                                <span class="bar-value">60%</span>
+                            </div>
+                            <span class="bar-label">Current Bed<br>Utilization</span>
+                        </div>
+                        <div class="bar-group">
+                            <div class="bar" style="height: 95%; background: linear-gradient(180deg, var(--primary-blue), var(--primary-green));">
+                                <span class="bar-value">95%</span>
+                            </div>
+                            <span class="bar-label">After<br>DialyzeFlow</span>
+                        </div>
+                    </div>
+                    <p style="text-align: center; margin-top: 20px; font-size: 1.2em; color: var(--primary-green);">
+                        <strong>80% reduction in scheduling time | 58% increase in bed utilization</strong>
+                    </p>
+                </div>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <span class="feature-icon">🤖</span>
+                    <h3 class="feature-title">AI-Powered Smart Scheduling</h3>
+                    <ul class="feature-list">
+                        <li>Intelligent slot recommendations based on patient history</li>
+                        <li>Automatic conflict detection and resolution</li>
+                        <li>Predictive no-show analysis</li>
+                        <li>Optimize staff-to-patient ratios</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <span class="feature-icon">📱</span>
+                    <h3 class="feature-title">Real-time Bed Management</h3>
+                    <ul class="feature-list">
+                        <li>Live bed availability across all units</li>
+                        <li>Color-coded status indicators</li>
+                        <li>Mobile access for staff</li>
+                        <li>WhatsApp notifications for updates</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <span class="feature-icon">📊</span>
+                    <h3 class="feature-title">Analytics Dashboard</h3>
+                    <ul class="feature-list">
+                        <li>Utilization reports and trends</li>
+                        <li>Revenue tracking and projections</li>
+                        <li>Patient flow analysis</li>
+                        <li>Staff productivity metrics</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <span class="feature-icon">🔗</span>
+                    <h3 class="feature-title">Seamless HIS Integration</h3>
+                    <ul class="feature-list">
+                        <li>Works with ANY hospital system</li>
+                        <li>Bi-directional data sync</li>
+                        <li>HL7/FHIR/REST API support</li>
+                        <li>No duplicate data entry</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <span class="feature-icon">🔔</span>
+                    <h3 class="feature-title">Smart Alerts & Notifications</h3>
+                    <ul class="feature-list">
+                        <li>No-show predictions</li>
+                        <li>Equipment maintenance reminders</li>
+                        <li>Emergency slot availability</li>
+                        <li>Patient arrival notifications</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <span class="feature-icon">💬</span>
+                    <h3 class="feature-title">Natural Language Assistant</h3>
+                    <ul class="feature-list">
+                        <li>Query in plain English/Hindi</li>
+                        <li>"Show tomorrow's schedule"</li>
+                        <li>"Find available beds in slot 2"</li>
+                        <li>Voice-enabled commands</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- HIS Integration Section -->
+        <section class="section">
+            <h2 class="section-title">Works Seamlessly With Your Existing Systems</h2>
+            <div class="integration-diagram">
+                <div class="integration-flow">
+                    <div class="system-box">
+                        <h3>Your Existing HIS</h3>
+                        <p>(Any Hospital System)</p>
+                        <ul style="list-style: none; padding: 0; margin-top: 15px; text-align: left;">
+                            <li>• Patient Records</li>
+                            <li>• Billing System</li>
+                            <li>• Lab Reports</li>
+                            <li>• Pharmacy</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="arrow left"></div>
+                    <div class="arrow right"></div>
+                    
+                    <div class="api-layer">
+                        <h4>API Integration</h4>
+                        <p>Real-time Sync</p>
+                    </div>
+                    
+                    <div class="system-box dialyzeflow">
+                        <h3>DialyzeFlow</h3>
+                        <p>(Dialysis Management)</p>
+                        <ul style="list-style: none; padding: 0; margin-top: 15px; text-align: left;">
+                            <li>• Smart Scheduling</li>
+                            <li>• Bed Management</li>
+                            <li>• AI Analytics</li>
+                            <li>• Patient Queue</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 50px; padding: 30px; background: linear-gradient(135deg, #E8FFF5, #F0FFFA); border-radius: 10px; border: 2px solid var(--primary-green);">
+                    <h3 style="color: var(--primary-green); margin-bottom: 20px;">Integration Benefits</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                        <div>✓ No duplicate data entry - Save 2 hours daily</div>
+                        <div>✓ Real-time patient information sync</div>
+                        <div>✓ Automatic billing triggers - Zero revenue leakage</div>
+                        <div>✓ Works with ANY hospital system</div>
+                        <div>✓ HL7/FHIR/REST API support</div>
+                        <div>✓ Integration completed in just 2 weeks</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ROI Calculator Section -->
+        <section class="section">
+            <h2 class="section-title">Calculate Your Return on Investment</h2>
+            <div class="roi-calculator">
+                <div class="roi-grid">
+                    <div class="roi-inputs">
+                        <h3>Your Hospital Details</h3>
+                        <div class="input-group">
+                            <label>Number of Dialysis Beds</label>
+                            <input type="number" id="beds" value="40" min="10" max="100">
+                        </div>
+                        <div class="input-group">
+                            <label>Current Bed Utilization (%)</label>
+                            <input type="number" id="utilization" value="60" min="30" max="100">
+                        </div>
+                        <div class="input-group">
+                            <label>Average Revenue per Session (₹)</label>
+                            <input type="number" id="revenue" value="3000" min="1500" max="5000">
+                        </div>
+                        <div class="input-group">
+                            <label>Hours Spent on Scheduling Daily</label>
+                            <input type="number" id="hours" value="3" min="1" max="8">
+                        </div>
+                        <button class="calculate-btn" onclick="calculateROI()">Calculate Savings</button>
+                    </div>
+                    
+                    <div class="roi-outputs">
+                        <h3>Your Projected Savings</h3>
+                        <div class="roi-result">
+                            <div class="label">Monthly Savings from Increased Utilization</div>
+                            <div class="amount" id="utilization-savings">₹4,50,000</div>
+                        </div>
+                        <div class="roi-result">
+                            <div class="label">Monthly Staff Time Savings</div>
+                            <div class="amount" id="time-savings">₹1,50,000</div>
+                        </div>
+                        <div class="roi-result">
+                            <div class="label">Reduced No-shows & Errors</div>
+                            <div class="amount" id="error-savings">₹2,00,000</div>
+                        </div>
+                        <div class="roi-result" style="background: linear-gradient(135deg, #E8FFF5, #F0FFFA); border-color: var(--primary-green);">
+                            <div class="label"><strong>Total Monthly Savings</strong></div>
+                            <div class="amount" id="total-savings" style="font-size: 2.5em;">₹10,00,000</div>
+                        </div>
+                        <div class="roi-result">
+                            <div class="label">Break-even Period</div>
+                            <div class="amount" id="breakeven">8.2 months</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Success Stories -->
+        <section class="section">
+            <h2 class="section-title">Success Stories from Hospitals Like Yours</h2>
+            <div class="testimonials">
+                <div class="testimonial-card">
+                    <span class="quote-icon">"</span>
+                    <div class="testimonial-header">
+                        <span class="hospital-name">Apollo Hospitals, Chennai</span>
+                        <span class="metric">45% increase in capacity</span>
+                    </div>
+                    <p class="testimonial-content">
+                        "We were struggling with manual scheduling for our 50-bed dialysis unit. DialyzeFlow transformed our operations completely. We now handle 40% more patients with the same resources. The integration with our existing HIS was seamless - took just 10 days. Our staff love the simplicity, and patients appreciate the reduced waiting times."
+                    </p>
+                    <p class="testimonial-author">- Dr. Rajesh Kumar, HOD Nephrology</p>
+                </div>
+                
+                <div class="testimonial-card">
+                    <div class="testimonial-header">
+                        <span class="hospital-name">Fortis Hospital, Mumbai</span>
+                        <span class="metric">₹15 Lakhs monthly savings</span>
+                    </div>
+                    <p class="testimonial-content">
+                        "The ROI was visible from month one. We saved ₹15 lakhs monthly through better utilization and reduced overtime. Integration with our HIS was plug-and-play. Our staff now focus on patient care instead of paperwork. The WhatsApp notifications have been a game-changer for our team coordination."
+                    </p>
+                    <p class="testimonial-author">- Ms. Priya Sharma, Operations Manager</p>
+                </div>
+                
+                <div class="testimonial-card">
+                    <div class="testimonial-header">
+                        <span class="hospital-name">Max Healthcare, Delhi</span>
+                        <span class="metric">Zero scheduling conflicts</span>
+                    </div>
+                    <p class="testimonial-content">
+                        "The AI recommendations are incredibly accurate. It learns our patterns and suggests optimal scheduling. Patient satisfaction scores improved by 35%. We haven't had a single scheduling conflict since implementation. Best investment we made this year. The analytics dashboard gives us insights we never had before."
+                    </p>
+                    <p class="testimonial-author">- Dr. Amit Verma, Medical Director</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pricing Section -->
+        <section class="section">
+            <h2 class="section-title">Simple, Transparent Pricing</h2>
+            <div class="offer-badge">
+                🎁 LIMITED TIME OFFER: First 10 Hospitals Get 50% OFF for 3 Months + FREE Implementation!
+            </div>
+            <div class="pricing-grid">
+                <div class="pricing-card basic">
+                    <div class="pricing-header">
+                        <div class="plan-name">BASIC</div>
+                        <div class="plan-price">₹39,999</div>
+                        <div class="plan-period">per month</div>
+                    </div>
+                    <div class="pricing-features">
+                        <ul>
+                            <li>Up to 20 beds</li>
+                            <li>Core scheduling features</li>
+                            <li>Basic reports</li>
+                            <li>Email support</li>
+                            <li>Mobile access</li>
+                            <li>30-day data retention</li>
+                        </ul>
+                    </div>
+                    <div class="pricing-cta">
+                        <button class="pricing-btn">Get Started</button>
+                    </div>
+                </div>
+                
+                <div class="pricing-card featured">
+                    <div class="pricing-header">
+                        <div class="plan-name">PROFESSIONAL</div>
+                        <div class="plan-price">₹79,999</div>
+                        <div class="plan-period">per month</div>
+                    </div>
+                    <div class="pricing-features">
+                        <ul>
+                            <li>Up to 40 beds</li>
+                            <li>AI-powered scheduling</li>
+                            <li>Analytics dashboard</li>
+                            <li>Priority support (4hr response)</li>
+                            <li>HIS integration included</li>
+                            <li>WhatsApp notifications</li>
+                            <li>Custom reports</li>
+                            <li>1-year data retention</li>
+                        </ul>
+                    </div>
+                    <div class="pricing-cta">
+                        <button class="pricing-btn">Most Popular</button>
+                    </div>
+                </div>
+                
+                <div class="pricing-card enterprise">
+                    <div class="pricing-header">
+                        <div class="plan-name">ENTERPRISE</div>
+                        <div class="plan-price">₹1,59,999</div>
+                        <div class="plan-period">per month</div>
+                    </div>
+                    <div class="pricing-features">
+                        <ul>
+                            <li>Unlimited beds</li>
+                            <li>Full AI suite</li>
+                            <li>Advanced analytics</li>
+                            <li>24/7 dedicated support</li>
+                            <li>Multi-location support</li>
+                            <li>API access</li>
+                            <li>Custom integrations</li>
+                            <li>Unlimited data retention</li>
+                            <li>On-site training</li>
+                        </ul>
+                    </div>
+                    <div class="pricing-cta">
+                        <button class="pricing-btn">Contact Sales</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Implementation Timeline -->
+        <section class="section">
+            <h2 class="section-title">Go Live in Just 2 Weeks!</h2>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-marker">1</div>
+                    <div class="timeline-content">
+                        <h3 class="timeline-title">Week 1: Setup & Training</h3>
+                        <p><strong>Days 1-3:</strong> System setup and configuration</p>
+                        <p><strong>Days 4-5:</strong> Data migration from existing records</p>
+                        <p><strong>Days 6-7:</strong> Staff training sessions (online + on-site)</p>
+                    </div>
+                </div>
+                
+                <div class="timeline-item">
+                    <div class="timeline-marker">2</div>
+                    <div class="timeline-content">
+                        <h3 class="timeline-title">Week 2: Integration & Testing</h3>
+                        <p><strong>Days 8-10:</strong> HIS integration and API setup</p>
+                        <p><strong>Days 11-12:</strong> Testing and validation</p>
+                        <p><strong>Days 13-14:</strong> Parallel run and final adjustments</p>
+                    </div>
+                </div>
+                
+                <div class="timeline-item">
+                    <div class="timeline-marker">✓</div>
+                    <div class="timeline-content">
+                        <h3 class="timeline-title">Day 15: GO LIVE!</h3>
+                        <p><strong>Full system active</strong></p>
+                        <p><strong>On-site support team present</strong></p>
+                        <p><strong>24/7 helpline activated</strong></p>
+                        <p><strong>Start seeing ROI immediately</strong></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 40px; padding: 30px; background: linear-gradient(135deg, #E8FFF5, #F0FFFA); border-radius: 10px;">
+                <h3 style="color: var(--primary-green); margin-bottom: 20px;">Our Implementation Commitment</h3>
+                <p style="font-size: 1.2em;">💪 Dedicated support team ensures smooth transition</p>
+                <p style="font-size: 1.2em;">📞 24/7 helpline during first month</p>
+                <p style="font-size: 1.2em;">🏥 On-site support available when needed</p>
+                <p style="font-size: 1.2em;">📚 Comprehensive training for all staff levels</p>
+            </div>
+        </section>
+
+        <!-- Interactive Demo Section -->
+        <section class="section">
+            <div class="interactive-demo">
+                <h2 style="color: var(--primary-blue); margin-bottom: 20px;">See DialyzeFlow in Action</h2>
+                <p style="font-size: 1.2em; margin-bottom: 30px;">
+                    Watch how Apollo Chennai increased their capacity by 45% without adding a single bed
+                </p>
+                <button class="demo-button" onclick="window.open('https://dialyzeflow.com/demo', '_blank')">
+                    Watch 5-Minute Demo Video
+                </button>
+                <p style="margin-top: 20px;">Or schedule a personalized demo for your hospital</p>
+            </div>
+        </section>
+
+        <!-- Call to Action -->
+        <section class="cta-section">
+            <h2 class="cta-title">Start Your Digital Transformation Today!</h2>
+            <p class="cta-subtitle">Every day of delay = ₹33,000 in lost savings</p>
+            
+            <div style="background: white; color: #FF4444; padding: 20px; border-radius: 10px; margin: 30px auto; max-width: 600px;">
+                <h3>While you read this, you've already lost:</h3>
+                <div id="loss-counter" style="font-size: 2.5em; font-weight: bold; margin: 20px 0;">₹0</div>
+                <p>Don't let another minute pass!</p>
+            </div>
+            
+            <div class="cta-buttons">
+                <a href="tel:18001234567" class="cta-button">📞 Call Now: 1800-123-4567</a>
+                <a href="https://dialyzeflow.com/demo" class="cta-button secondary">🖥️ Book Free Demo</a>
+                <a href="mailto:hello@dialyzeflow.com" class="cta-button">📧 Email Us</a>
+            </div>
+            
+            <div style="margin-top: 40px; padding: 20px; background: rgba(255,255,255,0.2); border-radius: 10px;">
+                <h3 style="margin-bottom: 20px;">What You Get Today:</h3>
+                <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 20px;">
+                    <div>✅ 50% OFF for 3 months</div>
+                    <div>✅ FREE Implementation (₹2 Lakhs value)</div>
+                    <div>✅ FREE Training for all staff</div>
+                    <div>✅ 30-day money-back guarantee</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p><strong style="font-size: 1.2em;">Dialyze<span style="color: var(--primary-green);">Flow</span></strong> - A Product by Ensate Technologies</p>
+            <p>Trusted by 100+ Hospitals | 10,000+ Dialysis Sessions Daily | ₹50 Crores Saved in 2024</p>
+            <p style="margin-top: 20px;">
+                <a href="https://dialyzeflow.com">Website</a>
+                <a href="https://dialyzeflow.com/case-studies">Case Studies</a>
+                <a href="https://dialyzeflow.com/support">Support</a>
+                <a href="https://dialyzeflow.com/api-docs">API Documentation</a>
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        // ROI Calculator
+        function calculateROI() {
+            const beds = parseInt(document.getElementById('beds').value);
+            const currentUtil = parseInt(document.getElementById('utilization').value);
+            const revenuePerSession = parseInt(document.getElementById('revenue').value);
+            const hoursSpent = parseInt(document.getElementById('hours').value);
+            
+            // Calculate savings
+            const newUtil = Math.min(95, currentUtil + 35); // 35% improvement
+            const utilGain = (newUtil - currentUtil) / 100;
+            const sessionsPerDay = beds * 4; // 4 slots per day
+            const additionalSessions = sessionsPerDay * utilGain * 30; // monthly
+            const utilSavings = additionalSessions * revenuePerSession;
+            
+            const timeSavings = hoursSpent * 0.8 * 30 * 5000; // 80% reduction, ₹5000/hour value
+            const errorSavings = beds * 5000; // ₹5000 per bed in error reduction
+            
+            const totalSavings = utilSavings + timeSavings + errorSavings;
+            const monthlyCost = beds <= 20 ? 39999 : beds <= 40 ? 79999 : 159999;
+            const breakeven = (monthlyCost + 100000) / (totalSavings - monthlyCost); // Including setup
+            
+            // Update display
+            document.getElementById('utilization-savings').textContent = `₹${utilSavings.toLocaleString('en-IN')}`;
+            document.getElementById('time-savings').textContent = `₹${timeSavings.toLocaleString('en-IN')}`;
+            document.getElementById('error-savings').textContent = `₹${errorSavings.toLocaleString('en-IN')}`;
+            document.getElementById('total-savings').textContent = `₹${totalSavings.toLocaleString('en-IN')}`;
+            document.getElementById('breakeven').textContent = `${breakeven.toFixed(1)} months`;
+        }
+        
+        // Loss Counter
+        let lossAmount = 0;
+        setInterval(() => {
+            lossAmount += 38; // ₹33,000 per day = ₹38 per minute approximately
+            document.getElementById('loss-counter').textContent = `₹${lossAmount.toLocaleString('en-IN')}`;
+        }, 60000); // Update every minute
+        
+        // Initial calculation
+        calculateROI();
+        
+        // Smooth scroll for navigation
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+        
+        // Animation on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -100px 0px'
+        };
+        
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.animation = 'fadeIn 0.5s ease-out forwards';
+                }
+            });
+        }, observerOptions);
+        
+        document.querySelectorAll('.section').forEach(section => {
+            observer.observe(section);
+        });
+    </script>
+</body>
+</html>

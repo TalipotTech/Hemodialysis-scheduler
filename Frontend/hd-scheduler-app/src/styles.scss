@@ -6,11 +6,20 @@
 // custom components at https://material.angular.dev/guide/theming
 @use '@angular/material' as mat;
 
+// Define CSS variables for theming
+:root {
+  --theme-primary: #0077B6;
+  --theme-secondary: #00A896;
+  --theme-background: #ffffff;
+  --theme-gradient-start: #0077B6;
+  --theme-gradient-end: #02C39A;
+}
+
 html {
   @include mat.theme((
     color: (
-      primary: mat.$rose-palette,
-      tertiary: mat.$red-palette,
+      primary: mat.$azure-palette,
+      tertiary: mat.$cyan-palette,
     ),
     typography: Roboto,
     density: 0,

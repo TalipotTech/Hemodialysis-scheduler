@@ -1,13 +1,23 @@
 <div class="breadcrumb-container">
-  <div class="breadcrumb-actions">
-    <button 
-      *ngIf="!isDashboard()"
-      mat-icon-button 
-      class="back-button"
-      (click)="goBack()"
-      matTooltip="Go Back">
-      <mat-icon>arrow_back</mat-icon>
-    </button>
+  <button 
+    mat-button 
+    class="menu-button"
+    (click)="toggleMenu()">
+    <mat-icon>menu</mat-icon>
+    <span class="menu-text">Menu</span>
+  </button>
+
+  <button 
+    *ngIf="!isDashboard()"
+    mat-icon-button 
+    class="back-button"
+    (click)="goBack()"
+    matTooltip="Go Back">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+
+  <div class="breadcrumb-logo">
+    <img src="/assets/dialyzeflow-logo.svg" alt="DialyzeFlow" class="logo-image" width="180" height="60" />
   </div>
 
   <nav class="breadcrumb-nav" *ngIf="breadcrumbs.length > 0">

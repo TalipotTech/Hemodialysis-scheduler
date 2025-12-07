@@ -1,7 +1,22 @@
 <div class="login-container">
+  <button mat-icon-button [matMenuTriggerFor]="themeMenu" class="theme-selector">
+    <mat-icon>palette</mat-icon>
+  </button>
+  
+  <mat-menu #themeMenu="matMenu">
+    @for (theme of themes; track theme.name) {
+      <button mat-menu-item (click)="changeTheme(theme.name)" [class.active-theme]="currentTheme.name === theme.name">
+        <mat-icon>{{ currentTheme.name === theme.name ? 'check_circle' : 'circle' }}</mat-icon>
+        <span>{{ theme.displayName }}</span>
+      </button>
+    }
+  </mat-menu>
+
   <mat-card class="login-card">
     <mat-card-header>
-      <mat-card-title>🏥 HD Scheduler</mat-card-title>
+      <div class="logo-container">
+        <img src="/assets/dialyzeflow-logo.svg" alt="DialyzeFlow Logo" class="logo-image">
+      </div>
     </mat-card-header>
     <mat-card-content>
       <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">

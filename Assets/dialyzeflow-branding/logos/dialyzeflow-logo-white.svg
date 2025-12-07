@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 200">
+  <defs>
+    <!-- Light gradient for dark backgrounds -->
+    <linearGradient id="lightGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4CC9F0"/>
+      <stop offset="50%" style="stop-color:#4ECDC4"/>
+      <stop offset="100%" style="stop-color:#45E3B8"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Icon: Stylized kidney with flow waves -->
+  <g transform="translate(20, 25)">
+    <!-- Left kidney shape -->
+    <path d="M35 30 
+             C15 50, 5 100, 35 130 
+             C55 155, 75 145, 85 115
+             C90 95, 85 70, 75 55
+             C70 45, 70 35, 75 25
+             C85 5, 55 0, 35 30Z" 
+          fill="url(#lightGradient)"/>
+    
+    <!-- Right kidney shape -->
+    <path d="M115 30 
+             C135 50, 145 100, 115 130 
+             C95 155, 75 145, 65 115
+             C60 95, 65 70, 75 55
+             C80 45, 80 35, 75 25
+             C65 5, 95 0, 115 30Z" 
+          fill="url(#lightGradient)"/>
+    
+    <!-- Flow waves -->
+    <path d="M20 75 Q50 60, 75 75 Q100 90, 130 75" 
+          fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="8" stroke-linecap="round"/>
+    <path d="M20 95 Q50 110, 75 95 Q100 80, 130 95" 
+          fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="8" stroke-linecap="round"/>
+    
+    <!-- Center clock -->
+    <circle cx="75" cy="85" r="25" fill="rgba(255,255,255,0.95)"/>
+    <circle cx="75" cy="85" r="20" fill="none" stroke="url(#lightGradient)" stroke-width="3"/>
+    <line x1="75" y1="85" x2="75" y2="70" stroke="#0077B6" stroke-width="3" stroke-linecap="round"/>
+    <line x1="75" y1="85" x2="88" y2="90" stroke="#02C39A" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="75" cy="85" r="3" fill="url(#lightGradient)"/>
+  </g>
+  
+  <!-- Brand Name -->
+  <text x="175" y="115" font-family="'Segoe UI', Arial, sans-serif" font-size="52" font-weight="700">
+    <tspan fill="white">Dialyze</tspan><tspan fill="#45E3B8">Flow</tspan>
+  </text>
+  
+  <!-- Tagline -->
+  <text x="175" y="145" font-family="'Segoe UI', Arial, sans-serif" font-size="16" font-weight="400" fill="rgba(255,255,255,0.8)" letter-spacing="2">
+    AI-POWERED DIALYSIS SCHEDULING
+  </text>
+</svg>
