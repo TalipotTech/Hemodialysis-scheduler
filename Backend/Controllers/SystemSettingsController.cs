@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using HDScheduler.API.Repositories;
 using HDScheduler.API.DTOs;
 using Dapper;
+using System.Security.Claims;
 using HDScheduler.API.Data;
 
 namespace HDScheduler.API.Controllers;
@@ -299,15 +300,14 @@ public class SystemSettingsController : ControllerBase
         {
             var log = new Models.AuditLog
             {
-                UserID = GetCurrentUserId(),
                 Username = User.Identity?.Name ?? "System",
+                Role = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value,
                 Action = action,
                 EntityType = entityType,
                 EntityID = entityId,
-                OldValues = oldValues,
-                NewValues = newValues,
+                Details = $"Old: {oldValues}, New: {newValues}",
                 IPAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown",
-                CreatedAt = DateTime.Now
+                Timestamp = DateTime.UtcNow
             };
             await _auditLogRepository.CreateAsync(log);
         }

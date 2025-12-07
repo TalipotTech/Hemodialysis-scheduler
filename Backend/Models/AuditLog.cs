@@ -2,16 +2,15 @@ namespace HDScheduler.API.Models;
 
 public class AuditLog
 {
-    public int AuditLogID { get; set; }
-    public int? UserID { get; set; }
+    public int LogID { get; set; }
+    public DateTime Timestamp { get; set; }
     public string Username { get; set; } = string.Empty;
+    public string? Role { get; set; }
     public string Action { get; set; } = string.Empty; // CREATE, UPDATE, DELETE, LOGIN, LOGOUT
-    public string EntityType { get; set; } = string.Empty; // Patient, User, Schedule, etc.
+    public string? EntityType { get; set; }
     public int? EntityID { get; set; }
-    public string? OldValues { get; set; }
-    public string? NewValues { get; set; }
-    public string IPAddress { get; set; } = string.Empty;
-    public DateTime CreatedAt { get; set; }
+    public string? Details { get; set; }
+    public string? IPAddress { get; set; }
 }
 
 public class UserActivity

@@ -333,7 +333,7 @@ public class PatientHistoryRepository : IPatientHistoryRepository
                 WHERE s.PatientID = @PatientID
                 GROUP BY m.MedicationName
                 ORDER BY Count DESC
-                LIMIT 5";
+                OFFSET 0 ROWS FETCH NEXT 5 ROWS ONLY";
 
             var commonMeds = await connection.QueryAsync<string>(medicationsQuery, new { PatientID = patientId });
             stats.CommonMedications = commonMeds.ToList();

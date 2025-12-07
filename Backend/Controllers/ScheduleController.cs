@@ -77,7 +77,7 @@ public class ScheduleController : ControllerBase
                 WHERE IsActive = 1 
                     AND HDStartDate IS NOT NULL 
                     AND HDCycle IS NOT NULL
-                    AND date(HDStartDate) <= date(@TargetDate)";
+                    AND CAST(HDStartDate AS DATE) <= CAST(@TargetDate AS DATE)";
             
             var activePatients = await connection.QueryAsync<dynamic>(patientsQuery, new { TargetDate = targetDate });
             

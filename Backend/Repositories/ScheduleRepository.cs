@@ -54,8 +54,8 @@ public class ScheduleRepository : IScheduleRepository
         var query = @"INSERT INTO BedAssignments 
                      (PatientID, SlotID, BedNumber, AssignmentDate, IsActive, CreatedAt)
                      VALUES 
-                     (@PatientID, @SlotID, @BedNumber, @AssignmentDate, 1, datetime('now'));
-                     SELECT last_insert_rowid()";
+                     (@PatientID, @SlotID, @BedNumber, @AssignmentDate, 1, GETUTCDATE());
+                     SELECT CAST(SCOPE_IDENTITY() AS INT)";
         using var connection = _context.CreateConnection();
         return await connection.QuerySingleAsync<int>(query, assignment);
     }
@@ -63,7 +63,7 @@ public class ScheduleRepository : IScheduleRepository
     public async Task<bool> DischargeAssignmentAsync(int patientId)
     {
         var query = @"UPDATE BedAssignments 
-                     SET IsActive = 0, DischargedAt = datetime('now') 
+                     SET IsActive = 0, DischargedAt = GETUTCDATE() 
                      WHERE PatientID = @PatientID AND IsActive = 1";
         using var connection = _context.CreateConnection();
         var affected = await connection.ExecuteAsync(query, new { PatientID = patientId });

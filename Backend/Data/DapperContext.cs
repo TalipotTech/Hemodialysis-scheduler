@@ -1,5 +1,5 @@
 using System.Data;
-using System.Data.SQLite;
+using Microsoft.Data.SqlClient;
 
 namespace HDScheduler.API.Data;
 
@@ -16,5 +16,5 @@ public class DapperContext
     }
 
     public IDbConnection CreateConnection()
-        => new SQLiteConnection(_connectionString);
+        => new SqlConnection(_connectionString);
 }

@@ -59,7 +59,7 @@ public class StaffRepository : IStaffRepository
     {
         var query = @"INSERT INTO Staff (Name, Role, ContactNumber, StaffSpecialization, AssignedSlot, IsActive, CreatedAt)
                      VALUES (@Name, @Role, @ContactNumber, @StaffSpecialization, @AssignedSlot, @IsActive, @CreatedAt);
-                     SELECT last_insert_rowid()";
+                     SELECT CAST(SCOPE_IDENTITY() AS INT)";
         using var connection = _context.CreateConnection();
         return await connection.QuerySingleAsync<int>(query, staff);
     }

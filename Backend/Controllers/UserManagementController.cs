@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using HDScheduler.API.Models;
 using HDScheduler.API.Repositories;
 using HDScheduler.API.DTOs;
@@ -237,15 +238,14 @@ public class UserManagementController : ControllerBase
         {
             var log = new AuditLog
             {
-                UserID = GetCurrentUserId(),
                 Username = User.Identity?.Name ?? "System",
+                Role = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value,
                 Action = action,
                 EntityType = entityType,
                 EntityID = entityId,
-                OldValues = oldValues,
-                NewValues = newValues,
+                Details = $"Old: {oldValues}, New: {newValues}",
                 IPAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown",
-                CreatedAt = DateTime.Now
+                Timestamp = DateTime.UtcNow
             };
             await _auditLogRepository.CreateAsync(log);
         }

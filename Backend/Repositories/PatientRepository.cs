@@ -31,12 +31,12 @@ public class PatientRepository : IPatientRepository
                 n.Name as AssignedNurseName
             FROM Patients p
             LEFT JOIN (
-                SELECT * FROM HDSchedule
-                WHERE (PatientID, SessionDate) IN (
-                    SELECT PatientID, MAX(SessionDate)
+                SELECT h1.* FROM HDSchedule h1
+                INNER JOIN (
+                    SELECT PatientID, MAX(SessionDate) as MaxSessionDate
                     FROM HDSchedule
                     GROUP BY PatientID
-                )
+                ) h2 ON h1.PatientID = h2.PatientID AND h1.SessionDate = h2.MaxSessionDate
             ) h ON p.PatientID = h.PatientID
             LEFT JOIN Staff d ON h.AssignedDoctor = d.StaffID
             LEFT JOIN Staff n ON h.AssignedNurse = n.StaffID
@@ -65,12 +65,12 @@ public class PatientRepository : IPatientRepository
                 n.Name as AssignedNurseName
             FROM Patients p
             LEFT JOIN (
-                SELECT * FROM HDSchedule
-                WHERE (PatientID, SessionDate) IN (
-                    SELECT PatientID, MAX(SessionDate)
+                SELECT h1.* FROM HDSchedule h1
+                INNER JOIN (
+                    SELECT PatientID, MAX(SessionDate) as MaxSessionDate
                     FROM HDSchedule
                     GROUP BY PatientID
-                )
+                ) h2 ON h1.PatientID = h2.PatientID AND h1.SessionDate = h2.MaxSessionDate
             ) h ON p.PatientID = h.PatientID
             LEFT JOIN Staff d ON h.AssignedDoctor = d.StaffID
             LEFT JOIN Staff n ON h.AssignedNurse = n.StaffID
@@ -104,13 +104,13 @@ public class PatientRepository : IPatientRepository
                 n.Name as AssignedNurseName
             FROM Patients p
             LEFT JOIN (
-                SELECT * FROM HDSchedule
-                WHERE (PatientID, SessionDate) IN (
-                    SELECT PatientID, MAX(SessionDate)
+                SELECT h1.* FROM HDSchedule h1
+                INNER JOIN (
+                    SELECT PatientID, MAX(SessionDate) as MaxSessionDate
                     FROM HDSchedule
                     GROUP BY PatientID
-                )
-                AND IsDischarged = 0
+                ) h2 ON h1.PatientID = h2.PatientID AND h1.SessionDate = h2.MaxSessionDate
+                WHERE h1.IsDischarged = 0
             ) h ON p.PatientID = h.PatientID
             LEFT JOIN Staff d ON h.AssignedDoctor = d.StaffID
             LEFT JOIN Staff n ON h.AssignedNurse = n.StaffID
@@ -139,10 +139,9 @@ public class PatientRepository : IPatientRepository
                 n.Name as AssignedNurseName
             FROM Patients p
             LEFT JOIN (
-                SELECT * FROM HDSchedule
+                SELECT TOP 1 * FROM HDSchedule
                 WHERE PatientID = @PatientID
                 ORDER BY SessionDate DESC
-                LIMIT 1
             ) h ON p.PatientID = h.PatientID
             LEFT JOIN Staff d ON h.AssignedDoctor = d.StaffID
             LEFT JOIN Staff n ON h.AssignedNurse = n.StaffID
@@ -169,12 +168,12 @@ public class PatientRepository : IPatientRepository
                 n.Name as AssignedNurseName
             FROM Patients p
             LEFT JOIN (
-                SELECT * FROM HDSchedule
-                WHERE (PatientID, SessionDate) IN (
-                    SELECT PatientID, MAX(SessionDate)
+                SELECT h1.* FROM HDSchedule h1
+                INNER JOIN (
+                    SELECT PatientID, MAX(SessionDate) as MaxSessionDate
                     FROM HDSchedule
                     GROUP BY PatientID
-                )
+                ) h2 ON h1.PatientID = h2.PatientID AND h1.SessionDate = h2.MaxSessionDate
             ) h ON p.PatientID = h.PatientID
             LEFT JOIN Staff d ON h.AssignedDoctor = d.StaffID
             LEFT JOIN Staff n ON h.AssignedNurse = n.StaffID
@@ -204,8 +203,8 @@ public class PatientRepository : IPatientRepository
                       @DialyserModel, @PrescribedDuration, @PrescribedBFR, @DialysatePrescription,
                       @DialyserCount, @BloodTubingCount, @TotalDialysisCompleted,
                       @DialysersPurchased, @BloodTubingPurchased,
-                      1, datetime('now'), datetime('now'));
-                     SELECT last_insert_rowid()";
+                      1, GETUTCDATE(), GETUTCDATE());
+                     SELECT CAST(SCOPE_IDENTITY() AS INT)";
         using var connection = _context.CreateConnection();
         return await connection.QuerySingleAsync<int>(query, patient);
     }
@@ -236,7 +235,7 @@ public class PatientRepository : IPatientRepository
                      DialysersPurchased = @DialysersPurchased,
                      BloodTubingPurchased = @BloodTubingPurchased,
                      IsActive = @IsActive,
-                     UpdatedAt = datetime('now')
+                     UpdatedAt = GETUTCDATE()
                      WHERE PatientID = @PatientID";
         using var connection = _context.CreateConnection();
         var affected = await connection.ExecuteAsync(query, patient);
@@ -246,7 +245,7 @@ public class PatientRepository : IPatientRepository
     public async Task<bool> DeleteAsync(int patientId)
     {
         // Soft delete
-        var query = @"UPDATE Patients SET IsActive = 0, UpdatedAt = datetime('now') 
+        var query = @"UPDATE Patients SET IsActive = 0, UpdatedAt = GETUTCDATE() 
                      WHERE PatientID = @PatientID";
         using var connection = _context.CreateConnection();
         var affected = await connection.ExecuteAsync(query, new { PatientID = patientId });
@@ -269,7 +268,7 @@ public class PatientRepository : IPatientRepository
                 SELECT * FROM HDSchedule 
                 WHERE PatientID = @PatientID 
                 ORDER BY SessionDate DESC 
-                LIMIT 1
+                OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
             ) h ON p.PatientID = h.PatientID
             WHERE p.PatientID = @PatientID";
         
@@ -283,7 +282,7 @@ public class PatientRepository : IPatientRepository
                      DialyserCount = DialyserCount + 1,
                      BloodTubingCount = BloodTubingCount + 1,
                      TotalDialysisCompleted = TotalDialysisCompleted + 1,
-                     UpdatedAt = datetime('now')
+                     UpdatedAt = GETUTCDATE()
                      WHERE PatientID = @PatientID";
         using var connection = _context.CreateConnection();
         var affected = await connection.ExecuteAsync(query, new { PatientID = patientId });

@@ -116,30 +116,27 @@ builder.Services.AddHostedService<SessionCompletionService>(); // Auto-marks ses
 
 var app = builder.Build();
 
-// Initialize SQLite database
+// Initialize SQL Server database (commented out - use migration scripts instead)
+// For production: Run Database/SqlServer/01_CreateSchema.sql and 02_SeedData.sql manually
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 if (connectionString != null)
 {
-    DatabaseInitializer.Initialize(connectionString);
+    // Temporarily disabled - Use SQL Server migration scripts
+    // DatabaseInitializer.Initialize(connectionString);
     
     // Apply migration to add HD treatment fields to Patients table
-    try
-    {
-        PatientFieldsMigration.ApplyMigration(connectionString);
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"⚠️  Migration already applied or error: {ex.Message}");
-    }
-
-    // Initialize default time slots if needed
-    using (var scope = app.Services.CreateScope())
-    {
-        var context = scope.ServiceProvider.GetRequiredService<DapperContext>();
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<HDScheduler.API.DatabaseInitializer>>();
-        var slotInitializer = new HDScheduler.API.DatabaseInitializer(context, logger);
-        await slotInitializer.InitializeSlotsAsync();
-    }
+    // try
+    // {
+    //     PatientFieldsMigration.ApplyMigration(connectionString);
+    // }
+    // catch (Exception ex)
+    // {
+    //     Console.WriteLine($"⚠️  Migration already applied or error: {ex.Message}");
+    // }
+    
+    Console.WriteLine("📋 Database initialization skipped. Run SQL Server migration scripts manually.");
+    Console.WriteLine("   1. Database/SqlServer/01_CreateSchema.sql");
+    Console.WriteLine("   2. Database/SqlServer/02_SeedData.sql");
 }
 
 // Configure the HTTP request pipeline

@@ -43,7 +43,7 @@ public class AdminFixController : ControllerBase
                 FROM Patients 
                 WHERE Patients.PatientID = HDSchedule.PatientID
             ),
-            UpdatedAt = datetime('now')
+            UpdatedAt = GETUTCDATE()
             WHERE PatientID IN (
                 SELECT PatientID 
                 FROM Patients 

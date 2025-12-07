@@ -1,4 +1,4 @@
-using System.Data.SQLite;
+using Microsoft.Data.SqlClient;
 
 namespace HDScheduler.API.Data;
 
@@ -9,7 +9,7 @@ public class PatientFieldsMigration
 {
     public static void ApplyMigration(string connectionString)
     {
-        using var connection = new SQLiteConnection(connectionString);
+        using var connection = new SqlConnection(connectionString);
         connection.Open();
 
         // Add DryWeight column
@@ -44,7 +44,7 @@ public class PatientFieldsMigration
         Console.WriteLine("  - TotalDialysisCompleted");
     }
 
-    private static void ExecuteNonQuery(SQLiteConnection connection, string sql)
+    private static void ExecuteNonQuery(SqlConnection connection, string sql)
     {
         try
         {
@@ -52,10 +52,10 @@ public class PatientFieldsMigration
             command.CommandText = sql;
             command.ExecuteNonQuery();
         }
-        catch (SQLiteException ex)
+        catch (SqlException ex)
         {
             // Ignore "duplicate column name" errors (column already exists)
-            if (!ex.Message.Contains("duplicate column name"))
+            if (!ex.Message.Contains("duplicate column name") && !ex.Message.Contains("already an object"))
             {
                 throw;
             }

@@ -31,12 +31,11 @@ public class AuthService : IAuthService
             {
                 await _auditLogRepository.CreateAsync(new AuditLog
                 {
-                    UserID = user.UserID,
                     Username = username,
                     Action = "LOGIN_FAILED",
                     EntityType = "User",
                     EntityID = user.UserID,
-                    CreatedAt = DateTime.Now
+                    Timestamp = DateTime.UtcNow
                 });
             }
             return null;
@@ -48,12 +47,11 @@ public class AuthService : IAuthService
         // Log successful login
         await _auditLogRepository.CreateAsync(new AuditLog
         {
-            UserID = user.UserID,
             Username = user.Username,
             Action = "LOGIN",
             EntityType = "User",
             EntityID = user.UserID,
-            CreatedAt = DateTime.Now
+            Timestamp = DateTime.UtcNow
         });
 
         var token = GenerateJwtToken(user);

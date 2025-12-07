@@ -1,5 +1,5 @@
 using Dapper;
-using Microsoft.Data.Sqlite;
+using Microsoft.Data.SqlClient;
 
 namespace HDScheduler.API.Migrations;
 
@@ -7,7 +7,7 @@ public class Migration_20_AddPostDialysisVitalSignsColumns
 {
     public static void Execute(string connectionString)
     {
-        using var connection = new SqliteConnection(connectionString);
+        using var connection = new SqlConnection(connectionString);
         connection.Open();
 
         // Add Post-Dialysis Vital Signs columns
@@ -29,7 +29,7 @@ public class Migration_20_AddPostDialysisVitalSignsColumns
                 connection.Execute(command);
                 Console.WriteLine($"Executed: {command}");
             }
-            catch (SqliteException ex) when (ex.Message.Contains("duplicate column"))
+            catch (SqlException ex) when (ex.Message.Contains("duplicate column") || ex.Message.Contains("already an object"))
             {
                 Console.WriteLine($"Column already exists, skipping: {command}");
             }

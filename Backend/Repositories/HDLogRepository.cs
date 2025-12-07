@@ -76,7 +76,7 @@ public class HDLogRepository : IHDLogRepository
                 @PostDialysisHR, @AccessBleedingTime, @TotalFluidRemoved, @PostAccessStatus,
                 @SymptomsComplications, @StartTime, @EndTime, @CreatedBy
             );
-            SELECT last_insert_rowid()";
+            SELECT CAST(SCOPE_IDENTITY() AS INT)";
         
         using var connection = _context.CreateConnection();
         return await connection.ExecuteScalarAsync<int>(sql, hdLog);
@@ -103,7 +103,7 @@ public class HDLogRepository : IHDLogRepository
                 SymptomsComplications = @SymptomsComplications,
                 StartTime = @StartTime,
                 EndTime = @EndTime,
-                UpdatedAt = datetime('now')
+                UpdatedAt = GETUTCDATE()
             WHERE HDLogID = @HDLogID";
         
         using var connection = _context.CreateConnection();
@@ -145,7 +145,7 @@ public class HDLogRepository : IHDLogRepository
                 @BloodFlowRate, @VenousPressure, @ArterialPressure, @UFRate,
                 @TotalUF, @InitialStaff, @Comments
             );
-            SELECT last_insert_rowid()";
+            SELECT CAST(SCOPE_IDENTITY() AS INT)";
         
         using var connection = _context.CreateConnection();
         return await connection.ExecuteScalarAsync<int>(sql, record);
@@ -203,7 +203,7 @@ public class HDLogRepository : IHDLogRepository
             VALUES (
                 @HDLogID, @MedicationName, @Dosage, @Route, @AdministeredBy
             );
-            SELECT last_insert_rowid()";
+            SELECT CAST(SCOPE_IDENTITY() AS INT)";
         
         using var connection = _context.CreateConnection();
         return await connection.ExecuteScalarAsync<int>(sql, medication);

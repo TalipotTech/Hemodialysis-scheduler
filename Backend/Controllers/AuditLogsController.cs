@@ -33,7 +33,7 @@ public class AuditLogsController : ControllerBase
             
             // Simple pagination
             var pagedLogs = logs
-                .OrderByDescending(l => l.CreatedAt)
+                .OrderByDescending(l => l.Timestamp)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();
@@ -140,7 +140,7 @@ public class AuditLogsController : ControllerBase
             var logs = await _auditLogRepository.GetAllAsync(0, 10000);
             var filtered = logs
                 .Where(l => l.Action.Equals(action, StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(l => l.CreatedAt)
+                .OrderByDescending(l => l.Timestamp)
                 .ToList();
 
             return Ok(ApiResponse<List<AuditLog>>.SuccessResponse(filtered));
@@ -164,7 +164,7 @@ public class AuditLogsController : ControllerBase
             var statistics = new AuditStatistics
             {
                 TotalActions = allLogs.Count,
-                UniqueUsers = allLogs.Select(l => l.UserID).Distinct().Count(),
+                UniqueUsers = allLogs.Select(l => l.Username).Distinct().Count(),
                 LoginCount = allLogs.Count(l => l.Action == "LOGIN"),
                 CreateCount = allLogs.Count(l => l.Action == "CREATE"),
                 UpdateCount = allLogs.Count(l => l.Action == "UPDATE"),
@@ -180,7 +180,7 @@ public class AuditLogsController : ControllerBase
                     .Select(g => g.Key)
                     .FirstOrDefault() ?? "N/A",
                 ActionsByDay = allLogs
-                    .GroupBy(l => l.CreatedAt.Date)
+                    .GroupBy(l => l.Timestamp.Date)
                     .Select(g => new DailyActionCount
                     {
                         Date = g.Key,

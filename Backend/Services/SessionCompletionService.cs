@@ -60,7 +60,7 @@ public class SessionCompletionService : BackgroundService
             WHERE SessionStatus = 'Active'
               AND TreatmentStartTime IS NOT NULL
               AND PrescribedDuration IS NOT NULL
-              AND datetime('now') >= datetime(TreatmentStartTime, '+' || CAST(PrescribedDuration AS TEXT) || ' hours')
+              AND GETUTCDATE() >= DATEADD(HOUR, PrescribedDuration, TreatmentStartTime)
               AND IsDischarged = 0";
 
         var completedSessions = (await connection.QueryAsync<CompletedSessionDto>(query)).ToList();
@@ -76,7 +76,7 @@ public class SessionCompletionService : BackgroundService
                 UPDATE HDSchedule
                 SET SessionStatus = 'Ready-For-Discharge',
                     TreatmentCompletionTime = @CompletionTime,
-                    UpdatedAt = datetime('now')
+                    UpdatedAt = GETUTCDATE()
                 WHERE ScheduleID = @ScheduleID";
 
             await connection.ExecuteAsync(updateQuery, new
@@ -114,7 +114,7 @@ public class SessionCompletionService : BackgroundService
             WHERE TreatmentStartTime IS NOT NULL
               AND IsDischarged = 0
               AND IsMovedToHistory = 0
-              AND datetime('now') >= datetime(TreatmentStartTime, '+' || @AutoDischargeHours || ' hours')";
+              AND GETUTCDATE() >= DATEADD(HOUR, @AutoDischargeHours, TreatmentStartTime)";
 
         var expiredSessions = (await connection.QueryAsync<AutoDischargeSessionDto>(query, new
         {
@@ -136,7 +136,7 @@ public class SessionCompletionService : BackgroundService
                         IsDischarged = 1,
                         SessionStatus = 'Discharged',
                         DischargeTime = @DischargeTime,
-                        UpdatedAt = datetime('now')
+                        UpdatedAt = GETUTCDATE()
                     WHERE ScheduleID = @ScheduleID";
 
                 await connection.ExecuteAsync(updateScheduleQuery, new
@@ -166,7 +166,7 @@ public class SessionCompletionService : BackgroundService
                         ELSE BloodTubingPurchased 
                     END,
                     TotalDialysisCompleted = TotalDialysisCompleted + 1,
-                    UpdatedAt = datetime('now')
+                    UpdatedAt = GETUTCDATE()
                     WHERE PatientID = @PatientID";
 
                 await connection.ExecuteAsync(updateEquipmentQuery, new
@@ -178,11 +178,11 @@ public class SessionCompletionService : BackgroundService
                 var releaseBedQuery = @"
                     UPDATE BedAssignments
                     SET IsActive = 0,
-                        DischargedAt = datetime('now')
+                        DischargedAt = GETUTCDATE()
                     WHERE PatientID = @PatientID
                       AND SlotID = @SlotID
                       AND BedNumber = @BedNumber
-                      AND date(AssignmentDate) = date(@SessionDate)
+                      AND CAST(AssignmentDate AS DATE) = CAST(@SessionDate AS DATE)
                       AND IsActive = 1";
 
                 await connection.ExecuteAsync(releaseBedQuery, new

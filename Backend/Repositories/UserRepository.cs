@@ -38,8 +38,8 @@ public class UserRepository : IUserRepository
     public async Task<int> CreateAsync(User user)
     {
         var query = @"INSERT INTO Users (Username, PasswordHash, Role, IsActive, CreatedAt) 
-                     VALUES (@Username, @PasswordHash, @Role, @IsActive, datetime('now'));
-                     SELECT last_insert_rowid()";
+                     VALUES (@Username, @PasswordHash, @Role, @IsActive, GETUTCDATE());
+                     SELECT CAST(SCOPE_IDENTITY() AS INT)";
         using var connection = _context.CreateConnection();
         return await connection.QuerySingleAsync<int>(query, user);
     }
@@ -58,7 +58,7 @@ public class UserRepository : IUserRepository
 
     public async Task<bool> UpdateLastLoginAsync(int userId)
     {
-        var query = "UPDATE Users SET LastLogin = datetime('now') WHERE UserID = @UserID";
+        var query = "UPDATE Users SET LastLogin = GETUTCDATE() WHERE UserID = @UserID";
         using var connection = _context.CreateConnection();
         var affected = await connection.ExecuteAsync(query, new { UserID = userId });
         return affected > 0;

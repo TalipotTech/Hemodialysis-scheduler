@@ -1,5 +1,5 @@
 using HDScheduler.API.Models;
-using Microsoft.Data.Sqlite;
+using Microsoft.Data.SqlClient;
 
 namespace HDScheduler.API.Services;
 
@@ -23,7 +23,7 @@ public class EquipmentUsageService
     {
         var statuses = new List<EquipmentUsageStatus>();
         
-        using var connection = new SqliteConnection(_connectionString);
+        using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
 
         // Get latest equipment usage counts
@@ -38,7 +38,7 @@ public class EquipmentUsageService
                 FROM HDSchedules
                 WHERE ScheduleID = @ScheduleID AND PatientID = @PatientID";
             
-            using var cmd = new SqliteCommand(query, connection);
+            using var cmd = new SqlCommand(query, connection);
             cmd.Parameters.AddWithValue("@ScheduleID", scheduleId.Value);
             cmd.Parameters.AddWithValue("@PatientID", patientId);
             
@@ -53,13 +53,12 @@ public class EquipmentUsageService
         {
             // Get from latest schedule for patient
             var query = @"
-                SELECT DialyserReuseCount, BloodTubingReuse
+                SELECT TOP 1 DialyserReuseCount, BloodTubingReuse
                 FROM HDSchedules
                 WHERE PatientID = @PatientID
-                ORDER BY SessionDate DESC, CreatedAt DESC
-                LIMIT 1";
+                ORDER BY SessionDate DESC, CreatedAt DESC";
             
-            using var cmd = new SqliteCommand(query, connection);
+            using var cmd = new SqlCommand(query, connection);
             cmd.Parameters.AddWithValue("@PatientID", patientId);
             
             using var reader = await cmd.ExecuteReaderAsync();
@@ -147,7 +146,7 @@ public class EquipmentUsageService
     /// </summary>
     public async Task<int> LogEquipmentAlertAsync(EquipmentUsageAlert alert)
     {
-        using var connection = new SqliteConnection(_connectionString);
+        using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
 
         var query = @"
@@ -157,9 +156,9 @@ public class EquipmentUsageService
             VALUES 
             (@PatientID, @ScheduleID, @EquipmentType, @CurrentUsageCount, @MaxUsageLimit,
              @Severity, @AlertMessage, @IsAcknowledged, @CreatedAt);
-            SELECT last_insert_rowid();";
+            SELECT CAST(SCOPE_IDENTITY() AS INT);";
 
-        using var cmd = new SqliteCommand(query, connection);
+        using var cmd = new SqlCommand(query, connection);
         cmd.Parameters.AddWithValue("@PatientID", alert.PatientID);
         cmd.Parameters.AddWithValue("@ScheduleID", alert.ScheduleID ?? (object)DBNull.Value);
         cmd.Parameters.AddWithValue("@EquipmentType", alert.EquipmentType);
@@ -181,7 +180,7 @@ public class EquipmentUsageService
     {
         var alerts = new List<EquipmentUsageAlert>();
 
-        using var connection = new SqliteConnection(_connectionString);
+        using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
 
         var query = @"
@@ -191,7 +190,7 @@ public class EquipmentUsageService
             WHERE PatientID = @PatientID AND IsAcknowledged = 0
             ORDER BY CreatedAt DESC";
 
-        using var cmd = new SqliteCommand(query, connection);
+        using var cmd = new SqlCommand(query, connection);
         cmd.Parameters.AddWithValue("@PatientID", patientId);
 
         using var reader = await cmd.ExecuteReaderAsync();
@@ -220,7 +219,7 @@ public class EquipmentUsageService
     /// </summary>
     public async Task<bool> AcknowledgeAlertAsync(int alertId, string acknowledgedBy)
     {
-        using var connection = new SqliteConnection(_connectionString);
+        using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
 
         var query = @"
@@ -230,7 +229,7 @@ public class EquipmentUsageService
                 AcknowledgedAt = @AcknowledgedAt
             WHERE AlertID = @AlertID";
 
-        using var cmd = new SqliteCommand(query, connection);
+        using var cmd = new SqlCommand(query, connection);
         cmd.Parameters.AddWithValue("@AlertID", alertId);
         cmd.Parameters.AddWithValue("@AcknowledgedBy", acknowledgedBy);
         cmd.Parameters.AddWithValue("@AcknowledgedAt", DateTime.UtcNow);

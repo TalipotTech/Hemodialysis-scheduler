@@ -1,4 +1,4 @@
-using System.Data.SQLite;
+using Microsoft.Data.SqlClient;
 using Dapper;
 
 namespace HDScheduler.API.Data;
@@ -7,12 +7,12 @@ public static class DatabaseInitializer
 {
     public static void Initialize(string connectionString)
     {
-        using var connection = new SQLiteConnection(connectionString);
+        using var connection = new SqlConnection(connectionString);
         connection.Open();
         
         // Check if database is already initialized
         var tableCount = connection.ExecuteScalar<int>(
-            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Users'");
+            "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Users'");
         
         if (tableCount > 0)
         {
@@ -23,7 +23,7 @@ public static class DatabaseInitializer
             return;
         }
         
-        Console.WriteLine("Initializing SQLite database...");
+        Console.WriteLine("Initializing SQL Server database...");
         
         // Create tables
         CreateTables(connection);
@@ -34,7 +34,7 @@ public static class DatabaseInitializer
         Console.WriteLine("✓ Database initialized successfully!");
     }
     
-    private static void RunMigrations(SQLiteConnection connection)
+    private static void RunMigrations(SqlConnection connection)
     {
         // Check if ScheduleID column exists in HDLogs
         var columnExists = connection.ExecuteScalar<int>(@"
@@ -553,7 +553,7 @@ public static class DatabaseInitializer
         }
     }
     
-    private static void CreateTables(SQLiteConnection connection)
+    private static void CreateTables(SqlConnection connection)
     {
         string sql = @"
             -- Users Table
@@ -602,6 +602,20 @@ public static class DatabaseInitializer
                 EmergencyContact TEXT,
                 Address TEXT,
                 GuardianName TEXT,
+                DryWeight REAL,
+                HDCycle TEXT,
+                HDFrequency INTEGER,
+                HDStartDate TEXT,
+                DialyserType TEXT,
+                DialyserModel TEXT,
+                PrescribedDuration REAL,
+                PrescribedBFR INTEGER,
+                DialysatePrescription TEXT,
+                DialyserCount INTEGER DEFAULT 0,
+                BloodTubingCount INTEGER DEFAULT 0,
+                TotalDialysisCompleted INTEGER DEFAULT 0,
+                DialysersPurchased INTEGER DEFAULT 0,
+                BloodTubingPurchased INTEGER DEFAULT 0,
                 IsActive INTEGER DEFAULT 1,
                 CreatedAt TEXT DEFAULT (datetime('now')),
                 UpdatedAt TEXT DEFAULT (datetime('now'))
@@ -639,6 +653,11 @@ public static class DatabaseInitializer
                 AssignedNurse INTEGER,
                 CreatedByStaffName TEXT,
                 CreatedByStaffRole TEXT,
+                SessionStatus TEXT,
+                TreatmentStartTime TEXT,
+                TreatmentCompletionTime TEXT,
+                DischargeTime TEXT,
+                IsMovedToHistory INTEGER DEFAULT 0,
                 IsDischarged INTEGER DEFAULT 0,
                 CreatedAt TEXT DEFAULT (datetime('now')),
                 UpdatedAt TEXT DEFAULT (datetime('now')),
@@ -805,7 +824,7 @@ public static class DatabaseInitializer
         connection.Execute(sql);
     }
     
-    private static void SeedData(SQLiteConnection connection)
+    private static void SeedData(SqlConnection connection)
     {
         // Insert Slots
         connection.Execute(@"
