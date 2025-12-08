@@ -88,7 +88,7 @@ namespace HDScheduler.API.Services.AI
                 var geminiRequest = new GeminiRequest
                 {
                     ApiKey = apiKey,
-                    Model = "gemini-1.5-flash-latest",
+                    Model = "gemini-pro",
                     Prompt = prompt,
                     Temperature = 0.3,
                     MaxOutputTokens = 1024

@@ -99,7 +99,7 @@ namespace HDScheduler.API.Services.AI
                 var testRequest = new GeminiRequest
                 {
                     ApiKey = apiKey,
-                    Model = "gemini-1.5-flash-latest",
+                    Model = "gemini-pro",
                     Prompt = "Test",
                     MaxOutputTokens = 10
                 };
@@ -118,7 +118,7 @@ namespace HDScheduler.API.Services.AI
     public class GeminiRequest
     {
         public string ApiKey { get; set; } = string.Empty;
-        public string Model { get; set; } = "gemini-1.5-flash-latest";
+        public string Model { get; set; } = "gemini-pro";
         public string Prompt { get; set; } = string.Empty;
         public double Temperature { get; set; } = 0.3;
         public int TopK { get; set; } = 40;
