@@ -14,7 +14,7 @@ namespace HDScheduler.API.Services.AI
     {
         private readonly HttpClient _httpClient;
         private readonly ILogger<GeminiClient> _logger;
-        private const string BaseUrl = "https://generativelanguage.googleapis.com/v1beta";
+        private const string BaseUrl = "https://generativelanguage.googleapis.com/v1";
         
         public GeminiClient(HttpClient httpClient, ILogger<GeminiClient> logger)
         {
