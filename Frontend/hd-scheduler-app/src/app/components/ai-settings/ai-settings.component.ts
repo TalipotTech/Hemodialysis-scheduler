@@ -72,7 +72,13 @@ export class AISettingsComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading AI settings:', error);
-        this.snackBar.open('Failed to load AI settings', 'Close', { duration: 3000 });
+        if (error.status === 401) {
+          this.snackBar.open('Authentication required. Please login as Admin.', 'Close', { duration: 5000 });
+        } else if (error.status === 403) {
+          this.snackBar.open('Access denied. Admin role required.', 'Close', { duration: 5000 });
+        } else {
+          this.snackBar.open('Failed to load AI settings', 'Close', { duration: 3000 });
+        }
         this.loading = false;
       }
     });
