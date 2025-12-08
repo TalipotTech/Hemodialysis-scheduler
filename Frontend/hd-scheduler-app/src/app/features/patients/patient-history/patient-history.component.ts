@@ -76,7 +76,7 @@ export class PatientHistoryComponent implements OnInit {
     });
     
     // Fetch patient history from API
-    this.http.get<any>(`${environment.apiUrl}/PatientHistory/${this.patientId}`, { headers })
+    this.http.get<any>(`${environment.apiUrl}/api/PatientHistory/${this.patientId}`, { headers })
       .subscribe({
         next: (response) => {
           console.log('Patient History API Response:', response);
@@ -165,7 +165,7 @@ export class PatientHistoryComponent implements OnInit {
     });
     
     // Fetch vital trends from API
-    this.http.get<any>(`${environment.apiUrl}/PatientHistory/${this.patientId}/trends`, { headers })
+    this.http.get<any>(`${environment.apiUrl}/api/PatientHistory/${this.patientId}/trends`, { headers })
       .subscribe({
         next: (response) => {
           if (response.success && response.data) {

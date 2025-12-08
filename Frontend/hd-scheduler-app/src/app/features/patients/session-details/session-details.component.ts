@@ -74,9 +74,9 @@ export class SessionDetailsComponent implements OnInit {
     });
     
     console.log('Loading session details for schedule ID:', this.scheduleId);
-    console.log('API URL:', `${environment.apiUrl}/PatientHistory/session/${this.scheduleId}`);
+    console.log('API URL:', `${environment.apiUrl}/api/PatientHistory/session/${this.scheduleId}`);
     
-    this.http.get<any>(`${environment.apiUrl}/PatientHistory/session/${this.scheduleId}`, { headers })
+    this.http.get<any>(`${environment.apiUrl}/api/PatientHistory/session/${this.scheduleId}`, { headers })
       .subscribe({
         next: (response) => {
           console.log('Session details response:', response);

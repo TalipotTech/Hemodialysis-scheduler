@@ -308,10 +308,10 @@ export class SystemOverviewWidgetComponent implements OnInit {
     console.log('SystemOverviewWidget: Token:', localStorage.getItem('token') ? 'Present' : 'Missing');
     this.loading = true;
 
-    const users$ = this.http.get<any>(`${environment.apiUrl}/UserManagement`, { headers: this.getHeaders() });
-    const patients$ = this.http.get<any>(`${environment.apiUrl}/Patients`, { headers: this.getHeaders() });
-    const staff$ = this.http.get<any>(`${environment.apiUrl}/StaffManagement`, { headers: this.getHeaders() });
-    const schedule$ = this.http.get<any>(`${environment.apiUrl}/HDSchedule/today`, { headers: this.getHeaders() });
+    const users$ = this.http.get<any>(`${environment.apiUrl}/api/UserManagement`, { headers: this.getHeaders() });
+    const patients$ = this.http.get<any>(`${environment.apiUrl}/api/Patients`, { headers: this.getHeaders() });
+    const staff$ = this.http.get<any>(`${environment.apiUrl}/api/StaffManagement`, { headers: this.getHeaders() });
+    const schedule$ = this.http.get<any>(`${environment.apiUrl}/api/HDSchedule/today`, { headers: this.getHeaders() });
 
     console.log('SystemOverviewWidget: Making API calls...');
     forkJoin({

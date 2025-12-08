@@ -120,7 +120,7 @@ export class VitalMonitoringComponent implements OnInit, OnDestroy {
     });
     
     // Load session details first
-    this.http.get<any>(`${environment.apiUrl}/PatientHistory/session/${this.scheduleId}`, { headers })
+    this.http.get<any>(`${environment.apiUrl}/api/PatientHistory/session/${this.scheduleId}`, { headers })
       .subscribe({
         next: (response) => {
           console.log('Session response:', response);
