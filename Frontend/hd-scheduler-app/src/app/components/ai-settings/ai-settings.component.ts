@@ -124,7 +124,8 @@ export class AISettingsComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error saving AI settings:', error);
-        const errorMsg = error.error?.message || 'Failed to save AI settings';
+        console.error('Error details:', error.error);
+        const errorMsg = error.error?.error || error.error?.message || error.message || 'Failed to save AI settings';
         this.snackBar.open(errorMsg, 'Close', { duration: 5000 });
         this.savingSettings = false;
       }
