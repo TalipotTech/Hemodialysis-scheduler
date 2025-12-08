@@ -106,6 +106,12 @@ export class SidebarNavComponent implements OnInit {
       icon: 'settings',
       route: '/admin/system-settings',
       roles: ['Admin']
+    },
+    {
+      label: 'AI Integration',
+      icon: 'psychology',
+      route: '/admin/ai-settings',
+      roles: ['Admin']
     }
   ];
 

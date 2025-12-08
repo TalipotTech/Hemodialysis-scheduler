@@ -139,6 +139,12 @@ export const routes: Routes = [
     data: { roles: ['Admin'], breadcrumb: 'System Settings' }
   },
   {
+    path: 'admin/ai-settings',
+    loadComponent: () => import('./components/ai-settings/ai-settings.component').then(m => m.AISettingsComponent),
+    canActivate: [authGuard],
+    data: { roles: ['Admin'], breadcrumb: 'AI Integration' }
+  },
+  {
     path: 'admin/reports',
     loadComponent: () => import('./components/reports/reports.component').then(m => m.ReportsComponent),
     canActivate: [authGuard],

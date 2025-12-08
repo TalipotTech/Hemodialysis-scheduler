@@ -92,6 +92,7 @@ export class BreadcrumbComponent implements OnInit {
       'user-management': 'User Management',
       'staff-management': 'Staff Management',
       'system-settings': 'System Settings',
+      'ai-settings': 'AI Integration',
       'reports': 'Reports',
       'audit-logs': 'Audit Logs',
       'patient-history': 'Patient History',

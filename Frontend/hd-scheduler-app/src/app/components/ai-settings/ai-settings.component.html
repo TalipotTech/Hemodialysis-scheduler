@@ -1,0 +1,340 @@
+<div class="ai-settings-container">
+  <mat-card class="settings-card">
+    <mat-card-header>
+      <div class="header-content">
+        <div class="title-section">
+          <button mat-icon-button (click)="goBack()" class="back-button">
+            <mat-icon>arrow_back</mat-icon>
+          </button>
+          <h2>
+            <mat-icon class="header-icon">psychology</mat-icon>
+            AI Integration Settings
+          </h2>
+        </div>
+      </div>
+    </mat-card-header>
+
+    <mat-card-content *ngIf="!loading && settings">
+      <mat-tab-group>
+        <!-- Configuration Tab -->
+        <mat-tab label="Configuration">
+          <div class="tab-content">
+            <!-- Status Alert -->
+            <div class="status-alert" *ngIf="settings">
+              <mat-card [class.enabled]="settings.aiEnabled" [class.disabled]="!settings.aiEnabled">
+                <div class="status-content">
+                  <mat-icon>{{ settings.aiEnabled ? 'check_circle' : 'cancel' }}</mat-icon>
+                  <div>
+                    <h3>AI Status: {{ settings.aiEnabled ? 'Enabled' : 'Disabled' }}</h3>
+                    <p *ngIf="!settings.hasApiKey && settings.aiEnabled">
+                      ⚠️ API Key required to activate AI features
+                    </p>
+                    <p *ngIf="isOverBudget">
+                      ⚠️ Budget limit reached - AI temporarily disabled
+                    </p>
+                    <p *ngIf="budgetWarning && !isOverBudget">
+                      ⚠️ Approaching budget limit ({{ usageStats?.dailyUsagePercentage.toFixed(0) }}% daily, {{ usageStats?.monthlyUsagePercentage.toFixed(0) }}% monthly)
+                    </p>
+                  </div>
+                </div>
+              </mat-card>
+            </div>
+
+            <!-- Main Settings -->
+            <div class="settings-section">
+              <h3>General Settings</h3>
+              
+              <div class="setting-row">
+                <mat-slide-toggle
+                  [(ngModel)]="settings.aiEnabled"
+                  color="primary">
+                  Enable AI Features
+                </mat-slide-toggle>
+                <span class="setting-description">
+                  Turn AI-powered features on or off
+                </span>
+              </div>
+
+              <mat-form-field class="full-width">
+                <mat-label>AI Provider</mat-label>
+                <input matInput [(ngModel)]="settings.aiProvider" readonly>
+                <mat-icon matSuffix matTooltip="Currently only Gemini Pro is supported">info</mat-icon>
+              </mat-form-field>
+
+              <mat-form-field class="full-width">
+                <mat-label>Gemini API Key</mat-label>
+                <input matInput
+                       [type]="showApiKey ? 'text' : 'password'"
+                       [(ngModel)]="apiKey"
+                       placeholder="Enter new API key to update">
+                <button mat-icon-button matSuffix (click)="toggleApiKeyVisibility()">
+                  <mat-icon>{{ showApiKey ? 'visibility_off' : 'visibility' }}</mat-icon>
+                </button>
+                <mat-hint *ngIf="settings.hasApiKey">✓ API key configured</mat-hint>
+                <mat-hint *ngIf="!settings.hasApiKey">Get your key from Google AI Studio</mat-hint>
+              </mat-form-field>
+            </div>
+
+            <!-- Budget Limits -->
+            <div class="settings-section">
+              <h3>Budget Limits</h3>
+              
+              <mat-form-field class="full-width">
+                <mat-label>Daily Cost Limit ($)</mat-label>
+                <input matInput
+                       type="number"
+                       [(ngModel)]="settings.dailyCostLimit"
+                       min="0"
+                       step="1">
+                <mat-icon matSuffix matTooltip="Maximum AI cost per day">attach_money</mat-icon>
+              </mat-form-field>
+
+              <mat-form-field class="full-width">
+                <mat-label>Monthly Cost Limit ($)</mat-label>
+                <input matInput
+                       type="number"
+                       [(ngModel)]="settings.monthlyCostLimit"
+                       min="0"
+                       step="10">
+                <mat-icon matSuffix matTooltip="Maximum AI cost per month">attach_money</mat-icon>
+              </mat-form-field>
+            </div>
+
+            <!-- Feature Toggles -->
+            <div class="settings-section">
+              <h3>Feature Controls</h3>
+              
+              <div class="setting-row">
+                <mat-slide-toggle
+                  [(ngModel)]="settings.enableSchedulingRecommendations"
+                  color="primary"
+                  [disabled]="!settings.aiEnabled">
+                  Scheduling Recommendations
+                </mat-slide-toggle>
+                <span class="setting-description">
+                  AI suggests optimal slot and bed assignments
+                </span>
+              </div>
+
+              <div class="setting-row">
+                <mat-slide-toggle
+                  [(ngModel)]="settings.enableNaturalLanguageQueries"
+                  color="primary"
+                  [disabled]="!settings.aiEnabled">
+                  Natural Language Queries
+                </mat-slide-toggle>
+                <span class="setting-description">
+                  Ask questions in plain English (Coming soon)
+                </span>
+              </div>
+
+              <div class="setting-row">
+                <mat-slide-toggle
+                  [(ngModel)]="settings.enablePredictiveAnalytics"
+                  color="primary"
+                  [disabled]="!settings.aiEnabled">
+                  Predictive Analytics
+                </mat-slide-toggle>
+                <span class="setting-description">
+                  Predict outcomes and trends (Coming soon)
+                </span>
+              </div>
+            </div>
+
+            <!-- Save Button -->
+            <div class="action-buttons">
+              <button mat-raised-button
+                      color="primary"
+                      (click)="saveSettings()"
+                      [disabled]="savingSettings">
+                <mat-icon>save</mat-icon>
+                {{ savingSettings ? 'Saving...' : 'Save Settings' }}
+              </button>
+            </div>
+          </div>
+        </mat-tab>
+
+        <!-- Usage Statistics Tab -->
+        <mat-tab label="Usage & Costs">
+          <div class="tab-content" *ngIf="usageStats">
+            <!-- Current Usage Overview -->
+            <div class="stats-section">
+              <h3>Current Usage</h3>
+              
+              <div class="usage-grid">
+                <mat-card class="stat-card">
+                  <h4>Today</h4>
+                  <div class="stat-value">{{ formatCurrency(usageStats.todayCost) }}</div>
+                  <div class="stat-label">of {{ formatCurrency(usageStats.dailyCostLimit) }}</div>
+                  <mat-progress-bar
+                    [mode]="'determinate'"
+                    [value]="usageStats.dailyUsagePercentage"
+                    [color]="dailyUsageColor">
+                  </mat-progress-bar>
+                  <div class="stat-footer">{{ usageStats.todayRequests }} requests</div>
+                </mat-card>
+
+                <mat-card class="stat-card">
+                  <h4>This Month</h4>
+                  <div class="stat-value">{{ formatCurrency(usageStats.monthCost) }}</div>
+                  <div class="stat-label">of {{ formatCurrency(usageStats.monthlyCostLimit) }}</div>
+                  <mat-progress-bar
+                    [mode]="'determinate'"
+                    [value]="usageStats.monthlyUsagePercentage"
+                    [color]="monthlyUsageColor">
+                  </mat-progress-bar>
+                  <div class="stat-footer">{{ usageStats.monthRequests }} requests</div>
+                </mat-card>
+              </div>
+            </div>
+
+            <!-- Usage Breakdown -->
+            <div class="stats-section" *ngIf="usageStats.usageBreakdown.length > 0">
+              <div class="section-header">
+                <h3>Usage by Type</h3>
+                <button mat-icon-button (click)="refreshStats()" matTooltip="Refresh statistics">
+                  <mat-icon>refresh</mat-icon>
+                </button>
+              </div>
+              
+              <table mat-table [dataSource]="usageStats.usageBreakdown" class="usage-table">
+                <ng-container matColumnDef="requestType">
+                  <th mat-header-cell *matHeaderCellDef>Request Type</th>
+                  <td mat-cell *matCellDef="let row">{{ row.requestType }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="count">
+                  <th mat-header-cell *matHeaderCellDef>Count</th>
+                  <td mat-cell *matCellDef="let row">{{ row.count }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="totalCost">
+                  <th mat-header-cell *matHeaderCellDef>Total Cost</th>
+                  <td mat-cell *matCellDef="let row">{{ formatCurrency(row.totalCost) }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="avgTime">
+                  <th mat-header-cell *matHeaderCellDef>Avg Time (ms)</th>
+                  <td mat-cell *matCellDef="let row">{{ row.avgProcessingTimeMs }}</td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="usageColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: usageColumns;"></tr>
+              </table>
+            </div>
+
+            <!-- Cost Trend -->
+            <div class="stats-section" *ngIf="usageStats.costTrend.length > 0">
+              <h3>Recent Cost Trend (Last 30 Days)</h3>
+              
+              <table mat-table [dataSource]="usageStats.costTrend" class="usage-table">
+                <ng-container matColumnDef="date">
+                  <th mat-header-cell *matHeaderCellDef>Date</th>
+                  <td mat-cell *matCellDef="let row">{{ formatDate(row.date) }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="cost">
+                  <th mat-header-cell *matHeaderCellDef>Cost</th>
+                  <td mat-cell *matCellDef="let row">{{ formatCurrency(row.cost) }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="requestCount">
+                  <th mat-header-cell *matHeaderCellDef>Requests</th>
+                  <td mat-cell *matCellDef="let row">{{ row.requestCount }}</td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="costTrendColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: costTrendColumns;"></tr>
+              </table>
+            </div>
+
+            <!-- Info Panel -->
+            <mat-card class="info-panel">
+              <h4>
+                <mat-icon>info</mat-icon>
+                Cost Information
+              </h4>
+              <ul>
+                <li>Gemini Pro: $0.0005 per 1,000 input characters</li>
+                <li>Gemini Pro: $0.0015 per 1,000 output characters</li>
+                <li>Average cost per scheduling request: ~$0.002</li>
+                <li>Counters reset daily at 00:00 UTC and monthly on the 1st</li>
+                <li>AI automatically disables when budget limits are reached</li>
+              </ul>
+            </mat-card>
+          </div>
+
+          <div class="tab-content" *ngIf="!usageStats">
+            <div class="no-data">
+              <mat-icon>analytics</mat-icon>
+              <p>No usage data available yet</p>
+            </div>
+          </div>
+        </mat-tab>
+
+        <!-- Help Tab -->
+        <mat-tab label="Help">
+          <div class="tab-content help-content">
+            <mat-card class="help-card">
+              <h3>
+                <mat-icon>help_outline</mat-icon>
+                Getting Started
+              </h3>
+              <ol>
+                <li>Get a Gemini API key from <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a></li>
+                <li>Enter your API key in the Configuration tab</li>
+                <li>Set your budget limits (recommended: $5/day, $100/month)</li>
+                <li>Enable the AI features you want to use</li>
+                <li>Click "Save Settings"</li>
+              </ol>
+            </mat-card>
+
+            <mat-card class="help-card">
+              <h3>
+                <mat-icon>lightbulb</mat-icon>
+                Features
+              </h3>
+              <ul>
+                <li><strong>Scheduling Recommendations:</strong> AI suggests optimal slot and bed assignments based on patient data, availability, and historical patterns</li>
+                <li><strong>Natural Language Queries:</strong> Ask questions about schedules in plain English (Coming soon)</li>
+                <li><strong>Predictive Analytics:</strong> Predict patient outcomes and identify trends (Coming soon)</li>
+              </ul>
+            </mat-card>
+
+            <mat-card class="help-card">
+              <h3>
+                <mat-icon>security</mat-icon>
+                Security & Privacy
+              </h3>
+              <ul>
+                <li>API keys are encrypted in the database using AES-256</li>
+                <li>All AI requests are logged for auditing</li>
+                <li>No patient data is stored by the AI provider</li>
+                <li>Communication with Gemini API is encrypted (HTTPS)</li>
+              </ul>
+            </mat-card>
+
+            <mat-card class="help-card warning">
+              <h3>
+                <mat-icon>warning</mat-icon>
+                Important Notes
+              </h3>
+              <ul>
+                <li>AI recommendations are suggestions only - final decisions should be made by qualified staff</li>
+                <li>Monitor your usage to avoid unexpected costs</li>
+                <li>Budget limits will automatically disable AI when reached</li>
+                <li>Set conservative limits when starting out</li>
+              </ul>
+            </mat-card>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </mat-card-content>
+
+    <!-- Loading State -->
+    <mat-card-content *ngIf="loading" class="loading-state">
+      <mat-spinner diameter="50"></mat-spinner>
+      <p>Loading AI settings...</p>
+    </mat-card-content>
+  </mat-card>
+</div>
