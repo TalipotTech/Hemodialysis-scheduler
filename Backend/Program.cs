@@ -5,6 +5,7 @@ using System.Text;
 using HDScheduler.API.Data;
 using HDScheduler.API.Repositories;
 using HDScheduler.API.Services;
+using HDScheduler.API.Services.AI;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -112,6 +113,11 @@ builder.Services.AddScoped<EquipmentUsageService>();
 builder.Services.AddScoped<IRecurringSessionService, RecurringSessionService>();
 builder.Services.AddScoped<IBedAssignmentService, BedAssignmentService>();
 builder.Services.AddScoped<IHDCycleService, HDCycleService>();
+
+// Register AI services
+builder.Services.AddHttpClient<IGeminiClient, GeminiClient>();
+builder.Services.AddScoped<IAIRepository, AIRepository>();
+builder.Services.AddScoped<IAIService, AIService>();
 
 // Register background services
 builder.Services.AddHostedService<SessionHistoryBackgroundService>();
