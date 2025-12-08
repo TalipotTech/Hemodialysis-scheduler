@@ -150,6 +150,15 @@
                 <mat-icon>save</mat-icon>
                 {{ savingSettings ? 'Saving...' : 'Save Settings' }}
               </button>
+              
+              <button mat-raised-button
+                      color="accent"
+                      (click)="testAIConnection()"
+                      [disabled]="!settings?.aiEnabled || !settings?.hasApiKey || testingConnection"
+                      style="margin-left: 10px;">
+                <mat-icon>{{ testingConnection ? 'hourglass_empty' : 'science' }}</mat-icon>
+                {{ testingConnection ? 'Testing...' : 'Test AI Connection' }}
+              </button>
             </div>
           </div>
         </mat-tab>

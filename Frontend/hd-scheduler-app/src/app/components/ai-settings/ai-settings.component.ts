@@ -179,4 +179,37 @@ export class AISettingsComponent implements OnInit {
     return (this.usageStats.dailyUsagePercentage >= 80 && this.usageStats.dailyUsagePercentage < 100) ||
            (this.usageStats.monthlyUsagePercentage >= 80 && this.usageStats.monthlyUsagePercentage < 100);
   }
+
+  testingConnection = false;
+
+  testAIConnection(): void {
+    if (!this.settings) return;
+
+    this.testingConnection = true;
+    
+    // Test with a sample patient profile
+    const testRequest = {
+      patientId: 1,  // Sample patient ID
+      preferredSlotId: 1,
+      preferredDate: new Date().toISOString()
+    };
+
+    this.aiService.getSchedulingRecommendation(testRequest).subscribe({
+      next: (recommendation) => {
+        this.testingConnection = false;
+        this.snackBar.open(
+          `✅ AI Connection Successful! Recommended Slot ${recommendation.recommendedSlotId}, Bed ${recommendation.recommendedBedNumber} (Confidence: ${(recommendation.confidence * 100).toFixed(0)}%)`,
+          'Close',
+          { duration: 8000 }
+        );
+        console.log('AI Recommendation:', recommendation);
+      },
+      error: (error) => {
+        this.testingConnection = false;
+        console.error('AI test failed:', error);
+        const errorMsg = error.error?.error || error.error?.message || 'AI connection test failed';
+        this.snackBar.open(`❌ ${errorMsg}`, 'Close', { duration: 5000 });
+      }
+    });
+  }
 }
