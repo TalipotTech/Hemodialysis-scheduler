@@ -101,7 +101,7 @@ export interface ApiResponse<T> {
   providedIn: 'root'
 })
 export class ReportsService {
-  private apiUrl = `${environment.apiUrl}/reports`;
+  private apiUrl = `${environment.apiUrl}/api/reports`;
 
   constructor(private http: HttpClient) {}
 

@@ -37,7 +37,7 @@ export interface ApiResponse<T> {
   providedIn: 'root'
 })
 export class UserManagementService {
-  private apiUrl = `${environment.apiUrl}/usermanagement`;
+  private apiUrl = `${environment.apiUrl}/api/usermanagement`;
 
   constructor(private http: HttpClient) {}
 

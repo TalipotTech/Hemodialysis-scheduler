@@ -24,7 +24,7 @@ export interface ApiResponse<T> {
   providedIn: 'root'
 })
 export class CurrentShiftService {
-  private apiUrl = `${environment.apiUrl}/staffmanagement`;
+  private apiUrl = `${environment.apiUrl}/api/staffmanagement`;
 
   constructor(private http: HttpClient) {}
 

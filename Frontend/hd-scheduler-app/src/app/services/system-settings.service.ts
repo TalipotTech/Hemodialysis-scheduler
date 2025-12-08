@@ -60,7 +60,7 @@ export interface ApiResponse<T> {
   providedIn: 'root'
 })
 export class SystemSettingsService {
-  private apiUrl = `${environment.apiUrl}/systemsettings`;
+  private apiUrl = `${environment.apiUrl}/api/systemsettings`;
 
   constructor(private http: HttpClient) {}
 

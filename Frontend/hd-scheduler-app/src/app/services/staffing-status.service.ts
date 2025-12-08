@@ -31,7 +31,7 @@ export interface ApiResponse<T> {
   providedIn: 'root'
 })
 export class StaffingStatusService {
-  private apiUrl = `${environment.apiUrl}/staffingstatus`;
+  private apiUrl = `${environment.apiUrl}/api/staffingstatus`;
 
   constructor(private http: HttpClient) {}
 

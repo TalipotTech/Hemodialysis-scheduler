@@ -14,7 +14,7 @@ import { ApiResponse } from '../models/user.model';
   providedIn: 'root'
 })
 export class ScheduleService {
-  private apiUrl = `${environment.apiUrl}/schedule`;
+  private apiUrl = `${environment.apiUrl}/api/schedule`;
 
   constructor(private http: HttpClient) { }
 
@@ -31,7 +31,7 @@ export class ScheduleService {
     if (date) {
       params = params.set('date', date.toISOString());
     }
-    return this.http.get<ApiResponse<SlotSchedule>>(`${environment.apiUrl}/hdschedule/slot/${slotId}`, { params });
+    return this.http.get<ApiResponse<SlotSchedule>>(`${environment.apiUrl}/api/hdschedule/slot/${slotId}`, { params });
   }
 
   assignBed(request: AssignBedRequest): Observable<ApiResponse<number>> {
@@ -39,7 +39,7 @@ export class ScheduleService {
   }
 
   dischargePatient(scheduleId: number): Observable<ApiResponse<boolean>> {
-    return this.http.put<ApiResponse<boolean>>(`${environment.apiUrl}/hdschedule/${scheduleId}/discharge`, {});
+    return this.http.put<ApiResponse<boolean>>(`${environment.apiUrl}/api/hdschedule/${scheduleId}/discharge`, {});
   }
 
   forceDischargeSession(scheduleId: number): Observable<ApiResponse<any>> {
@@ -55,88 +55,88 @@ export class ScheduleService {
   }
 
   createHDSession(sessionData: any): Observable<ApiResponse<number>> {
-    return this.http.post<ApiResponse<number>>(`${environment.apiUrl}/hdschedule`, sessionData);
+    return this.http.post<ApiResponse<number>>(`${environment.apiUrl}/api/hdschedule`, sessionData);
   }
 
   getHistorySessions(): Observable<ApiResponse<any[]>> {
-    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/hdschedule/history`);
+    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/api/hdschedule/history`);
   }
 
   getFutureScheduledSessions(): Observable<ApiResponse<any[]>> {
-    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/hdschedule/future-scheduled`);
+    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/api/hdschedule/future-scheduled`);
   }
 
   getTodaySchedules(): Observable<ApiResponse<any[]>> {
-    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/hdschedule/today`);
+    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/api/hdschedule/today`);
   }
 
   getActiveSessions(): Observable<ApiResponse<any[]>> {
-    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/hdschedule/active`);
+    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/api/hdschedule/active`);
   }
 
   getScheduleById(scheduleId: number): Observable<ApiResponse<any>> {
-    return this.http.get<ApiResponse<any>>(`${environment.apiUrl}/hdschedule/${scheduleId}`);
+    return this.http.get<ApiResponse<any>>(`${environment.apiUrl}/api/hdschedule/${scheduleId}`);
   }
 
   autoSaveSchedule(scheduleId: number, updates: any): Observable<ApiResponse<boolean>> {
-    return this.http.patch<ApiResponse<boolean>>(`${environment.apiUrl}/hdschedule/${scheduleId}/auto-save`, updates);
+    return this.http.patch<ApiResponse<boolean>>(`${environment.apiUrl}/api/hdschedule/${scheduleId}/auto-save`, updates);
   }
 
   updateSchedule(scheduleId: number, scheduleData: any): Observable<ApiResponse<boolean>> {
     // Backend expects data wrapped in 'request' object
-    return this.http.put<ApiResponse<boolean>>(`${environment.apiUrl}/hdschedule/${scheduleId}`, scheduleData);
+    return this.http.put<ApiResponse<boolean>>(`${environment.apiUrl}/api/hdschedule/${scheduleId}`, scheduleData);
   }
 
   getSuggestedEquipmentCounts(patientId: number): Observable<ApiResponse<any>> {
-    return this.http.get<ApiResponse<any>>(`${environment.apiUrl}/hdschedule/patient/${patientId}/suggested-equipment-counts`);
+    return this.http.get<ApiResponse<any>>(`${environment.apiUrl}/api/hdschedule/patient/${patientId}/suggested-equipment-counts`);
   }
 
   // ==================== SESSION PHASE MANAGEMENT ====================
 
   getPhaseStatus(hdLogId: number): Observable<ApiResponse<any>> {
-    return this.http.get<ApiResponse<any>>(`${environment.apiUrl}/hdlog/${hdLogId}/phase-status`);
+    return this.http.get<ApiResponse<any>>(`${environment.apiUrl}/api/hdlog/${hdLogId}/phase-status`);
   }
 
   // Phase 1: Pre-Dialysis
   savePreDialysis(hdLogId: number, data: any): Observable<ApiResponse<any>> {
-    return this.http.put<ApiResponse<any>>(`${environment.apiUrl}/hdlog/${hdLogId}/save-pre-dialysis`, data);
+    return this.http.put<ApiResponse<any>>(`${environment.apiUrl}/api/hdlog/${hdLogId}/save-pre-dialysis`, data);
   }
 
   completePreDialysis(hdLogId: number): Observable<ApiResponse<string>> {
-    return this.http.post<ApiResponse<string>>(`${environment.apiUrl}/hdlog/${hdLogId}/complete-pre-dialysis`, {});
+    return this.http.post<ApiResponse<string>>(`${environment.apiUrl}/api/hdlog/${hdLogId}/complete-pre-dialysis`, {});
   }
 
   // Phase 2: Intra-Dialysis
   startPostDialysis(hdLogId: number): Observable<ApiResponse<string>> {
-    return this.http.post<ApiResponse<string>>(`${environment.apiUrl}/hdlog/${hdLogId}/start-post-dialysis`, {});
+    return this.http.post<ApiResponse<string>>(`${environment.apiUrl}/api/hdlog/${hdLogId}/start-post-dialysis`, {});
   }
 
   // Phase 3: Post-Dialysis
   savePostDialysis(hdLogId: number, data: any): Observable<ApiResponse<any>> {
-    return this.http.put<ApiResponse<any>>(`${environment.apiUrl}/hdlog/${hdLogId}/save-post-dialysis`, data);
+    return this.http.put<ApiResponse<any>>(`${environment.apiUrl}/api/hdlog/${hdLogId}/save-post-dialysis`, data);
   }
 
   completePostDialysis(hdLogId: number): Observable<ApiResponse<string>> {
-    return this.http.post<ApiResponse<string>>(`${environment.apiUrl}/hdlog/${hdLogId}/complete-post-dialysis`, {});
+    return this.http.post<ApiResponse<string>>(`${environment.apiUrl}/api/hdlog/${hdLogId}/complete-post-dialysis`, {});
   }
 
   // Get HD Log by ID
   getHDLogById(hdLogId: number): Observable<ApiResponse<any>> {
-    return this.http.get<ApiResponse<any>>(`${environment.apiUrl}/hdlog/${hdLogId}`);
+    return this.http.get<ApiResponse<any>>(`${environment.apiUrl}/api/hdlog/${hdLogId}`);
   }
 
   // ==================== INTRA-DIALYTIC MONITORING ====================
   
   getIntraDialyticRecords(scheduleId: number): Observable<ApiResponse<any[]>> {
-    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/hdschedule/${scheduleId}/monitoring`);
+    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/api/hdschedule/${scheduleId}/monitoring`);
   }
 
   addIntraDialyticRecord(record: any): Observable<ApiResponse<number>> {
-    return this.http.post<ApiResponse<number>>(`${environment.apiUrl}/hdschedule/monitoring`, record);
+    return this.http.post<ApiResponse<number>>(`${environment.apiUrl}/api/hdschedule/monitoring`, record);
   }
 
   deleteIntraDialyticRecord(recordId: number): Observable<ApiResponse<boolean>> {
-    return this.http.delete<ApiResponse<boolean>>(`${environment.apiUrl}/hdschedule/monitoring/${recordId}`);
+    return this.http.delete<ApiResponse<boolean>>(`${environment.apiUrl}/api/hdschedule/monitoring/${recordId}`);
   }
 
   // ==================== PATIENT STATISTICS ====================

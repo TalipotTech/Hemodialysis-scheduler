@@ -13,7 +13,7 @@ import { ApiResponse } from '../models/user.model';
   providedIn: 'root'
 })
 export class PatientService {
-  private apiUrl = `${environment.apiUrl}/patients`;
+  private apiUrl = `${environment.apiUrl}/api/patients`;
 
   constructor(private http: HttpClient) { }
 
