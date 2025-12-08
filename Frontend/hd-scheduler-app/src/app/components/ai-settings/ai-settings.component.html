@@ -32,8 +32,8 @@
                     <p *ngIf="isOverBudget">
                       ⚠️ Budget limit reached - AI temporarily disabled
                     </p>
-                    <p *ngIf="budgetWarning && !isOverBudget">
-                      ⚠️ Approaching budget limit ({{ usageStats?.dailyUsagePercentage.toFixed(0) }}% daily, {{ usageStats?.monthlyUsagePercentage.toFixed(0) }}% monthly)
+                    <p *ngIf="budgetWarning && !isOverBudget && usageStats">
+                      ⚠️ Approaching budget limit ({{ usageStats.dailyUsagePercentage.toFixed(0) }}% daily, {{ usageStats.monthlyUsagePercentage.toFixed(0) }}% monthly)
                     </p>
                   </div>
                 </div>
@@ -164,32 +164,32 @@
               <div class="usage-grid">
                 <mat-card class="stat-card">
                   <h4>Today</h4>
-                  <div class="stat-value">{{ formatCurrency(usageStats.todayCost) }}</div>
-                  <div class="stat-label">of {{ formatCurrency(usageStats.dailyCostLimit) }}</div>
+                  <div class="stat-value">{{ usageStats ? formatCurrency(usageStats.todayCost) : '$0.00' }}</div>
+                  <div class="stat-label">of {{ usageStats ? formatCurrency(usageStats.dailyCostLimit) : '$0.00' }}</div>
                   <mat-progress-bar
                     [mode]="'determinate'"
-                    [value]="usageStats.dailyUsagePercentage"
+                    [value]="usageStats?.dailyUsagePercentage || 0"
                     [color]="dailyUsageColor">
                   </mat-progress-bar>
-                  <div class="stat-footer">{{ usageStats.todayRequests }} requests</div>
+                  <div class="stat-footer">{{ usageStats?.todayRequests || 0 }} requests</div>
                 </mat-card>
 
                 <mat-card class="stat-card">
                   <h4>This Month</h4>
-                  <div class="stat-value">{{ formatCurrency(usageStats.monthCost) }}</div>
-                  <div class="stat-label">of {{ formatCurrency(usageStats.monthlyCostLimit) }}</div>
+                  <div class="stat-value">{{ usageStats ? formatCurrency(usageStats.monthCost) : '$0.00' }}</div>
+                  <div class="stat-label">of {{ usageStats ? formatCurrency(usageStats.monthlyCostLimit) : '$0.00' }}</div>
                   <mat-progress-bar
                     [mode]="'determinate'"
-                    [value]="usageStats.monthlyUsagePercentage"
+                    [value]="usageStats?.monthlyUsagePercentage || 0"
                     [color]="monthlyUsageColor">
                   </mat-progress-bar>
-                  <div class="stat-footer">{{ usageStats.monthRequests }} requests</div>
+                  <div class="stat-footer">{{ usageStats?.monthRequests || 0 }} requests</div>
                 </mat-card>
               </div>
             </div>
 
             <!-- Usage Breakdown -->
-            <div class="stats-section" *ngIf="usageStats.usageBreakdown.length > 0">
+            <div class="stats-section" *ngIf="usageStats?.usageBreakdown && usageStats.usageBreakdown.length > 0">
               <div class="section-header">
                 <h3>Usage by Type</h3>
                 <button mat-icon-button (click)="refreshStats()" matTooltip="Refresh statistics">
@@ -197,7 +197,7 @@
                 </button>
               </div>
               
-              <table mat-table [dataSource]="usageStats.usageBreakdown" class="usage-table">
+              <table mat-table [dataSource]="usageStats?.usageBreakdown || []" class="usage-table">
                 <ng-container matColumnDef="requestType">
                   <th mat-header-cell *matHeaderCellDef>Request Type</th>
                   <td mat-cell *matCellDef="let row">{{ row.requestType }}</td>
@@ -224,10 +224,10 @@
             </div>
 
             <!-- Cost Trend -->
-            <div class="stats-section" *ngIf="usageStats.costTrend.length > 0">
+            <div class="stats-section" *ngIf="usageStats?.costTrend && usageStats.costTrend.length > 0">
               <h3>Recent Cost Trend (Last 30 Days)</h3>
               
-              <table mat-table [dataSource]="usageStats.costTrend" class="usage-table">
+              <table mat-table [dataSource]="usageStats?.costTrend || []" class="usage-table">
                 <ng-container matColumnDef="date">
                   <th mat-header-cell *matHeaderCellDef>Date</th>
                   <td mat-cell *matCellDef="let row">{{ formatDate(row.date) }}</td>
