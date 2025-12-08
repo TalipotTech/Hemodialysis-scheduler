@@ -87,7 +87,8 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(
                 "http://localhost:4200",
-                "https://lively-pond-08e4f7c00.3.azurestaticapps.net")
+                "https://lively-pond-08e4f7c00.3.azurestaticapps.net",
+                "https://dev.dialyzeflow.com")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
