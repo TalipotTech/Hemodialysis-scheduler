@@ -1,4 +1,4 @@
 export const environment = {
   production: false,
-  apiUrl: 'https://hds-dev-api.azurewebsites.net/api'
+  apiUrl: 'http://localhost:5000'
 };
