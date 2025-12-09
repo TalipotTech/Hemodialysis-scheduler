@@ -19,6 +19,10 @@ namespace HDScheduler.API.Services.AI
         Task<List<AIUsageLog>> GetUsageLogsAsync(DateTime fromDate);
         Task<Patient?> GetPatientAsync(int patientId);
         Task<List<SlotAvailability>> GetAvailableSlotsAsync(DateTime date);
+        Task<List<SavedPrompt>> GetSavedPromptsAsync();
+        Task<int> SavePromptAsync(string promptText, string? category);
+        Task IncrementPromptUsageAsync(int promptId);
+        Task DeletePromptAsync(int promptId);
     }
     
     public class AIRepository : IAIRepository
@@ -126,6 +130,59 @@ namespace HDScheduler.API.Services.AI
                 ORDER BY s.SlotID";
             
             return (await connection.QueryAsync<SlotAvailability>(sql, new { Date = date.Date })).ToList();
+        }
+
+        public async Task<List<SavedPrompt>> GetSavedPromptsAsync()
+        {
+            using var connection = _context.CreateConnection();
+            var sql = @"
+                SELECT Id, PromptText, Category, UsageCount, LastUsedAt, CreatedAt
+                FROM SavedPrompts
+                WHERE IsDeleted = 0
+                ORDER BY UsageCount DESC, LastUsedAt DESC";
+            
+            return (await connection.QueryAsync<SavedPrompt>(sql)).ToList();
+        }
+
+        public async Task<int> SavePromptAsync(string promptText, string? category)
+        {
+            using var connection = _context.CreateConnection();
+            
+            // Check if prompt already exists
+            var existingPrompt = await connection.QueryFirstOrDefaultAsync<SavedPrompt>(
+                "SELECT * FROM SavedPrompts WHERE PromptText = @PromptText AND IsDeleted = 0",
+                new { PromptText = promptText });
+            
+            if (existingPrompt != null)
+            {
+                return existingPrompt.Id;
+            }
+            
+            var sql = @"
+                INSERT INTO SavedPrompts (PromptText, Category, UsageCount, CreatedAt, LastUsedAt, IsDeleted)
+                VALUES (@PromptText, @Category, 0, GETDATE(), NULL, 0);
+                SELECT CAST(SCOPE_IDENTITY() as int)";
+            
+            return await connection.ExecuteScalarAsync<int>(sql, new { PromptText = promptText, Category = category });
+        }
+
+        public async Task IncrementPromptUsageAsync(int promptId)
+        {
+            using var connection = _context.CreateConnection();
+            var sql = @"
+                UPDATE SavedPrompts 
+                SET UsageCount = UsageCount + 1,
+                    LastUsedAt = GETDATE()
+                WHERE Id = @PromptId";
+            
+            await connection.ExecuteAsync(sql, new { PromptId = promptId });
+        }
+
+        public async Task DeletePromptAsync(int promptId)
+        {
+            using var connection = _context.CreateConnection();
+            var sql = "UPDATE SavedPrompts SET IsDeleted = 1 WHERE Id = @PromptId";
+            await connection.ExecuteAsync(sql, new { PromptId = promptId });
         }
     }
 }

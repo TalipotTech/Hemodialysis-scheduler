@@ -119,6 +119,13 @@ export class AIService {
   }
 
   /**
+   * Process natural language query
+   */
+  processNaturalQuery(query: string): Observable<any> {
+    return this.http.post<any>(`${environment.apiUrl}/api/aiquery/natural-query`, { query });
+  }
+
+  /**
    * Get usage statistics (Admin only)
    */
   getUsageStats(): Observable<AIUsageStatsDto> {
@@ -148,5 +155,36 @@ export class AIService {
         }
       });
     });
+  }
+
+  /**
+   * Get saved prompts
+   */
+  getSavedPrompts(): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.apiUrl}/api/aiquery/saved-prompts`);
+  }
+
+  /**
+   * Save a new prompt
+   */
+  savePrompt(promptText: string, category: string | null): Observable<any> {
+    return this.http.post<any>(`${environment.apiUrl}/api/aiquery/saved-prompts`, {
+      promptText,
+      category
+    });
+  }
+
+  /**
+   * Record prompt usage
+   */
+  recordPromptUsage(promptId: number): Observable<any> {
+    return this.http.put<any>(`${environment.apiUrl}/api/aiquery/saved-prompts/${promptId}/use`, {});
+  }
+
+  /**
+   * Delete a saved prompt
+   */
+  deletePrompt(promptId: number): Observable<any> {
+    return this.http.delete<any>(`${environment.apiUrl}/api/aiquery/saved-prompts/${promptId}`);
   }
 }

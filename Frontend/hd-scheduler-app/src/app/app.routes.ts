@@ -145,6 +145,12 @@ export const routes: Routes = [
     data: { roles: ['Admin'], breadcrumb: 'AI Integration' }
   },
   {
+    path: 'ai-chat',
+    loadComponent: () => import('./components/ai-chat/ai-chat.component').then(m => m.AIChatComponent),
+    canActivate: [authGuard],
+    data: { roles: ['Admin', 'HOD', 'Doctor', 'Nurse'], breadcrumb: 'AI Assistant' }
+  },
+  {
     path: 'admin/reports',
     loadComponent: () => import('./components/reports/reports.component').then(m => m.ReportsComponent),
     canActivate: [authGuard],

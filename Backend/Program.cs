@@ -118,6 +118,9 @@ builder.Services.AddScoped<IHDCycleService, HDCycleService>();
 builder.Services.AddHttpClient<IGeminiClient, GeminiClient>();
 builder.Services.AddScoped<IAIRepository, AIRepository>();
 builder.Services.AddScoped<IAIService, AIService>();
+builder.Services.AddScoped<IRiskAssessmentService, RiskAssessmentService>();
+builder.Services.AddScoped<IReportGenerationService, ReportGenerationService>();
+builder.Services.AddScoped<IAnalyticsDashboardService, AnalyticsDashboardService>();
 
 // Register background services
 builder.Services.AddHostedService<SessionHistoryBackgroundService>();

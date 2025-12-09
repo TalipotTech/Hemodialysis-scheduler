@@ -112,6 +112,12 @@ export class SidebarNavComponent implements OnInit {
       icon: 'psychology',
       route: '/admin/ai-settings',
       roles: ['Admin']
+    },
+    {
+      label: 'AI Assistant',
+      icon: 'smart_toy',
+      route: '/ai-chat',
+      roles: ['Admin', 'HOD', 'Doctor', 'Nurse']
     }
   ];
 

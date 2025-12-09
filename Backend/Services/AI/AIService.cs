@@ -90,8 +90,8 @@ namespace HDScheduler.API.Services.AI
                     ApiKey = apiKey,
                     Model = "gemini-2.0-flash",
                     Prompt = prompt,
-                    Temperature = 0.3,
-                    MaxOutputTokens = 1024
+                    Temperature = 0.7,
+                    MaxOutputTokens = 2000
                 };
                 
                 var geminiResponse = await _geminiClient.GenerateContentAsync(geminiRequest);

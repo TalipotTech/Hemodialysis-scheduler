@@ -1,0 +1,157 @@
+<div class="ai-chat-container">
+  <mat-card class="chat-card">
+    <mat-card-header class="chat-header">
+      <mat-icon class="chat-icon">smart_toy</mat-icon>
+      <mat-card-title>AI Assistant</mat-card-title>
+      <mat-card-subtitle>Ask me about schedules, beds, and patients</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <div class="chat-messages" #scrollContainer>
+        @for (message of messages; track message.timestamp) {
+          <div class="message" [class.user-message]="message.role === 'user'" [class.assistant-message]="message.role === 'assistant'">
+            <div class="message-avatar">
+              <mat-icon>{{ message.role === 'user' ? 'person' : 'smart_toy' }}</mat-icon>
+            </div>
+            <div class="message-content">
+              <div class="message-header">
+                <span class="message-sender">{{ message.role === 'user' ? 'You' : 'AI Assistant' }}</span>
+                <span class="message-time">{{ formatTime(message.timestamp) }}</span>
+              </div>
+              <div class="message-text" [innerHTML]="formatMessageContent(message.content)"></div>
+              
+              @if (message.data) {
+                <div class="message-data-card">
+                  @if (isArray(message.data)) {
+                    <div class="data-table-container">
+                      <table class="data-table">
+                        <thead>
+                          <tr>
+                            @for (key of getObjectKeys(message.data[0]); track key) {
+                              <th>{{ formatFieldName(key) }}</th>
+                            }
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (item of message.data; track item) {
+                            <tr>
+                              @for (key of getObjectKeys(item); track key) {
+                                <td>{{ formatValue(item[key]) }}</td>
+                              }
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  } @else {
+                    <div class="data-details">
+                      @for (key of getObjectKeys(message.data); track key) {
+                        <div class="data-row">
+                          <span class="data-label">{{ formatFieldName(key) }}:</span>
+                          <span class="data-value">{{ formatValue(message.data[key]) }}</span>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        @if (isAITyping) {
+          <div class="message assistant-message">
+            <div class="message-avatar">
+              <mat-icon>smart_toy</mat-icon>
+            </div>
+            <div class="message-content">
+              <div class="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+
+      @if (frequentPrompts.length > 0) {
+        <div class="frequent-prompts">
+          <h4>Frequently Used:</h4>
+          <div class="prompts-grid">
+            @for (prompt of frequentPrompts; track prompt.id) {
+              <mat-chip 
+                (click)="usePrompt(prompt)" 
+                class="prompt-chip"
+                [matTooltip]="'Used ' + prompt.usageCount + ' times'">
+                <mat-icon class="chip-icon">history</mat-icon>
+                {{ prompt.promptText }}
+                <button 
+                  matChipRemove 
+                  (click)="deletePrompt(prompt.id, $event)"
+                  class="delete-prompt-btn">
+                  <mat-icon>cancel</mat-icon>
+                </button>
+              </mat-chip>
+            }
+          </div>
+        </div>
+      }
+
+      <mat-divider></mat-divider>
+
+      <div class="chat-input-container">
+        <div class="input-row">
+          <mat-form-field appearance="outline" class="autocomplete-field">
+            <mat-label>Type or select a saved prompt...</mat-label>
+            <input 
+              type="text"
+              matInput
+              [(ngModel)]="userInput"
+              [matAutocomplete]="auto"
+              (keyup.enter)="sendMessage()"
+              (input)="promptControl.setValue($any($event.target).value)"
+              [disabled]="isAITyping"
+              placeholder="e.g., Show me available beds tomorrow morning">
+            <button 
+              *ngIf="userInput"
+              matSuffix 
+              mat-icon-button 
+              (click)="saveCurrentPrompt()"
+              matTooltip="Save this prompt">
+              <mat-icon>bookmark_add</mat-icon>
+            </button>
+            <mat-autocomplete 
+              #auto="matAutocomplete"
+              (optionSelected)="onPromptSelected($event)">
+              @for (prompt of filteredPrompts | async; track prompt.id) {
+                <mat-option [value]="prompt.promptText">
+                  <div class="prompt-option">
+                    <span class="prompt-text">{{ prompt.promptText }}</span>
+                    <span class="prompt-meta">
+                      @if (prompt.category) {
+                        <mat-icon class="category-icon">label</mat-icon>
+                        <span class="category">{{ prompt.category }}</span>
+                      }
+                      <span class="usage">{{ prompt.usageCount }}x</span>
+                    </span>
+                  </div>
+                </mat-option>
+              }
+            </mat-autocomplete>
+          </mat-form-field>
+          
+          <button 
+            mat-fab 
+            color="primary" 
+            (click)="sendMessage()"
+            [disabled]="!userInput.trim() || isAITyping"
+            class="send-button"
+            matTooltip="Send message">
+            <mat-icon>send</mat-icon>
+          </button>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>
