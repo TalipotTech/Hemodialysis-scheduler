@@ -91,8 +91,9 @@ namespace HDScheduler.API.Services.AI
                 factors.Add(new RiskFactor { Factor = "Patient Status", Value = "Inactive", Impact = "High", Points = 25 });
             }
 
-            // HD Cycle frequency risk
-            if (patient.HDCycle == 2) // Twice weekly
+            // HD Cycle frequency risk (HDCycle is stored as string in database)
+            string hdCycle = patient.HDCycle?.ToString() ?? "";
+            if (hdCycle == "2" || hdCycle.Contains("2") || hdCycle.Contains("twice", StringComparison.OrdinalIgnoreCase))
             {
                 riskScore += 15;
                 factors.Add(new RiskFactor { Factor = "HD Frequency", Value = "Twice Weekly", Impact = "Medium", Points = 15 });
@@ -188,9 +189,9 @@ namespace HDScheduler.API.Services.AI
 Patient Profile:
 - Name: {patient.Name}
 - Age: {patient.Age}
-- HD Cycle: {patient.HDCycle}x per week
-- Total Sessions: {patient.TotalSessions}
-- Missed Sessions: {patient.MissedSessions}
+- HD Cycle: {patient.HDCycle ?? "Not specified"}x per week
+- Total Sessions: {patient.TotalSessions ?? 0}
+- Missed Sessions: {patient.MissedSessions ?? 0}
 - Patient Status: {(patient.IsActive ? "Active" : "Inactive")}
 - Current Risk Score: {riskScore}/100
 
