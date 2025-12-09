@@ -31,7 +31,7 @@ namespace HDScheduler.API.Controllers
             {
                 var reportDate = date ?? DateTime.Today;
                 var report = await _reportService.GenerateDailyReportAsync(reportDate);
-                return Ok(report);
+                return Ok(new { content = report, generatedAt = DateTime.UtcNow });
             }
             catch (Exception ex)
             {
@@ -50,7 +50,7 @@ namespace HDScheduler.API.Controllers
             {
                 var weekStart = startDate ?? DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek);
                 var report = await _reportService.GenerateWeeklyReportAsync(weekStart);
-                return Ok(report);
+                return Ok(new { content = report, generatedAt = DateTime.UtcNow });
             }
             catch (Exception ex)
             {
@@ -74,7 +74,7 @@ namespace HDScheduler.API.Controllers
                 var end = endDate ?? DateTime.Today;
                 
                 var report = await _reportService.GeneratePatientReportAsync(patientId, start, end);
-                return Ok(report);
+                return Ok(new { content = report, generatedAt = DateTime.UtcNow });
             }
             catch (InvalidOperationException ex)
             {

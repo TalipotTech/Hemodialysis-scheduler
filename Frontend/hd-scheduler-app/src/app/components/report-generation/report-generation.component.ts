@@ -116,8 +116,12 @@ export class ReportGenerationComponent implements OnInit {
     }
 
     reportObservable.subscribe({
-      next: (report: any) => {
-        this.generatedReport = this.formatReport(report);
+      next: (response: any) => {
+        // Handle both old format (direct content) and new format (wrapped in content property)
+        const reportContent = response.content || response;
+        this.generatedReport = typeof reportContent === 'string' 
+          ? reportContent 
+          : this.formatReport(reportContent);
         this.loading = false;
       },
       error: (err: any) => {
