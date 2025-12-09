@@ -118,7 +118,7 @@ namespace HDScheduler.API.Services.AI
                     CONVERT(VARCHAR(5), s.StartTime, 108) + ' - ' + CONVERT(VARCHAR(5), s.EndTime, 108) as TimeDescription,
                     10 - ISNULL(COUNT(ba.BedNumber), 0) as AvailableBeds,
                     10 as TotalBeds
-                FROM HDCycleSlots s
+                FROM Slots s
                 LEFT JOIN BedAssignments ba ON s.SlotID = ba.SlotID 
                     AND CAST(ba.AssignmentDate AS DATE) = @Date
                     AND ba.DischargedAt IS NULL

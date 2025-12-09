@@ -88,7 +88,7 @@ namespace HDScheduler.API.Services.AI
                 var geminiRequest = new GeminiRequest
                 {
                     ApiKey = apiKey,
-                    Model = "gemini-pro",
+                    Model = "gemini-2.0-flash",
                     Prompt = prompt,
                     Temperature = 0.3,
                     MaxOutputTokens = 1024
@@ -102,7 +102,7 @@ namespace HDScheduler.API.Services.AI
                 var cost = CalculateCost(inputChars, outputChars);
                 
                 var recommendation = ParseGeminiResponse(geminiResponse.Text, availableSlots, targetDate);
-                recommendation.ModelUsed = "Gemini Pro";
+                recommendation.ModelUsed = "gemini-2.0-flash";
                 recommendation.ProcessingTimeMs = (int)stopwatch.ElapsedMilliseconds;
                 recommendation.Cost = cost;
                 
