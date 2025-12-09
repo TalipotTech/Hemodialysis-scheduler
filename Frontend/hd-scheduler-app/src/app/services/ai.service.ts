@@ -187,4 +187,88 @@ export class AIService {
   deletePrompt(promptId: number): Observable<any> {
     return this.http.delete<any>(`${environment.apiUrl}/api/aiquery/saved-prompts/${promptId}`);
   }
+
+  // Risk Assessment APIs
+  getPatientRiskAssessment(patientId: number): Observable<any> {
+    return this.http.get<any>(`${environment.apiUrl}/api/riskassessment/patient/${patientId}`);
+  }
+
+  getBatchRiskAssessment(patientIds: number[]): Observable<any[]> {
+    return this.http.post<any[]>(`${environment.apiUrl}/api/riskassessment/batch`, { patientIds });
+  }
+
+  getHighRiskPatients(threshold: number = 60): Observable<any> {
+    return this.http.get<any>(`${environment.apiUrl}/api/riskassessment/high-risk?threshold=${threshold}`);
+  }
+
+  analyzeRiskFactors(patientId: number, customFactors?: any): Observable<any> {
+    return this.http.post<any>(`${environment.apiUrl}/api/riskassessment/factors/${patientId}`, { customFactors });
+  }
+
+  // Report Generation APIs
+  generateDailyReport(date?: Date): Observable<any> {
+    const dateParam = date ? `?date=${date.toISOString()}` : '';
+    return this.http.get<any>(`${environment.apiUrl}/api/reportgeneration/daily${dateParam}`);
+  }
+
+  generateWeeklyReport(startDate?: Date): Observable<any> {
+    const dateParam = startDate ? `?startDate=${startDate.toISOString()}` : '';
+    return this.http.get<any>(`${environment.apiUrl}/api/reportgeneration/weekly${dateParam}`);
+  }
+
+  generatePatientReport(patientId: number, startDate?: Date, endDate?: Date): Observable<any> {
+    let params = '';
+    if (startDate) params += `?startDate=${startDate.toISOString()}`;
+    if (endDate) params += `${params ? '&' : '?'}endDate=${endDate.toISOString()}`;
+    return this.http.get<any>(`${environment.apiUrl}/api/reportgeneration/patient/${patientId}${params}`);
+  }
+
+  generateCustomReport(reportType: string, parameters?: any): Observable<any> {
+    return this.http.post<any>(`${environment.apiUrl}/api/reportgeneration/custom`, { reportType, parameters });
+  }
+
+  getReportTemplates(): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.apiUrl}/api/reportgeneration/templates`);
+  }
+
+  exportReportToPdf(reportContent: string, title: string): Observable<Blob> {
+    return this.http.post(`${environment.apiUrl}/api/reportgeneration/export/pdf`, 
+      { reportContent, title }, 
+      { responseType: 'blob' });
+  }
+
+  // Analytics Dashboard APIs
+  getUsageMetrics(startDate?: Date, endDate?: Date): Observable<any> {
+    let params = '';
+    if (startDate) params += `?startDate=${startDate.toISOString()}`;
+    if (endDate) params += `${params ? '&' : '?'}endDate=${endDate.toISOString()}`;
+    return this.http.get<any>(`${environment.apiUrl}/api/analyticsdashboard/usage-metrics${params}`);
+  }
+
+  getCostAnalytics(startDate?: Date, endDate?: Date): Observable<any> {
+    let params = '';
+    if (startDate) params += `?startDate=${startDate.toISOString()}`;
+    if (endDate) params += `${params ? '&' : '?'}endDate=${endDate.toISOString()}`;
+    return this.http.get<any>(`${environment.apiUrl}/api/analyticsdashboard/cost-analytics${params}`);
+  }
+
+  getPerformanceMetrics(): Observable<any> {
+    return this.http.get<any>(`${environment.apiUrl}/api/analyticsdashboard/performance`);
+  }
+
+  getUsageTrends(days: number = 30): Observable<any> {
+    return this.http.get<any>(`${environment.apiUrl}/api/analyticsdashboard/trends?days=${days}`);
+  }
+
+  getSystemHealth(): Observable<any> {
+    return this.http.get<any>(`${environment.apiUrl}/api/analyticsdashboard/system-health`);
+  }
+
+  getFeatureUsage(): Observable<any> {
+    return this.http.get<any>(`${environment.apiUrl}/api/analyticsdashboard/feature-usage`);
+  }
+
+  getCostProjection(days: number = 30): Observable<any> {
+    return this.http.get<any>(`${environment.apiUrl}/api/analyticsdashboard/cost-projection?days=${days}`);
+  }
 }

@@ -1,0 +1,116 @@
+<div class="report-generation-container">
+  <mat-card class="header-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>description</mat-icon>
+        Automated Report Generation
+      </mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <p>Generate AI-powered clinical and operational reports with insights and recommendations.</p>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card class="generation-card">
+    <mat-card-header>
+      <mat-card-title>Generate Report</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <mat-tab-group [(selectedIndex)]="reportType" (selectedIndexChange)="reportType = ['daily', 'weekly', 'patient'][$event]">
+        <!-- Daily Report -->
+        <mat-tab label="Daily Report">
+          <div class="tab-content">
+            <p>Generate a comprehensive daily summary including sessions, bed utilization, and patient activity.</p>
+            <mat-form-field appearance="outline">
+              <mat-label>Select Date</mat-label>
+              <input matInput [matDatepicker]="dailyPicker" [(ngModel)]="selectedDate">
+              <mat-datepicker-toggle matSuffix [for]="dailyPicker"></mat-datepicker-toggle>
+              <mat-datepicker #dailyPicker></mat-datepicker>
+            </mat-form-field>
+          </div>
+        </mat-tab>
+
+        <!-- Weekly Report -->
+        <mat-tab label="Weekly Report">
+          <div class="tab-content">
+            <p>Generate a weekly summary with trends, patient frequency, and performance metrics.</p>
+            <mat-form-field appearance="outline">
+              <mat-label>Week Start Date</mat-label>
+              <input matInput [matDatepicker]="weeklyPicker" [(ngModel)]="selectedStartDate">
+              <mat-datepicker-toggle matSuffix [for]="weeklyPicker"></mat-datepicker-toggle>
+              <mat-datepicker #weeklyPicker></mat-datepicker>
+            </mat-form-field>
+          </div>
+        </mat-tab>
+
+        <!-- Patient Report -->
+        <mat-tab label="Patient Report">
+          <div class="tab-content">
+            <p>Generate a patient-specific treatment summary with clinical insights.</p>
+            
+            <mat-form-field appearance="outline">
+              <mat-label>Select Patient</mat-label>
+              <mat-select [(ngModel)]="selectedPatientId">
+                <mat-option *ngFor="let patient of patients" [value]="patient.patientID">
+                  {{ patient.name }} (Age: {{ patient.age }})
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <div class="date-range">
+              <mat-form-field appearance="outline">
+                <mat-label>Start Date</mat-label>
+                <input matInput [matDatepicker]="startPicker" [(ngModel)]="selectedStartDate">
+                <mat-datepicker-toggle matSuffix [for]="startPicker"></mat-datepicker-toggle>
+                <mat-datepicker #startPicker></mat-datepicker>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>End Date</mat-label>
+                <input matInput [matDatepicker]="endPicker" [(ngModel)]="selectedEndDate">
+                <mat-datepicker-toggle matSuffix [for]="endPicker"></mat-datepicker-toggle>
+                <mat-datepicker #endPicker></mat-datepicker>
+              </mat-form-field>
+            </div>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+
+      <div class="action-buttons">
+        <button mat-raised-button color="primary" (click)="generateReport()" [disabled]="loading">
+          <mat-icon>auto_awesome</mat-icon>
+          Generate Report
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Generated Report Display -->
+  <mat-card *ngIf="generatedReport" class="report-card">
+    <mat-card-header>
+      <mat-card-title>{{ reportTitle }}</mat-card-title>
+      <div class="action-buttons">
+        <button mat-icon-button (click)="printReport()" matTooltip="Print">
+          <mat-icon>print</mat-icon>
+        </button>
+        <button mat-icon-button (click)="exportToPdf()" matTooltip="Export PDF" [disabled]="loading">
+          <mat-icon>picture_as_pdf</mat-icon>
+        </button>
+      </div>
+    </mat-card-header>
+    <mat-card-content>
+      <div *ngIf="loading" class="loading-container">
+        <mat-spinner diameter="40"></mat-spinner>
+        <p>Processing...</p>
+      </div>
+
+      <div class="report-content" [innerHTML]="getSafeHtml(generatedReport)" *ngIf="!loading"></div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Loading Overlay -->
+  <div *ngIf="loading && !generatedReport" class="loading-overlay">
+    <mat-spinner diameter="60"></mat-spinner>
+    <p>Generating report with AI...</p>
+  </div>
+</div>

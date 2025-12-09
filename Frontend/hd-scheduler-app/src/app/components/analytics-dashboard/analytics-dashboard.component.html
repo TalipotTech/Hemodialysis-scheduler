@@ -1,0 +1,167 @@
+<div class="analytics-container">
+  <mat-card class="header-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>analytics</mat-icon>
+        AI Analytics Dashboard
+      </mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <p>Monitor AI usage, costs, performance metrics, and system health in real-time.</p>
+    </mat-card-content>
+  </mat-card>
+
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner diameter="60"></mat-spinner>
+    <p>Loading analytics...</p>
+  </div>
+
+  <div *ngIf="!loading" class="dashboard-grid">
+    <!-- System Health -->
+    <mat-card class="metric-card health-card">
+      <div class="card-icon" [style.background-color]="getHealthStatusColor()">
+        <mat-icon>health_and_safety</mat-icon>
+      </div>
+      <div class="card-content">
+        <h3>System Health</h3>
+        <div class="health-status" [style.color]="getHealthStatusColor()">
+          {{ systemHealth?.status || 'Unknown' }}
+        </div>
+        <div class="health-details" *ngIf="systemHealth">
+          <p><strong>AI Enabled:</strong> {{ systemHealth.aiEnabled ? 'Yes' : 'No' }}</p>
+          <p><strong>Today's Requests:</strong> {{ systemHealth.todaysRequests || 0 }}</p>
+          <p><strong>Cost Utilization:</strong> {{ (systemHealth.costUtilization || 0).toFixed(1) }}%</p>
+        </div>
+        <div *ngIf="systemHealth?.warnings?.length > 0" class="warnings">
+          <mat-chip *ngFor="let warning of systemHealth.warnings" color="warn">
+            {{ warning }}
+          </mat-chip>
+        </div>
+      </div>
+    </mat-card>
+
+    <!-- Usage Metrics -->
+    <mat-card class="metric-card">
+      <div class="card-icon" style="background-color: #3b82f6;">
+        <mat-icon>trending_up</mat-icon>
+      </div>
+      <div class="card-content">
+        <h3>Usage Metrics</h3>
+        <div class="metric-grid" *ngIf="usageMetrics">
+          <div class="metric-item">
+            <span class="value">{{ formatNumber(usageMetrics.totalRequests || 0) }}</span>
+            <span class="label">Total Requests</span>
+          </div>
+          <div class="metric-item">
+            <span class="value" [style.color]="getSuccessRateColor(usageMetrics.successRate || 0)">
+              {{ (usageMetrics.successRate || 0).toFixed(1) }}%
+            </span>
+            <span class="label">Success Rate</span>
+          </div>
+          <div class="metric-item">
+            <span class="value">{{ formatNumber(usageMetrics.totalInputTokens || 0) }}</span>
+            <span class="label">Input Tokens</span>
+          </div>
+          <div class="metric-item">
+            <span class="value">{{ formatNumber(usageMetrics.totalOutputTokens || 0) }}</span>
+            <span class="label">Output Tokens</span>
+          </div>
+        </div>
+      </div>
+    </mat-card>
+
+    <!-- Cost Analytics -->
+    <mat-card class="metric-card">
+      <div class="card-icon" style="background-color: #10b981;">
+        <mat-icon>attach_money</mat-icon>
+      </div>
+      <div class="card-content">
+        <h3>Cost Analytics</h3>
+        <div class="cost-summary" *ngIf="costAnalytics">
+          <div class="cost-item">
+            <span class="amount">{{ formatCurrency(costAnalytics.totalCost || 0) }}</span>
+            <span class="label">Total Cost</span>
+          </div>
+          <div class="cost-breakdown">
+            <div class="breakdown-item">
+              <span>Input:</span>
+              <span>{{ formatCurrency(costAnalytics.inputCost || 0) }}</span>
+            </div>
+            <div class="breakdown-item">
+              <span>Output:</span>
+              <span>{{ formatCurrency(costAnalytics.outputCost || 0) }}</span>
+            </div>
+            <div class="breakdown-item">
+              <span>Avg Daily:</span>
+              <span>{{ formatCurrency(costAnalytics.averageDailyCost || 0) }}</span>
+            </div>
+            <div class="breakdown-item projected">
+              <span>Projected Monthly:</span>
+              <span>{{ formatCurrency(costAnalytics.projectedMonthlyCost || 0) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </mat-card>
+
+    <!-- Performance Metrics -->
+    <mat-card class="metric-card">
+      <div class="card-icon" style="background-color: #8b5cf6;">
+        <mat-icon>speed</mat-icon>
+      </div>
+      <div class="card-content">
+        <h3>Performance</h3>
+        <div class="performance-grid" *ngIf="performanceMetrics">
+          <div class="perf-item">
+            <span class="value">{{ performanceMetrics.averageResponseTime?.toFixed(0) || 0 }}ms</span>
+            <span class="label">Avg Response</span>
+          </div>
+          <div class="perf-item">
+            <span class="value">{{ performanceMetrics.p95ResponseTime?.toFixed(0) || 0 }}ms</span>
+            <span class="label">P95</span>
+          </div>
+          <div class="perf-item">
+            <span class="value">{{ performanceMetrics.p99ResponseTime?.toFixed(0) || 0 }}ms</span>
+            <span class="label">P99</span>
+          </div>
+          <div class="perf-item">
+            <span class="value">{{ formatNumber(performanceMetrics.totalRequests || 0) }}</span>
+            <span class="label">Total</span>
+          </div>
+        </div>
+      </div>
+    </mat-card>
+
+    <!-- Feature Usage -->
+    <mat-card class="metric-card feature-card">
+      <div class="card-icon" style="background-color: #f59e0b;">
+        <mat-icon>extension</mat-icon>
+      </div>
+      <div class="card-content">
+        <h3>Feature Usage</h3>
+        <div class="feature-list" *ngIf="featureUsage">
+          <div class="feature-item">
+            <mat-icon>search</mat-icon>
+            <span>Natural Queries</span>
+            <span class="count">{{ featureUsage.naturalQueryCount || 0 }}</span>
+          </div>
+          <div class="feature-item">
+            <mat-icon>health_and_safety</mat-icon>
+            <span>Risk Assessments</span>
+            <span class="count">{{ featureUsage.riskAssessmentCount || 0 }}</span>
+          </div>
+          <div class="feature-item">
+            <mat-icon>description</mat-icon>
+            <span>Reports Generated</span>
+            <span class="count">{{ featureUsage.reportGenerationCount || 0 }}</span>
+          </div>
+          <div class="feature-item">
+            <mat-icon>bookmark</mat-icon>
+            <span>Saved Prompts</span>
+            <span class="count">{{ featureUsage.savedPromptsCount || 0 }}</span>
+          </div>
+        </div>
+      </div>
+    </mat-card>
+  </div>
+</div>

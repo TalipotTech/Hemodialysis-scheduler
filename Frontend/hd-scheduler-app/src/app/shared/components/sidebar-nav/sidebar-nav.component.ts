@@ -108,16 +108,16 @@ export class SidebarNavComponent implements OnInit {
       roles: ['Admin']
     },
     {
-      label: 'AI Integration',
-      icon: 'psychology',
-      route: '/admin/ai-settings',
-      roles: ['Admin']
-    },
-    {
-      label: 'AI Assistant',
-      icon: 'smart_toy',
-      route: '/ai-chat',
-      roles: ['Admin', 'HOD', 'Doctor', 'Nurse']
+      label: 'AI Tools',
+      icon: 'auto_awesome',
+      roles: ['Admin', 'HOD', 'Doctor', 'Nurse'],
+      children: [
+        { label: 'AI Assistant', icon: 'smart_toy', route: '/ai-chat', roles: ['Admin', 'HOD', 'Doctor', 'Nurse'] },
+        { label: 'Risk Assessment', icon: 'health_and_safety', route: '/risk-assessment', roles: ['Admin', 'HOD', 'Doctor'] },
+        { label: 'Generate Reports', icon: 'description', route: '/report-generation', roles: ['Admin', 'HOD'] },
+        { label: 'AI Analytics', icon: 'analytics', route: '/analytics-dashboard', roles: ['Admin'] },
+        { label: 'AI Settings', icon: 'settings', route: '/admin/ai-settings', roles: ['Admin'] }
+      ]
     }
   ];
 

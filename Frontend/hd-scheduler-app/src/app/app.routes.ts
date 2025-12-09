@@ -151,6 +151,24 @@ export const routes: Routes = [
     data: { roles: ['Admin', 'HOD', 'Doctor', 'Nurse'], breadcrumb: 'AI Assistant' }
   },
   {
+    path: 'risk-assessment',
+    loadComponent: () => import('./components/risk-assessment/risk-assessment.component').then(m => m.RiskAssessmentComponent),
+    canActivate: [authGuard],
+    data: { roles: ['Admin', 'HOD', 'Doctor'], breadcrumb: 'Risk Assessment' }
+  },
+  {
+    path: 'report-generation',
+    loadComponent: () => import('./components/report-generation/report-generation.component').then(m => m.ReportGenerationComponent),
+    canActivate: [authGuard],
+    data: { roles: ['Admin', 'HOD'], breadcrumb: 'Report Generation' }
+  },
+  {
+    path: 'analytics-dashboard',
+    loadComponent: () => import('./components/analytics-dashboard/analytics-dashboard.component').then(m => m.AnalyticsDashboardComponent),
+    canActivate: [authGuard],
+    data: { roles: ['Admin'], breadcrumb: 'AI Analytics' }
+  },
+  {
     path: 'admin/reports',
     loadComponent: () => import('./components/reports/reports.component').then(m => m.ReportsComponent),
     canActivate: [authGuard],

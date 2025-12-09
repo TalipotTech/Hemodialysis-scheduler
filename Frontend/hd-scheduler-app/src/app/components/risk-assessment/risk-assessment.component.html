@@ -1,0 +1,164 @@
+<div class="risk-assessment-container">
+  <mat-card class="header-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>health_and_safety</mat-icon>
+        Patient Risk Assessment
+      </mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <p>AI-powered risk assessment for hemodialysis patients based on treatment history, missed sessions, symptoms, and other clinical factors.</p>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Individual Patient Assessment -->
+  <mat-card class="assessment-card">
+    <mat-card-header>
+      <mat-card-title>Assess Individual Patient</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="selection-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Select Patient</mat-label>
+          <mat-select [(ngModel)]="selectedPatientId">
+            <mat-option *ngFor="let patient of patients" [value]="patient.patientID">
+              {{ patient.name }} (Age: {{ patient.age }})
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <button mat-raised-button color="primary" (click)="assessPatient()" [disabled]="!selectedPatientId || loading">
+          <mat-icon>analytics</mat-icon>
+          Assess Risk
+        </button>
+      </div>
+
+      <div *ngIf="loading" class="loading-container">
+        <mat-spinner diameter="50"></mat-spinner>
+        <p>Analyzing patient data...</p>
+      </div>
+
+      <div *ngIf="riskAssessment && !loading" class="assessment-results">
+        <div class="risk-score-card" [style.border-color]="getRiskScoreColor(riskAssessment.riskScore)">
+          <div class="score-value" [style.color]="getRiskScoreColor(riskAssessment.riskScore)">
+            {{ riskAssessment.riskScore }}
+          </div>
+          <div class="score-label">Risk Score</div>
+          <mat-chip [color]="getRiskLevelColor(riskAssessment.riskLevel)" selected>
+            {{ riskAssessment.riskLevel }}
+          </mat-chip>
+        </div>
+
+        <div class="patient-info">
+          <h3>{{ riskAssessment.patientName }}</h3>
+          <div class="info-grid">
+            <div class="info-item">
+              <mat-icon>event</mat-icon>
+              <span>Total Sessions: {{ riskAssessment.totalSessions }}</span>
+            </div>
+            <div class="info-item">
+              <mat-icon>event_busy</mat-icon>
+              <span>Missed: {{ riskAssessment.missedSessions }}</span>
+            </div>
+            <div class="info-item">
+              <mat-icon>calendar_today</mat-icon>
+              <span>Assessed: {{ riskAssessment.assessmentDate | date: 'short' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="risk-factors">
+          <h4>Risk Factors</h4>
+          <div class="factors-list">
+            <div *ngFor="let factor of riskAssessment.riskFactors" class="factor-item">
+              <div class="factor-header">
+                <span class="factor-name">{{ factor.factor }}</span>
+                <mat-chip [class]="'impact-' + factor.impact.toLowerCase()">
+                  {{ factor.impact }} ({{ factor.points }} pts)
+                </mat-chip>
+              </div>
+              <div class="factor-value">{{ factor.value }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="recommendations">
+          <h4>
+            <mat-icon>lightbulb</mat-icon>
+            AI Recommendations
+          </h4>
+          <div class="recommendation-text">{{ riskAssessment.recommendations }}</div>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- High Risk Patients List -->
+  <mat-card class="high-risk-card">
+    <mat-card-header>
+      <mat-card-title>High Risk Patients</mat-card-title>
+      <mat-card-subtitle>
+        <mat-form-field appearance="outline" class="threshold-field">
+          <mat-label>Risk Threshold</mat-label>
+          <mat-select [(ngModel)]="riskThreshold" (selectionChange)="loadHighRiskPatients()">
+            <mat-option [value]="40">Low (40+)</mat-option>
+            <mat-option [value]="60">Medium (60+)</mat-option>
+            <mat-option [value]="80">High (80+)</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <div *ngIf="loading" class="loading-container">
+        <mat-spinner diameter="40"></mat-spinner>
+      </div>
+
+      <table mat-table [dataSource]="highRiskPatients" *ngIf="!loading && highRiskPatients.length > 0">
+        <ng-container matColumnDef="patientName">
+          <th mat-header-cell *matHeaderCellDef>Patient</th>
+          <td mat-cell *matCellDef="let patient">{{ patient.patientName }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="riskScore">
+          <th mat-header-cell *matHeaderCellDef>Score</th>
+          <td mat-cell *matCellDef="let patient">
+            <span class="score-badge" [style.background-color]="getRiskScoreColor(patient.riskScore)">
+              {{ patient.riskScore }}
+            </span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="riskLevel">
+          <th mat-header-cell *matHeaderCellDef>Level</th>
+          <td mat-cell *matCellDef="let patient">
+            <mat-chip [color]="getRiskLevelColor(patient.riskLevel)" selected>
+              {{ patient.riskLevel }}
+            </mat-chip>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="missedSessions">
+          <th mat-header-cell *matHeaderCellDef>Missed Sessions</th>
+          <td mat-cell *matCellDef="let patient">{{ patient.missedSessions }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>Actions</th>
+          <td mat-cell *matCellDef="let patient">
+            <button mat-icon-button color="primary" (click)="viewDetails(patient)" matTooltip="View Details">
+              <mat-icon>visibility</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+
+      <div *ngIf="!loading && highRiskPatients.length === 0" class="no-data">
+        <mat-icon>check_circle</mat-icon>
+        <p>No patients above risk threshold {{ riskThreshold }}</p>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>
