@@ -37,7 +37,8 @@ namespace HDScheduler.API.Services.AI
 
             // Get patient data
             var patient = await connection.QueryFirstOrDefaultAsync<dynamic>(@"
-                SELECT p.*, 
+                SELECT p.PatientID, p.Name, p.Age, p.Gender, p.DryWeight, p.DialyserType, 
+                       p.HDCycle, p.HDStartDate, p.IsActive,
                     COUNT(DISTINCT ba.AssignmentID) as TotalSessions,
                     COUNT(DISTINCT CASE WHEN ba.DischargedAt IS NULL AND ba.AssignmentDate < GETDATE() THEN ba.AssignmentID END) as MissedSessions,
                     AVG(CAST(DATEDIFF(day, p.HDStartDate, ba.AssignmentDate) AS FLOAT)) as AvgDaysBetweenSessions
@@ -45,7 +46,7 @@ namespace HDScheduler.API.Services.AI
                 LEFT JOIN BedAssignments ba ON p.PatientID = ba.PatientID
                 WHERE p.PatientID = @PatientId
                 GROUP BY p.PatientID, p.Name, p.Age, p.Gender, p.DryWeight, p.DialyserType, 
-                         p.HDCycle, p.HDStartDate, p.Symptoms, p.Status",
+                         p.HDCycle, p.HDStartDate, p.IsActive",
                 new { PatientId = patientId });
 
             if (patient == null)
@@ -82,20 +83,12 @@ namespace HDScheduler.API.Services.AI
                 factors.Add(new RiskFactor { Factor = "Missed Sessions", Value = missedSessions.ToString(), Impact = "Medium", Points = 15 });
             }
 
-            // Symptoms risk
-            if (!string.IsNullOrEmpty(patient.Symptoms))
+            // Patient status risk
+            bool isActive = patient.IsActive ?? true;
+            if (!isActive)
             {
-                string symptoms = patient.Symptoms.ToLower();
-                if (symptoms.Contains("chest pain") || symptoms.Contains("shortness of breath"))
-                {
-                    riskScore += 35;
-                    factors.Add(new RiskFactor { Factor = "Critical Symptoms", Value = "Present", Impact = "Critical", Points = 35 });
-                }
-                else if (symptoms.Contains("fatigue") || symptoms.Contains("nausea"))
-                {
-                    riskScore += 20;
-                    factors.Add(new RiskFactor { Factor = "Symptoms", Value = "Present", Impact = "Medium", Points = 20 });
-                }
+                riskScore += 25;
+                factors.Add(new RiskFactor { Factor = "Patient Status", Value = "Inactive", Impact = "High", Points = 25 });
             }
 
             // HD Cycle frequency risk
@@ -145,7 +138,7 @@ namespace HDScheduler.API.Services.AI
         public async Task<List<PatientRiskAssessment>> GetHighRiskPatientsAsync(int threshold)
         {
             using var connection = _context.CreateConnection();
-            var patientIds = await connection.QueryAsync<int>("SELECT PatientID FROM Patients WHERE Status = 'Active'");
+            var patientIds = await connection.QueryAsync<int>("SELECT PatientID FROM Patients WHERE IsActive = 1");
             
             var allAssessments = await BatchAssessRiskAsync(patientIds.ToArray());
             return allAssessments.Where(a => a.RiskScore >= threshold).OrderByDescending(a => a.RiskScore).ToList();
@@ -198,7 +191,7 @@ Patient Profile:
 - HD Cycle: {patient.HDCycle}x per week
 - Total Sessions: {patient.TotalSessions}
 - Missed Sessions: {patient.MissedSessions}
-- Symptoms: {patient.Symptoms ?? "None reported"}
+- Patient Status: {(patient.IsActive ? "Active" : "Inactive")}
 - Current Risk Score: {riskScore}/100
 
 Risk Factors Identified:

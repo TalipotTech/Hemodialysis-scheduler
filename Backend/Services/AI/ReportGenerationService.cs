@@ -83,7 +83,7 @@ namespace HDScheduler.API.Services.AI
         {
             using var connection = _context.CreateConnection();
 
-            var patientQuery = "SELECT Name, Age, HDCycle FROM Patients WHERE PatientID = @PatientId";
+            var patientQuery = "SELECT Name, Age, HDCycle, IsActive FROM Patients WHERE PatientID = @PatientId";
             var patient = await connection.QueryFirstOrDefaultAsync<dynamic>(patientQuery, new { PatientId = patientId });
 
             if (patient == null)
