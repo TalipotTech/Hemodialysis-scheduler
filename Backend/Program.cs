@@ -121,6 +121,8 @@ builder.Services.AddScoped<IAIService, AIService>();
 builder.Services.AddScoped<IRiskAssessmentService, RiskAssessmentService>();
 builder.Services.AddScoped<IReportGenerationService, ReportGenerationService>();
 builder.Services.AddScoped<IAnalyticsDashboardService, AnalyticsDashboardService>();
+builder.Services.AddScoped<IFormAutocompleteService, FormAutocompleteService>();
+builder.Services.AddScoped<IFeatureSuggestionService, FeatureSuggestionService>();
 
 // Register background services
 builder.Services.AddHostedService<SessionHistoryBackgroundService>();
