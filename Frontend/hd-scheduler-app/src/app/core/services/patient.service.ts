@@ -50,6 +50,6 @@ export class PatientService {
   }
 
   getPatientHistory(id: number): Observable<ApiResponse<any>> {
-    return this.http.get<ApiResponse<any>>(`${environment.apiUrl}/PatientHistory/${id}`);
+    return this.http.get<ApiResponse<any>>(`${environment.apiUrl}/api/PatientHistory/${id}`);
   }
 }
