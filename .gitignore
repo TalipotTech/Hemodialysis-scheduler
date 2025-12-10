@@ -39,9 +39,9 @@ out-tsc/
 .env.*.local
 
 # App Settings with Passwords (Keep template in repo, ignore actual configs)
-**/appsettings.Development.json
-**/appsettings.Staging.json
-**/appsettings.Production.json
+# **/appsettings.Development.json
+# **/appsettings.Staging.json
+# **/appsettings.Production.json
 # Keep base template
 !appsettings.template.json
 

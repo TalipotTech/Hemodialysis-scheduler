@@ -178,6 +178,11 @@ export class PatientList implements OnInit {
     }
   }
 
+  onQuickSchedule(patient: Patient): void {
+    // Navigate to quick schedule form with AI recommendations
+    this.router.navigate(['/patients', patient.patientID, 'hd-session']);
+  }
+
   onPostSchedule(patient: Patient): void {
     // Navigate to post-dialysis data entry page
     if (patient.scheduleID && !patient.isDischarged) {

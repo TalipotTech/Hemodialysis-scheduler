@@ -41,8 +41,13 @@ namespace HDScheduler.API.Models
     /// </summary>
     public class SessionAutocompleteRequest
     {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.Range(1, int.MaxValue, ErrorMessage = "PatientId must be greater than 0")]
         public int PatientId { get; set; }
+        
+        [System.ComponentModel.DataAnnotations.Required]
         public DateTime SessionDate { get; set; }
+        
         public int? SlotId { get; set; }
         public Dictionary<string, object>? PartialData { get; set; }
     }

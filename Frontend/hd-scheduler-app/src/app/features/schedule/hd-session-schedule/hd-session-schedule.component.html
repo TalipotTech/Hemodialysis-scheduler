@@ -379,6 +379,83 @@
                 }
               </div>
 
+              <!-- AI Smart Fill Section -->
+              <div class="section-card smart-fill-section">
+                <div class="section-header-with-action">
+                  <h4><mat-icon>psychology</mat-icon> AI Smart Fill</h4>
+                  <button mat-raised-button color="accent" (click)="loadAutocomplete()" type="button" [disabled]="loadingAutocomplete || !patientId">
+                    <mat-icon>auto_awesome</mat-icon>
+                    @if (loadingAutocomplete) {
+                      <span>Analyzing History...</span>
+                    } @else {
+                      <span>Smart Fill</span>
+                    }
+                  </button>
+                </div>
+
+                <!-- Autocomplete Predictions Card -->
+                @if (showAutocompleteCard && autocompleteData) {
+                  <mat-card class="autocomplete-card">
+                    <mat-card-header>
+                      <mat-icon class="ai-icon">psychology</mat-icon>
+                      <mat-card-title>AI Form Predictions</mat-card-title>
+                      <button mat-icon-button (click)="dismissAutocomplete()" class="close-btn">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </mat-card-header>
+                    <mat-card-content>
+                      <p class="summary">{{ autocompleteData.summary }}</p>
+                      
+                      @if (autocompleteData.warnings && autocompleteData.warnings.length > 0) {
+                        <div class="warnings">
+                          <strong><mat-icon>warning</mat-icon> Clinical Warnings:</strong>
+                          <ul>
+                            @for (warning of autocompleteData.warnings; track warning) {
+                              <li>{{ warning }}</li>
+                            }
+                          </ul>
+                        </div>
+                      }
+                      
+                      <div class="predictions-list">
+                        @for (prediction of autocompleteData.predictions; track prediction.fieldName) {
+                          <div class="prediction-item" [class]="getConfidenceLevel(prediction.confidence) + '-confidence'">
+                            <div class="pred-header">
+                              <strong>{{ prediction.fieldName }}</strong>
+                              <span class="confidence-badge" [class]="getConfidenceLevel(prediction.confidence)">
+                                {{ (prediction.confidence * 100).toFixed(0) }}% confident
+                              </span>
+                            </div>
+                            <div class="pred-value">
+                              <mat-icon>arrow_forward</mat-icon>
+                              <span class="value">{{ prediction.predictedValue }}</span>
+                              <button mat-icon-button (click)="applyPrediction(prediction)" class="apply-btn" matTooltip="Apply this prediction">
+                                <mat-icon>check_circle</mat-icon>
+                              </button>
+                            </div>
+                            <p class="pred-reasoning">
+                              <mat-icon>lightbulb</mat-icon>
+                              {{ prediction.reasoning }}
+                            </p>
+                          </div>
+                        }
+                      </div>
+                      
+                      <div class="actions">
+                        <button mat-raised-button color="primary" (click)="applyAllAutocomplete()">
+                          <mat-icon>done_all</mat-icon>
+                          Apply All High-Confidence (>70%)
+                        </button>
+                        <button mat-stroked-button (click)="dismissAutocomplete()">
+                          <mat-icon>close</mat-icon>
+                          Dismiss
+                        </button>
+                      </div>
+                    </mat-card-content>
+                  </mat-card>
+                }
+              </div>
+
               <!-- Vascular Access -->
               <div class="section-card">
                 <h4>Vascular Access</h4>

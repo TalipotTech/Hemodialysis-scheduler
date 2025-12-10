@@ -20,6 +20,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { PatientService } from '../../../core/services/patient.service';
 import { ScheduleService } from '../../../core/services/schedule.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { AIService } from '../../../services/ai.service';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatRadioModule } from '@angular/material/radio';
 import { EquipmentUsageAlertComponent } from '../../../shared/components/equipment-usage-alert/equipment-usage-alert.component';
@@ -104,6 +105,11 @@ export class HdSessionScheduleComponent implements OnInit {
   currentTime: Date = new Date();
   monitoringTimeInterval: any = null;
   
+  // AI Autocomplete
+  loadingAutocomplete = false;
+  autocompleteData: any = null;
+  showAutocompleteCard = false;
+  
   // Auto-filled fields tracking
   autoFilledFields: Array<{label: string, value: any}> = [];
   
@@ -130,6 +136,7 @@ export class HdSessionScheduleComponent implements OnInit {
     private patientService: PatientService,
     private scheduleService: ScheduleService,
     private authService: AuthService,
+    private aiService: AIService,
     private snackBar: MatSnackBar
   ) {
     this.sessionForm = this.fb.group({
@@ -1708,6 +1715,95 @@ export class HdSessionScheduleComponent implements OnInit {
 
   updateCurrentTime(): void {
     this.currentTime = new Date();
+  }
+  
+  // AI Autocomplete Methods
+  loadAutocomplete(): void {
+    if (!this.patientId) {
+      this.snackBar.open('⚠️ Patient information not loaded', 'Close', { duration: 3000 });
+      return;
+    }
+
+    const treatmentDate = this.sessionForm.get('treatmentDate')?.value;
+    const slotId = this.sessionForm.get('slotID')?.value;
+    
+    if (!treatmentDate) {
+      this.snackBar.open('⚠️ Please select a treatment date first', 'Close', { duration: 3000 });
+      return;
+    }
+
+    // Ensure treatmentDate is a valid Date object
+    let sessionDate: Date;
+    if (treatmentDate instanceof Date) {
+      sessionDate = treatmentDate;
+    } else if (typeof treatmentDate === 'string') {
+      sessionDate = new Date(treatmentDate);
+    } else {
+      console.error('Invalid treatment date format:', treatmentDate);
+      this.snackBar.open('⚠️ Invalid treatment date format', 'Close', { duration: 3000 });
+      return;
+    }
+
+    // Validate patientId
+    if (!this.patientId || this.patientId <= 0) {
+      console.error('Invalid patientId:', this.patientId);
+      this.snackBar.open('⚠️ Invalid patient ID', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.loadingAutocomplete = true;
+    this.aiService.getSessionAutocomplete(this.patientId, sessionDate, slotId).subscribe({
+      next: (response: any) => {
+        this.autocompleteData = response;
+        this.showAutocompleteCard = true;
+        this.loadingAutocomplete = false;
+        
+        // Calculate average confidence
+        const avgConfidence = response.predictions.reduce((sum: number, p: any) => sum + p.confidence, 0) / response.predictions.length;
+        this.snackBar.open(`✨ AI predictions ready! Average confidence: ${(avgConfidence * 100).toFixed(0)}%`, 'Close', { duration: 4000 });
+      },
+      error: (error) => {
+        console.error('Error loading autocomplete:', error);
+        if (error.error?.details) {
+          console.error('Validation errors:', error.error.details);
+        }
+        this.loadingAutocomplete = false;
+        const errorMsg = error.error?.error || error.message || 'Could not load AI predictions';
+        this.snackBar.open(`⚠️ ${errorMsg}`, 'Close', { duration: 5000 });
+      }
+    });
+  }
+
+  applyAllAutocomplete(): void {
+    if (!this.autocompleteData?.predictions) return;
+
+    let appliedCount = 0;
+    this.autocompleteData.predictions.forEach((prediction: any) => {
+      if (prediction.confidence > 0.7 && !this.sessionForm.get(prediction.fieldName)?.value) {
+        this.sessionForm.patchValue({ [prediction.fieldName]: prediction.predictedValue });
+        this.sessionForm.get(prediction.fieldName)?.markAsTouched();
+        appliedCount++;
+      }
+    });
+
+    this.snackBar.open(`✅ Applied ${appliedCount} high-confidence predictions`, 'Close', { duration: 3000 });
+  }
+
+  applyPrediction(prediction: any): void {
+    this.sessionForm.patchValue({ [prediction.fieldName]: prediction.predictedValue });
+    this.sessionForm.get(prediction.fieldName)?.markAsTouched();
+    this.snackBar.open(`✅ Applied: ${prediction.fieldName}`, 'Close', { duration: 2000 });
+  }
+
+  dismissAutocomplete(): void {
+    this.showAutocompleteCard = false;
+    this.autocompleteData = null;
+  }
+
+  getConfidenceLevel(confidence: number): string {
+    if (confidence >= 0.8) return 'high';
+    if (confidence >= 0.6) return 'medium';
+    return 'low';
   }
 
   ngOnDestroy(): void {

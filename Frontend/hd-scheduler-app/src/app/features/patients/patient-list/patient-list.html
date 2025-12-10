@@ -149,6 +149,14 @@
                     <mat-icon>event_available</mat-icon>
                     Schedule HD
                   </button>
+                  <button mat-raised-button 
+                          style="background-color: #9c27b0; color: white;"
+                          (click)="onQuickSchedule(patient)"
+                          [disabled]="patient.isDischarged"
+                          matTooltip="Quick schedule with AI recommendations">
+                    <mat-icon>psychology</mat-icon>
+                    AI Quick Schedule
+                  </button>
                   <button mat-raised-button color="accent" 
                           (click)="onPostSchedule(patient)"
                           [disabled]="!patient.scheduleID || patient.isDischarged"

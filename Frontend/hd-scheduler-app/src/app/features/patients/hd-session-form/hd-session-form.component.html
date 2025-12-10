@@ -111,8 +111,177 @@
           </mat-form-field>
         </div>
 
+        <!-- Smart Fill Section -->
+        <div class="section-header">
+          <h3>Form Autocomplete</h3>
+          <button mat-raised-button
+                  color="accent"
+                  type="button"
+                  (click)="loadAutocomplete()"
+                  [disabled]="!patientId || loadingAutocomplete"
+                  matTooltip="Get AI-powered form predictions based on patient history">
+            <mat-icon>{{ loadingAutocomplete ? 'hourglass_empty' : 'auto_awesome' }}</mat-icon>
+            {{ loadingAutocomplete ? 'Analyzing History...' : 'Smart Fill' }}
+          </button>
+        </div>
+
+        <!-- Autocomplete Predictions Card -->
+        @if (showAutocompleteCard && autocompleteData) {
+          <mat-card class="autocomplete-card">
+            <mat-card-header>
+              <mat-icon class="ai-icon">auto_awesome</mat-icon>
+              <mat-card-title>AI Form Predictions</mat-card-title>
+              <button mat-icon-button (click)="dismissAutocomplete()" class="close-btn">
+                <mat-icon>close</mat-icon>
+              </button>
+            </mat-card-header>
+            <mat-card-content>
+              <p class="summary">{{ autocompleteData.summary }}</p>
+              
+              @if (autocompleteData.warnings && autocompleteData.warnings.length > 0) {
+                <div class="warnings">
+                  <strong><mat-icon>warning</mat-icon> Clinical Alerts:</strong>
+                  <ul>
+                    @for (warning of autocompleteData.warnings; track warning) {
+                      <li>{{ warning }}</li>
+                    }
+                  </ul>
+                </div>
+              }
+              
+              <div class="predictions-list">
+                @for (pred of autocompleteData.predictions; track pred.fieldName) {
+                  <div class="prediction-item" 
+                       [class.high-confidence]="pred.confidence > 0.8"
+                       [class.medium-confidence]="pred.confidence > 0.6 && pred.confidence <= 0.8">
+                    <div class="pred-header">
+                      <strong>{{ pred.fieldName | titlecase }}</strong>
+                      <span class="confidence-badge" 
+                            [class.high]="pred.confidence > 0.8"
+                            [class.medium]="pred.confidence > 0.6 && pred.confidence <= 0.8">
+                        {{ (pred.confidence * 100).toFixed(0) }}%
+                      </span>
+                    </div>
+                    <div class="pred-value">
+                      <mat-icon>arrow_forward</mat-icon>
+                      <span class="value">{{ pred.predictedValue }}</span>
+                      <button mat-icon-button 
+                              (click)="applyPrediction(pred)"
+                              matTooltip="Apply this value"
+                              class="apply-btn">
+                        <mat-icon>check_circle</mat-icon>
+                      </button>
+                    </div>
+                    <p class="pred-reasoning">
+                      <mat-icon>lightbulb_outline</mat-icon>
+                      {{ pred.reasoning }}
+                    </p>
+                  </div>
+                }
+              </div>
+              
+              <div class="actions">
+                <button mat-raised-button color="primary" (click)="applyAllAutocomplete()" type="button">
+                  <mat-icon>done_all</mat-icon>
+                  Apply All High-Confidence (>70%)
+                </button>
+                <button mat-stroked-button (click)="dismissAutocomplete()" type="button">
+                  <mat-icon>close</mat-icon>
+                  Dismiss
+                </button>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        }
+
         <!-- Bed Assignment -->
-        <h3>Bed Assignment</h3>
+        <div class="section-header">
+          <h3>Bed Assignment</h3>
+          <button mat-raised-button
+                  color="accent"
+                  type="button"
+                  (click)="getAIRecommendation()"
+                  [disabled]="!patientId || loadingAIRecommendation"
+                  matTooltip="Get AI-powered scheduling recommendation">
+            <mat-icon>{{ loadingAIRecommendation ? 'hourglass_empty' : 'psychology' }}</mat-icon>
+            {{ loadingAIRecommendation ? 'Getting AI Recommendation...' : 'Get AI Recommendation' }}
+          </button>
+        </div>
+
+        <!-- AI Recommendation Card -->
+        @if (showAICard && aiRecommendation) {
+          <mat-card class="ai-recommendation-card">
+            <mat-card-header>
+              <mat-icon class="ai-icon">psychology</mat-icon>
+              <mat-card-title>AI Scheduling Recommendation</mat-card-title>
+              <button mat-icon-button (click)="dismissAIRecommendation()" class="close-btn">
+                <mat-icon>close</mat-icon>
+              </button>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="recommendation-details">
+                <div class="recommendation-main">
+                  <div class="rec-item">
+                    <mat-icon>schedule</mat-icon>
+                    <div>
+                      <strong>Recommended Slot:</strong>
+                      <span class="value">{{ slots[aiRecommendation.recommendedSlotId - 1]?.name || 'Slot ' + aiRecommendation.recommendedSlotId }}</span>
+                    </div>
+                  </div>
+                  <div class="rec-item">
+                    <mat-icon>hotel</mat-icon>
+                    <div>
+                      <strong>Recommended Bed:</strong>
+                      <span class="value">Bed {{ aiRecommendation.recommendedBedNumber }}</span>
+                    </div>
+                  </div>
+                  <div class="rec-item">
+                    <mat-icon>star</mat-icon>
+                    <div>
+                      <strong>Confidence:</strong>
+                      <span class="value confidence-{{ getConfidenceLevel(aiRecommendation.confidence) }}">
+                        {{ (aiRecommendation.confidence * 100).toFixed(0) }}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="recommendation-reasoning">
+                  <strong><mat-icon>lightbulb</mat-icon> AI Reasoning:</strong>
+                  <p>{{ aiRecommendation.reasoning }}</p>
+                </div>
+
+                @if (aiRecommendation.factors && aiRecommendation.factors.length > 0) {
+                  <div class="recommendation-factors">
+                    <strong>Key Factors Considered:</strong>
+                    <ul>
+                      @for (factor of aiRecommendation.factors; track factor) {
+                        <li>{{ factor }}</li>
+                      }
+                    </ul>
+                  </div>
+                }
+
+                <div class="recommendation-actions">
+                  <button mat-raised-button
+                          color="primary"
+                          type="button"
+                          (click)="applyAIRecommendation()">
+                    <mat-icon>check</mat-icon>
+                    Apply Recommendation
+                  </button>
+                  <button mat-stroked-button
+                          type="button"
+                          (click)="dismissAIRecommendation()">
+                    <mat-icon>close</mat-icon>
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        }
+
         <div class="form-row">
           <mat-form-field appearance="outline">
             <mat-label>Slot</mat-label>

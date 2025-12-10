@@ -27,13 +27,27 @@ namespace HDScheduler.API.Controllers
         [HttpPost("predict-session")]
         public async Task<IActionResult> PredictSessionData([FromBody] SessionAutocompleteRequest request)
         {
+            if (!ModelState.IsValid)
+            {
+                _logger.LogWarning("Invalid request for PredictSessionData: {Errors}", 
+                    string.Join(", ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)));
+                return BadRequest(new { 
+                    error = "Invalid request data", 
+                    details = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList() 
+                });
+            }
+
             try
             {
+                _logger.LogInformation("Predicting session data for PatientId: {PatientId}, Date: {SessionDate}", 
+                    request.PatientId, request.SessionDate);
+                    
                 var predictions = await _autocompleteService.PredictSessionDataAsync(request);
                 return Ok(predictions);
             }
             catch (InvalidOperationException ex)
             {
+                _logger.LogWarning(ex, "Patient not found: {PatientId}", request.PatientId);
                 return NotFound(new { error = ex.Message });
             }
             catch (Exception ex)

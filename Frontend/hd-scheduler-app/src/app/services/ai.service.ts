@@ -44,6 +44,23 @@ export interface AISettingsDto {
   hasApiKey: boolean;
 }
 
+export interface FormPrediction {
+  fieldName: string;
+  predictedValue: any;
+  confidence: number;
+  reasoning: string;
+  dataSources: string[];
+}
+
+export interface SessionAutocomplete {
+  patientId: number;
+  patientName: string;
+  predictions: FormPrediction[];
+  warnings: string[];
+  summary: string;
+  generatedAt: Date;
+}
+
 export interface UpdateAISettingsDto {
   aiEnabled?: boolean;
   aiProvider?: string;
@@ -270,5 +287,70 @@ export class AIService {
 
   getCostProjection(days: number = 30): Observable<any> {
     return this.http.get<any>(`${environment.apiUrl}/api/analyticsdashboard/cost-projection?days=${days}`);
+  }
+
+  // Form Autocomplete APIs
+  getSessionAutocomplete(patientId: number, sessionDate: Date, slotId?: number): Observable<SessionAutocomplete> {
+    // Validate inputs
+    if (!patientId || patientId <= 0) {
+      throw new Error('Invalid patientId: must be a positive number');
+    }
+    if (!(sessionDate instanceof Date) || isNaN(sessionDate.getTime())) {
+      throw new Error('Invalid sessionDate: must be a valid Date object');
+    }
+
+    const requestBody = {
+      patientId,
+      sessionDate: sessionDate.toISOString(),
+      slotId: slotId || null,
+      partialData: {}
+    };
+
+    console.log('AI Autocomplete Request:', requestBody);
+
+    return this.http.post<SessionAutocomplete>(
+      `${environment.apiUrl}/api/formautocomplete/predict-session`,
+      requestBody
+    );
+  }
+
+  getPredictedFieldValue(patientId: number, fieldName: string): Observable<FormPrediction> {
+    return this.http.get<FormPrediction>(
+      `${environment.apiUrl}/api/formautocomplete/predict-field/${patientId}/${fieldName}`
+    );
+  }
+
+  getCachedFieldValue(patientId: number, fieldName: string): Observable<any> {
+    return this.http.get<any>(
+      `${environment.apiUrl}/api/formautocomplete/cache/${patientId}/${fieldName}`
+    );
+  }
+
+  // Feature Suggestion APIs
+  analyzeAndSuggestFeatures(): Observable<any> {
+    return this.http.post<any>(
+      `${environment.apiUrl}/api/featuresuggestion/analyze`,
+      {}
+    );
+  }
+
+  getPendingFeatureSuggestions(category?: string): Observable<any> {
+    const params = category ? `?category=${category}` : '';
+    return this.http.get<any>(
+      `${environment.apiUrl}/api/featuresuggestion/pending${params}`
+    );
+  }
+
+  updateFeatureSuggestionStatus(id: number, status: string, notes: string): Observable<any> {
+    return this.http.put<any>(
+      `${environment.apiUrl}/api/featuresuggestion/${id}/status`,
+      { status, developerNotes: notes }
+    );
+  }
+
+  getFeatureSuggestionStats(): Observable<any> {
+    return this.http.get<any>(
+      `${environment.apiUrl}/api/featuresuggestion/stats`
+    );
   }
 }
