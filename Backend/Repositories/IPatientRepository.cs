@@ -9,8 +9,10 @@ public interface IPatientRepository
     Task<List<Patient>> GetAllIncludingInactiveAsync(); // Get all patients including inactive
     Task<List<Patient>> GetActiveAsync(); // Get only active patients
     Task<Patient?> GetByIdAsync(int patientId);
+    Task<Patient?> GetPatientById(int patientId); // Alias for GetByIdAsync
     Task<Patient?> GetByMRNAsync(string mrn); // Get patient by MRN
     Task<List<Patient>> SearchAsync(string searchTerm); // Search by name, phone, MRN
+    Task<List<Patient>> SearchPatientsByName(string name); // Search by name only
     Task<int> CreateAsync(Patient patient);
     Task<bool> UpdateAsync(Patient patient);
     Task<bool> DeleteAsync(int patientId); // Soft delete

@@ -288,4 +288,31 @@ public class PatientRepository : IPatientRepository
         var affected = await connection.ExecuteAsync(query, new { PatientID = patientId });
         return affected > 0;
     }
+
+    // Alias for GetByIdAsync (for consistency with AIQueryController)
+    public async Task<Patient?> GetPatientById(int patientId)
+    {
+        return await GetByIdAsync(patientId);
+    }
+
+    // Search patients by name only
+    public async Task<List<Patient>> SearchPatientsByName(string name)
+    {
+        var query = @"
+            SELECT 
+                p.PatientID, p.MRN, p.Name, p.Age, p.Gender, 
+                p.ContactNumber, p.EmergencyContact, p.Address, p.GuardianName,
+                p.IsActive, p.CreatedAt, p.UpdatedAt,
+                p.DryWeight, p.HDCycle, p.HDFrequency, p.HDStartDate, p.DialyserType,
+                p.DialyserModel, p.PrescribedDuration, p.PrescribedBFR, p.DialysatePrescription,
+                p.DialyserCount, p.BloodTubingCount, p.TotalDialysisCompleted,
+                p.DialysersPurchased, p.BloodTubingPurchased
+            FROM Patients p
+            WHERE p.IsActive = 1 
+            AND p.Name LIKE @Search
+            ORDER BY p.Name";
+        using var connection = _context.CreateConnection();
+        var patients = await connection.QueryAsync<Patient>(query, new { Search = $"%{name}%" });
+        return patients.ToList();
+    }
 }

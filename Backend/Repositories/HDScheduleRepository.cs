@@ -406,11 +406,13 @@ public class HDScheduleRepository : IHDScheduleRepository
     {
         var query = @"
             INSERT INTO HDLogs 
-            (PatientID, ScheduleID, SessionDate, PreWeight, PostWeight, WeightLoss,
-             BloodPressurePre, BloodPressurePost, Temperature, Notes, CreatedBy, CreatedAt)
+            (ScheduleID, PatientID, SessionDate, PreWeight, PostWeight, 
+             PreBP, PostBP, PrePulse, PostPulse, StartTime, EndTime, 
+             TotalUF, BloodFlowRate, DialysateFlow, Remarks, CreatedAt)
             VALUES 
-            (@PatientID, @ScheduleID, @SessionDate, @PreWeight, @PostWeight, @WeightLoss,
-             @BloodPressurePre, @BloodPressurePost, @Temperature, @Notes, @CreatedBy, GETUTCDATE());
+            (@ScheduleID, @PatientID, @SessionDate, @PreWeight, @PostWeight,
+             @PreBP, @PostBP, @PrePulse, @PostPulse, @StartTime, @EndTime,
+             @TotalUF, @BloodFlowRate, @DialysateFlow, @Remarks, GETUTCDATE());
             SELECT CAST(SCOPE_IDENTITY() AS INT)";
         
         using var connection = _context.CreateConnection();

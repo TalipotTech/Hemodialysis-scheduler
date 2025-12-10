@@ -50,6 +50,18 @@ public class HDLog
     public string? BloodPressurePre { get; set; }
     public string? BloodPressurePost { get; set; }
     
+    // Azure SQL HDLogs Table Columns
+    public string? PreBP { get; set; }
+    public string? PostBP { get; set; }
+    public int? PrePulse { get; set; }
+    public int? PostPulse { get; set; }
+    public TimeSpan? StartTime { get; set; }
+    public TimeSpan? EndTime { get; set; }
+    public decimal? TotalUF { get; set; }
+    public int? BloodFlowRate { get; set; }
+    public int? DialysateFlow { get; set; }
+    public string? Remarks { get; set; }
+    
     // Temperature
     public decimal? Temperature { get; set; }
     
@@ -62,4 +74,5 @@ public class HDLog
     
     // Navigation properties
     public Patient? Patient { get; set; }
+    public HDSchedule? Schedule { get; set; }
 }

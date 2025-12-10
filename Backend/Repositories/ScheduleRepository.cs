@@ -108,4 +108,95 @@ public class ScheduleRepository : IScheduleRepository
             AvailableBedNumbers = availableBeds
         };
     }
+
+    // Natural Language Query support methods
+    public async Task<List<int>> GetOccupiedBeds(DateTime date, int? slotId)
+    {
+        var query = @"SELECT DISTINCT BedNumber FROM BedAssignments 
+                     WHERE CAST(AssignmentDate AS DATE) = CAST(@Date AS DATE)
+                     AND IsActive = 1";
+        
+        if (slotId.HasValue)
+        {
+            query += " AND SlotID = @SlotId";
+        }
+
+        using var connection = _context.CreateConnection();
+        var beds = await connection.QueryAsync<int>(query, new { Date = date, SlotId = slotId });
+        return beds.ToList();
+    }
+
+    public async Task<List<ScheduledPatientInfo>> GetScheduledPatients(DateTime date, int? slotId)
+    {
+        var query = @"
+            SELECT 
+                ba.PatientID,
+                p.Name AS PatientName,
+                ba.BedNumber,
+                ba.SlotID,
+                s.SlotName,
+                CONVERT(VARCHAR(8), s.StartTime, 108) + ' - ' + CONVERT(VARCHAR(8), s.EndTime, 108) AS SessionTime
+            FROM BedAssignments ba
+            INNER JOIN Patients p ON ba.PatientID = p.PatientID
+            INNER JOIN Slots s ON ba.SlotID = s.SlotID
+            WHERE CAST(ba.AssignmentDate AS DATE) = CAST(@Date AS DATE)
+            AND ba.IsActive = 1";
+
+        if (slotId.HasValue)
+        {
+            query += " AND ba.SlotID = @SlotId";
+        }
+
+        query += " ORDER BY ba.SlotID, ba.BedNumber";
+
+        using var connection = _context.CreateConnection();
+        var patients = await connection.QueryAsync<ScheduledPatientInfo>(query, new { Date = date, SlotId = slotId });
+        return patients.ToList();
+    }
+
+    public async Task<List<SlotUtilizationInfo>> GetSlotUtilization(DateTime date)
+    {
+        var query = @"
+            SELECT 
+                s.SlotID,
+                s.SlotName,
+                s.MaxBeds AS TotalBeds,
+                COUNT(ba.BedNumber) AS OccupiedBeds,
+                s.MaxBeds - COUNT(ba.BedNumber) AS AvailableBeds,
+                CAST(COUNT(ba.BedNumber) * 100.0 / s.MaxBeds AS DECIMAL(5,2)) AS UtilizationRate
+            FROM Slots s
+            LEFT JOIN BedAssignments ba ON s.SlotID = ba.SlotID 
+                AND CAST(ba.AssignmentDate AS DATE) = CAST(@Date AS DATE)
+                AND ba.IsActive = 1
+            GROUP BY s.SlotID, s.SlotName, s.MaxBeds
+            ORDER BY s.SlotID";
+
+        using var connection = _context.CreateConnection();
+        var utilization = await connection.QueryAsync<SlotUtilizationInfo>(query, new { Date = date });
+        return utilization.ToList();
+    }
+
+    public async Task<List<MissedAppointmentInfo>> GetMissedAppointments(DateTime dateFrom, DateTime dateTo)
+    {
+        var query = @"
+            SELECT 
+                ba.PatientID,
+                p.Name AS PatientName,
+                ba.AssignmentDate AS ScheduledDate,
+                s.SlotName,
+                ba.BedNumber,
+                'No-Show' AS Status
+            FROM BedAssignments ba
+            INNER JOIN Patients p ON ba.PatientID = p.PatientID
+            INNER JOIN Slots s ON ba.SlotID = s.SlotID
+            WHERE ba.AssignmentDate BETWEEN @DateFrom AND @DateTo
+            AND ba.IsActive = 1
+            AND ba.DischargedAt IS NULL
+            AND ba.AssignmentDate < GETDATE()
+            ORDER BY ba.AssignmentDate DESC";
+
+        using var connection = _context.CreateConnection();
+        var missed = await connection.QueryAsync<MissedAppointmentInfo>(query, new { DateFrom = dateFrom, DateTo = dateTo });
+        return missed.ToList();
+    }
 }

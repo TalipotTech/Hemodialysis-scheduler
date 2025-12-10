@@ -41,9 +41,8 @@ public class PatientHistoryRepository : IPatientHistoryRepository
         
         if (patient == null) return null;
 
-        // Get all sessions with related data - include ALL fields from HDSchedule
+        // Get all sessions with related data - only select columns that exist in HDSchedule table
         // Show only completed/discharged sessions for patient history
-        // Filter out pre-scheduled future sessions - only show sessions that have been completed
         var sessionsQuery = @"
             SELECT 
                 h.ScheduleID, h.SessionDate, h.PatientID, h.SlotID, h.BedNumber,
@@ -52,20 +51,16 @@ public class PatientHistoryRepository : IPatientHistoryRepository
                 h.PrescribedDuration, h.UFGoal, h.DialysatePrescription, h.PrescribedBFR,
                 h.AnticoagulationType, h.HeparinDose, h.SyringeType, h.BolusDose, h.HeparinInfusionRate,
                 h.AccessType, h.AccessLocation,
-                h.StartTime,
-                h.PreWeight, h.PreBPSitting, h.PreTemperature, h.AccessBleedingTime, h.AccessStatus, h.Complications,
-                h.MonitoringTime, h.BloodPressure, h.HeartRate, h.ActualBFR, h.VenousPressure, h.ArterialPressure,
-                h.CurrentUFR, h.TotalUFAchieved, h.TmpPressure, h.Symptoms, h.Interventions, h.StaffInitials,
-                h.MedicationType, h.MedicationName, h.Dose, h.Route, h.AdministeredAt,
-                h.AlertType, h.AlertMessage, h.Severity, h.Resolution,
-                h.PostWeight, h.PostSBP, h.PostDBP, h.PostHR, h.PostAccessStatus, h.TotalFluidRemoved,
-                h.Notes, h.IsDischarged, h.IsMovedToHistory, h.SessionStatus, h.CreatedAt, h.UpdatedAt,
-                h.AssignedDoctor, h.AssignedNurse, h.BloodTestDone,
+                h.BloodPressure, h.Symptoms, h.BloodTestDone,
+                h.SessionStatus, h.TreatmentStartTime, h.TreatmentCompletionTime, h.DischargeTime,
+                h.IsDischarged, h.IsMovedToHistory, h.CreatedAt, h.UpdatedAt,
+                h.AssignedDoctor, h.AssignedNurse, h.CreatedByStaffName, h.CreatedByStaffRole,
                 p.Name as PatientName,
                 s.SlotName,
                 d.Name as AssignedDoctorName,
                 n.Name as AssignedNurseName,
-                l.BloodPressurePre, l.BloodPressurePost, l.Temperature as LogTemperature,
+                l.PreWeight, l.PostWeight, l.PreBP, l.PostBP, l.PrePulse, l.PostPulse,
+                l.StartTime, l.EndTime, l.TotalUF, l.BloodFlowRate, l.DialysateFlow, l.Remarks,
                 (SELECT COUNT(*) FROM IntraDialyticRecords WHERE ScheduleID = h.ScheduleID) as IntraDialyticRecordsCount,
                 (SELECT COUNT(*) FROM PostDialysisMedications WHERE ScheduleID = h.ScheduleID) as MedicationsCount
             FROM HDSchedule h
@@ -113,20 +108,16 @@ public class PatientHistoryRepository : IPatientHistoryRepository
                 h.PrescribedDuration, h.UFGoal, h.DialysatePrescription, h.PrescribedBFR,
                 h.AnticoagulationType, h.HeparinDose, h.SyringeType, h.BolusDose, h.HeparinInfusionRate,
                 h.AccessType, h.AccessLocation,
-                h.StartTime,
-                h.PreWeight, h.PreBPSitting, h.PreTemperature, h.AccessBleedingTime, h.AccessStatus, h.Complications,
-                h.MonitoringTime, h.BloodPressure, h.HeartRate, h.ActualBFR, h.VenousPressure, h.ArterialPressure,
-                h.CurrentUFR, h.TotalUFAchieved, h.TmpPressure, h.Symptoms, h.Interventions, h.StaffInitials,
-                h.MedicationType, h.MedicationName, h.Dose, h.Route, h.AdministeredAt,
-                h.AlertType, h.AlertMessage, h.Severity, h.Resolution,
-                h.PostWeight, h.PostSBP, h.PostDBP, h.PostHR, h.PostAccessStatus, h.TotalFluidRemoved,
-                h.Notes, h.IsDischarged, h.IsMovedToHistory, h.SessionStatus, h.CreatedAt, h.UpdatedAt,
-                h.AssignedDoctor, h.AssignedNurse, h.BloodTestDone,
-                p.Name as PatientName,
+                h.BloodPressure, h.Symptoms, h.BloodTestDone,
+                h.SessionStatus, h.TreatmentStartTime, h.TreatmentCompletionTime, h.DischargeTime,
+                h.IsDischarged, h.IsMovedToHistory, h.CreatedAt, h.UpdatedAt,
+                h.AssignedDoctor, h.AssignedNurse, h.CreatedByStaffName, h.CreatedByStaffRole,
+                p.Name as PatientName, p.MRN, p.Age, p.Gender,
                 s.SlotName,
                 d.Name as AssignedDoctorName,
                 n.Name as AssignedNurseName,
-                l.BloodPressurePre, l.BloodPressurePost, l.Temperature as LogTemperature
+                l.PreWeight, l.PostWeight, l.PreBP, l.PostBP, l.PrePulse, l.PostPulse,
+                l.StartTime, l.EndTime, l.TotalUF, l.BloodFlowRate, l.DialysateFlow, l.Remarks
             FROM HDSchedule h
             INNER JOIN Patients p ON h.PatientID = p.PatientID
             LEFT JOIN Slots s ON h.SlotID = s.SlotID
@@ -155,14 +146,12 @@ public class PatientHistoryRepository : IPatientHistoryRepository
             
             var intraRecordsQuery = @"
                 SELECT 
-                    RecordID, ScheduleID, PatientID, SessionDate, TimeRecorded,
-                    BloodPressure, PulseRate, Temperature, UFVolume, VenousPressure,
-                    ArterialPressure, BloodFlowRate, DialysateFlowRate, CurrentUFR,
-                    TMPPressure, Symptoms, Interventions, StaffInitials, RecordedBy,
-                    Notes, CreatedAt
+                    RecordID, ScheduleID, PatientID, SessionDate, RecordTime,
+                    BP, Pulse, UFRate, VenousPressure, BloodFlow,
+                    Symptoms, Intervention, CreatedAt
                 FROM IntraDialyticRecords 
                 WHERE ScheduleID = @ScheduleID 
-                ORDER BY TimeRecorded";
+                ORDER BY RecordTime";
             var records = await connection.QueryAsync(intraRecordsQuery, new { ScheduleID = scheduleId });
             intraRecords = records.Cast<object>().ToList();
             Console.WriteLine($"✓ Loaded {intraRecords.Count} intra-dialytic records for ScheduleID: {scheduleId}");
@@ -218,29 +207,25 @@ public class PatientHistoryRepository : IPatientHistoryRepository
     {
         using var connection = _context.CreateConnection();
         
-        var limitClause = lastNSessions.HasValue ? $"LIMIT {lastNSessions.Value}" : "";
+        var topClause = lastNSessions.HasValue ? $"TOP {lastNSessions.Value}" : "";
         
         var query = $@"
-            SELECT 
+            SELECT {topClause}
                 h.SessionDate,
-                h.PreWeight,
-                h.PostWeight,
+                l.PreWeight,
+                l.PostWeight,
                 CASE 
-                    WHEN h.PreWeight IS NOT NULL AND h.PostWeight IS NOT NULL 
-                    THEN h.PreWeight - h.PostWeight 
+                    WHEN l.PreWeight IS NOT NULL AND l.PostWeight IS NOT NULL 
+                    THEN l.PreWeight - l.PostWeight 
                     ELSE NULL 
                 END as WeightLoss,
                 h.UFGoal,
-                h.PreBPSitting as BloodPressurePre,
-                CASE 
-                    WHEN h.PostSBP IS NOT NULL AND h.PostDBP IS NOT NULL 
-                    THEN h.PostSBP || '/' || h.PostDBP 
-                    ELSE NULL 
-                END as BloodPressurePost
+                l.PreBP as BloodPressurePre,
+                l.PostBP as BloodPressurePost
             FROM HDSchedule h
-            WHERE h.PatientID = @PatientID
-            ORDER BY h.SessionDate DESC
-            {limitClause}";
+            LEFT JOIN HDLogs l ON h.ScheduleID = l.ScheduleID
+            WHERE h.PatientID = @PatientID AND h.IsDischarged = 1
+            ORDER BY h.SessionDate DESC";
 
         var data = await connection.QueryAsync<dynamic>(query, new { PatientID = patientId });
 
@@ -311,7 +296,11 @@ public class PatientHistoryRepository : IPatientHistoryRepository
                 COUNT(h.ScheduleID) as TotalSessions,
                 MIN(h.SessionDate) as FirstSessionDate,
                 MAX(h.SessionDate) as LastSessionDate,
-                AVG(l.WeightLoss) as AverageWeightLoss,
+                AVG(CASE 
+                    WHEN l.PreWeight IS NOT NULL AND l.PostWeight IS NOT NULL 
+                    THEN l.PreWeight - l.PostWeight 
+                    ELSE NULL 
+                END) as AverageWeightLoss,
                 AVG(l.PreWeight) as AveragePreWeight,
                 AVG(l.PostWeight) as AveragePostWeight,
                 (SELECT COUNT(*) FROM PostDialysisMedications m 
@@ -319,7 +308,7 @@ public class PatientHistoryRepository : IPatientHistoryRepository
                  WHERE s.PatientID = @PatientID) as TotalMedicationsAdministered
             FROM HDSchedule h
             LEFT JOIN HDLogs l ON h.ScheduleID = l.ScheduleID
-            WHERE h.PatientID = @PatientID";
+            WHERE h.PatientID = @PatientID AND h.IsDischarged = 1";
 
         var stats = await connection.QueryFirstOrDefaultAsync<TreatmentStatistics>(query, new { PatientID = patientId });
 

@@ -37,14 +37,14 @@ namespace HDScheduler.API.Services.AI
 
             var query = @"SELECT 
                 COUNT(*) as TotalRequests,
-                SUM(CASE WHEN Status = 'Success' THEN 1 ELSE 0 END) as SuccessfulRequests,
-                SUM(CASE WHEN Status = 'Error' THEN 1 ELSE 0 END) as FailedRequests,
+                SUM(CASE WHEN Success = 1 THEN 1 ELSE 0 END) as SuccessfulRequests,
+                SUM(CASE WHEN Success = 0 THEN 1 ELSE 0 END) as FailedRequests,
                 SUM(InputTokens) as TotalInputTokens,
                 SUM(OutputTokens) as TotalOutputTokens,
-                SUM(EstimatedCost) as TotalCost,
-                AVG(CAST(ResponseTime AS FLOAT)) as AverageResponseTime
+                SUM(Cost) as TotalCost,
+                AVG(CAST(ProcessingTimeMs AS FLOAT)) as AverageResponseTime
                 FROM AIUsageLogs
-                WHERE RequestTime >= @StartDate AND RequestTime < @EndDate";
+                WHERE Timestamp >= @StartDate AND Timestamp < @EndDate";
 
             var stats = await connection.QueryFirstOrDefaultAsync<dynamic>(query,
                 new { StartDate = startDate, EndDate = endDate });
@@ -72,22 +72,22 @@ namespace HDScheduler.API.Services.AI
             using var connection = _context.CreateConnection();
 
             var costQuery = @"SELECT 
-                SUM(EstimatedCost) as TotalCost,
+                SUM(Cost) as TotalCost,
                 SUM(InputTokens * 0.0005 / 1000) as InputCost,
                 SUM(OutputTokens * 0.0015 / 1000) as OutputCost
                 FROM AIUsageLogs
-                WHERE RequestTime >= @StartDate AND RequestTime < @EndDate";
+                WHERE Timestamp >= @StartDate AND Timestamp < @EndDate";
 
             var costs = await connection.QueryFirstOrDefaultAsync<dynamic>(costQuery,
                 new { StartDate = startDate, EndDate = endDate });
 
             var dailyQuery = @"SELECT 
-                CAST(RequestTime AS DATE) as Date,
-                SUM(EstimatedCost) as Cost,
+                CAST(Timestamp AS DATE) as Date,
+                SUM(Cost) as Cost,
                 COUNT(*) as RequestCount
                 FROM AIUsageLogs
-                WHERE RequestTime >= @StartDate AND RequestTime < @EndDate
-                GROUP BY CAST(RequestTime AS DATE)
+                WHERE Timestamp >= @StartDate AND Timestamp < @EndDate
+                GROUP BY CAST(Timestamp AS DATE)
                 ORDER BY Date";
 
             var dailyCosts = await connection.QueryAsync<DailyCostData>(dailyQuery,
@@ -116,12 +116,12 @@ namespace HDScheduler.API.Services.AI
             using var connection = _context.CreateConnection();
 
             var query = @"SELECT 
-                AVG(CAST(ResponseTime AS FLOAT)) as AverageResponseTime,
-                MIN(ResponseTime) as FastestRequestTime,
-                MAX(ResponseTime) as SlowestRequestTime,
+                AVG(CAST(ProcessingTimeMs AS FLOAT)) as AverageResponseTime,
+                MIN(ProcessingTimeMs) as FastestRequestTime,
+                MAX(ProcessingTimeMs) as SlowestRequestTime,
                 COUNT(*) as TotalRequests
                 FROM AIUsageLogs
-                WHERE RequestTime >= DATEADD(day, -7, GETDATE())";
+                WHERE Timestamp >= DATEADD(day, -7, GETDATE())";
 
             var stats = await connection.QueryFirstOrDefaultAsync<dynamic>(query);
 
@@ -144,13 +144,13 @@ namespace HDScheduler.API.Services.AI
             var startDate = DateTime.Today.AddDays(-days);
 
             var query = @"SELECT 
-                CAST(RequestTime AS DATE) as Date,
+                CAST(Timestamp AS DATE) as Date,
                 COUNT(*) as RequestCount,
-                SUM(EstimatedCost) as Cost,
+                SUM(Cost) as Cost,
                 SUM(InputTokens + OutputTokens) as TokensUsed
                 FROM AIUsageLogs
-                WHERE RequestTime >= @StartDate
-                GROUP BY CAST(RequestTime AS DATE)
+                WHERE Timestamp >= @StartDate
+                GROUP BY CAST(Timestamp AS DATE)
                 ORDER BY Date";
 
             var trends = await connection.QueryAsync<TrendData>(query, new { StartDate = startDate });
@@ -185,9 +185,9 @@ namespace HDScheduler.API.Services.AI
 
             var todayQuery = @"SELECT 
                 COUNT(*) as RequestCount,
-                SUM(EstimatedCost) as DailyCost
+                SUM(Cost) as DailyCost
                 FROM AIUsageLogs
-                WHERE RequestTime >= @TodayStart";
+                WHERE Timestamp >= @TodayStart";
 
             var todayStats = await connection.QueryFirstOrDefaultAsync<dynamic>(todayQuery,
                 new { TodayStart = todayStart });
@@ -242,7 +242,7 @@ namespace HDScheduler.API.Services.AI
                 RequestType,
                 COUNT(*) as Count
                 FROM AIUsageLogs
-                WHERE RequestTime >= DATEADD(day, -30, GETDATE())
+                WHERE Timestamp >= DATEADD(day, -30, GETDATE())
                 GROUP BY RequestType";
 
             var features = await connection.QueryAsync<dynamic>(featureQuery);
@@ -281,10 +281,10 @@ namespace HDScheduler.API.Services.AI
             var avgQuery = @"SELECT 
                 AVG(CAST(DailyCost AS FLOAT)) as AvgDailyCost
                 FROM (
-                    SELECT CAST(RequestTime AS DATE) as Date, SUM(EstimatedCost) as DailyCost
+                    SELECT CAST(Timestamp AS DATE) as Date, SUM(Cost) as DailyCost
                     FROM AIUsageLogs
-                    WHERE RequestTime >= @StartDate
-                    GROUP BY CAST(RequestTime AS DATE)
+                    WHERE Timestamp >= @StartDate
+                    GROUP BY CAST(Timestamp AS DATE)
                 ) as DailyCosts";
 
             var avgCost = await connection.QueryFirstOrDefaultAsync<decimal>(avgQuery,

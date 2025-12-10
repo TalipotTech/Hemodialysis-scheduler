@@ -34,7 +34,11 @@ public class SystemSettingsController : ControllerBase
         try
         {
             using var connection = _context.CreateConnection();
-            var query = "SELECT SlotID, SlotName, StartTime, EndTime, MaxBeds, IsActive FROM Slots ORDER BY SlotID";
+            var query = @"SELECT SlotID, SlotName, 
+                          CONVERT(VARCHAR(8), StartTime, 108) AS StartTime, 
+                          CONVERT(VARCHAR(8), EndTime, 108) AS EndTime, 
+                          MaxBeds, IsActive 
+                          FROM Slots ORDER BY SlotID";
             var slots = await connection.QueryAsync<SlotConfiguration>(query);
             return Ok(ApiResponse<List<SlotConfiguration>>.SuccessResponse(slots.ToList()));
         }
@@ -51,7 +55,11 @@ public class SystemSettingsController : ControllerBase
         try
         {
             using var connection = _context.CreateConnection();
-            var query = "SELECT SlotID, SlotName, StartTime, EndTime, MaxBeds, IsActive FROM Slots WHERE SlotID = @SlotID";
+            var query = @"SELECT SlotID, SlotName, 
+                          CONVERT(VARCHAR(8), StartTime, 108) AS StartTime, 
+                          CONVERT(VARCHAR(8), EndTime, 108) AS EndTime, 
+                          MaxBeds, IsActive 
+                          FROM Slots WHERE SlotID = @SlotID";
             var slot = await connection.QueryFirstOrDefaultAsync<SlotConfiguration>(query, new { SlotID = id });
             
             if (slot == null)

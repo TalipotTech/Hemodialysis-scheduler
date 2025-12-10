@@ -44,12 +44,28 @@ public class TreatmentSessionSummary
     public decimal? BolusDose { get; set; }
     public decimal? HeparinInfusionRate { get; set; }
     
-    // Session Timing
-    public string? StartTime { get; set; }
-    public string? SessionStartTime { get; set; }
+    // Session Timing (from HDLogs - TIME columns)
+    public TimeSpan? StartTime { get; set; }
+    public TimeSpan? EndTime { get; set; }
+    public DateTime? TreatmentStartTime { get; set; }
+    public DateTime? TreatmentCompletionTime { get; set; }
+    public DateTime? DischargeTime { get; set; }
     
-    // Pre-Dialysis Assessment
+    // Pre-Dialysis Assessment (from HDLogs)
     public decimal? PreWeight { get; set; }
+    public string? PreBP { get; set; }
+    public int? PrePulse { get; set; }
+    
+    // Post-Dialysis Assessment (from HDLogs)
+    public decimal? PostWeight { get; set; }
+    public string? PostBP { get; set; }
+    public int? PostPulse { get; set; }
+    public decimal? TotalUF { get; set; }
+    public int? BloodFlowRate { get; set; }
+    public int? DialysateFlow { get; set; }
+    public string? Remarks { get; set; }
+    
+    // Legacy fields (kept for compatibility)
     public string? PreBPSitting { get; set; }
     public decimal? PreTemperature { get; set; }
     public string? AccessBleedingTime { get; set; }
@@ -88,20 +104,13 @@ public class TreatmentSessionSummary
     public string? AssignedDoctorName { get; set; }
     public int? AssignedNurse { get; set; }
     public string? AssignedNurseName { get; set; }
+    public string? CreatedByStaffName { get; set; }
+    public string? CreatedByStaffRole { get; set; }
     
-    // Vitals from HDLog
-    public decimal? PostWeight { get; set; }
-    public decimal? WeightLoss { get; set; }
-    public string? BloodPressurePre { get; set; }
-    public string? BloodPressurePost { get; set; }
-    public decimal? Temperature { get; set; }
-    
-    // Post-Dialysis Vitals
-    public int? PostSBP { get; set; }
-    public int? PostDBP { get; set; }
-    public int? PostHR { get; set; }
-    public string? PostAccessStatus { get; set; }
-    public decimal? TotalFluidRemoved { get; set; }
+    // Calculated Properties
+    public decimal? WeightLoss => (PreWeight.HasValue && PostWeight.HasValue) 
+        ? PreWeight.Value - PostWeight.Value 
+        : null;
     
     // Additional Session Info
     public string? SessionStatus { get; set; }
