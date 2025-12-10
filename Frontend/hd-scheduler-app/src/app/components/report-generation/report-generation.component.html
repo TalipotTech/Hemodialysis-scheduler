@@ -16,7 +16,7 @@
       <mat-card-title>Generate Report</mat-card-title>
     </mat-card-header>
     <mat-card-content>
-      <mat-tab-group [(selectedIndex)]="reportType" (selectedIndexChange)="reportType = ['daily', 'weekly', 'patient'][$event]">
+      <mat-tab-group [(selectedIndex)]="selectedTabIndex" (selectedIndexChange)="onTabChange($event)">
         <!-- Daily Report -->
         <mat-tab label="Daily Report">
           <div class="tab-content">

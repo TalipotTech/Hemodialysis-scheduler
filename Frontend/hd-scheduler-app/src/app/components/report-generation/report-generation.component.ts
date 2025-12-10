@@ -40,6 +40,7 @@ export class ReportGenerationComponent implements OnInit {
   generatedReport: string | null = null;
   reportTitle = '';
   reportType = 'daily';
+  selectedTabIndex = 0;
   selectedDate: Date = new Date();
   selectedStartDate: Date = new Date();
   selectedEndDate: Date = new Date();
@@ -57,6 +58,13 @@ export class ReportGenerationComponent implements OnInit {
     this.loadPatients();
     this.loadTemplates();
     this.selectedStartDate.setDate(this.selectedStartDate.getDate() - 7);
+  }
+
+  onTabChange(index: number) {
+    this.selectedTabIndex = index;
+    const tabTypes = ['daily', 'weekly', 'patient'];
+    this.reportType = tabTypes[index];
+    this.generatedReport = null; // Clear previous report when switching tabs
   }
 
   loadPatients() {
@@ -120,7 +128,7 @@ export class ReportGenerationComponent implements OnInit {
         // Handle both old format (direct content) and new format (wrapped in content property)
         const reportContent = response.content || response;
         this.generatedReport = typeof reportContent === 'string' 
-          ? reportContent 
+          ? this.convertMarkdownToHtml(reportContent)
           : this.formatReport(reportContent);
         this.loading = false;
       },
@@ -162,6 +170,36 @@ export class ReportGenerationComponent implements OnInit {
 
   getSafeHtml(html: string): SafeHtml {
     return this.sanitizer.sanitize(1, html) || '';
+  }
+
+  convertMarkdownToHtml(markdown: string): string {
+    let html = markdown;
+    
+    // Convert headers
+    html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+    html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+    html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+    
+    // Convert bold
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    // Convert bullet points
+    html = html.replace(/^\* (.*$)/gim, '<li>$1</li>');
+    html = html.replace(/^- (.*$)/gim, '<li>$1</li>');
+    
+    // Wrap lists
+    html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+    
+    // Convert line breaks
+    html = html.replace(/\n\n/g, '</p><p>');
+    html = html.replace(/\n/g, '<br>');
+    
+    // Wrap in paragraph if not already wrapped
+    if (!html.startsWith('<')) {
+      html = '<p>' + html + '</p>';
+    }
+    
+    return html;
   }
 
   exportToPdf() {
