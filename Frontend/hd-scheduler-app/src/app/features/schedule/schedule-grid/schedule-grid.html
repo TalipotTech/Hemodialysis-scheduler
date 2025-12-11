@@ -1,346 +1,304 @@
 <div class="schedule-container">
-  <mat-card>
-    <mat-card-header>
-      <mat-card-title>
+  <div class="e-card">
+    <div class="e-card-header">
+      <div class="e-card-header-title">
         <div class="header-row">
           <div class="header-left">
-            <button mat-icon-button (click)="goBack()" class="back-button">
+            <button class="e-btn e-icon-btn" (click)="goBack()">
               <mat-icon>arrow_back</mat-icon>
             </button>
             <h2>Daily HD Schedule</h2>
           </div>
           <div class="header-actions">
-            <mat-form-field appearance="outline" class="date-picker">
-              <mat-label>Select Date</mat-label>
-              <input matInput [matDatepicker]="picker" [(ngModel)]="selectedDate" (dateChange)="onDateChange()">
-              <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
-              <mat-datepicker #picker></mat-datepicker>
-            </mat-form-field>
-            <button mat-icon-button (click)="onRefresh()" matTooltip="Refresh Now">
+            <ejs-datepicker
+              placeholder="Select Date"
+              [(value)]="selectedDate"
+              (change)="onDateChange()"
+              [cssClass]="'date-picker'">
+            </ejs-datepicker>
+            <button class="e-btn e-icon-btn" (click)="onRefresh()" ejs-tooltip content="Refresh Now">
               <mat-icon>refresh</mat-icon>
             </button>
-            <mat-slide-toggle 
-              [(ngModel)]="autoRefreshEnabled" 
+            <ejs-switch
+              [(checked)]="autoRefreshEnabled"
               (change)="toggleAutoRefresh()"
-              matTooltip="Auto-refresh every 30 seconds"
-              class="auto-refresh-toggle">
-              Auto-Refresh
-            </mat-slide-toggle>
+              [cssClass]="'auto-refresh-toggle'"
+              ejs-tooltip content="Auto-refresh every 30 seconds">
+            </ejs-switch>
+            <span class="switch-label">Auto-Refresh</span>
           </div>
         </div>
-      </mat-card-title>
-    </mat-card-header>
+      </div>
+    </div>
 
-    <mat-card-content>
+    <div class="e-card-content">
       <!-- Tabs for Today's Schedule and Future Bed Schedule -->
-      <mat-tab-group [(selectedIndex)]="selectedTab" (selectedIndexChange)="onTabChange($event)">
-        <!-- Tab 1: Today's Daily Schedule -->
-        <mat-tab label="Today's Schedule">
-          <!-- Statistics -->
-          @if (schedule && !loading) {
-            <div class="stats-row">
-              <div class="stat-card occupied-stat">
-                <div class="stat-icon">
-                  <mat-icon>person</mat-icon>
-                </div>
-                <div class="stat-content">
-                  <div class="stat-value">{{ getTotalOccupied() }}</div>
-                  <div class="stat-label">Occupied Beds</div>
-                </div>
-              </div>
-              <div class="stat-card pre-scheduled-stat">
-                <div class="stat-icon">
-                  <mat-icon>event</mat-icon>
-                </div>
-                <div class="stat-content">
-                  <div class="stat-value">{{ getTotalPreScheduled() }}</div>
-                  <div class="stat-label">Pre-Scheduled</div>
-                </div>
-              </div>
-              <div class="stat-card available-stat">
-                <div class="stat-icon">
-                  <mat-icon>check_circle</mat-icon>
-                </div>
-                <div class="stat-content">
-                  <div class="stat-value">{{ getTotalCapacity() - getTotalOccupied() }}</div>
-                  <div class="stat-label">Available Beds</div>
-                </div>
-              </div>
-              <div class="stat-card occupancy-stat">
-                <div class="stat-icon">
-                  <mat-icon>pie_chart</mat-icon>
-                </div>
-                <div class="stat-content">
-                  <div class="stat-value">{{ getOccupancyRate() }}%</div>
-                  <div class="stat-label">Occupancy Rate</div>
-                </div>
-              </div>
-            </div>
-          }
-
-      <!-- Loading Spinner -->
-      @if (loading) {
-        <div class="loading-container">
-          <mat-spinner></mat-spinner>
-        </div>
-      }
-
-      <!-- Error Message -->
-      @if (errorMessage && !loading) {
-        <div class="error-message">
-          <mat-icon>error</mat-icon>
-          {{ errorMessage }}
-        </div>
-      }
-
-      <!-- Schedule Grid -->
-      @if (!loading && !errorMessage && schedule) {
-        <div class="grid-navigation-wrapper">
-          <button mat-fab class="nav-button nav-button-left" (click)="goToPreviousDay()" matTooltip="Previous Day">
-            <mat-icon>chevron_left</mat-icon>
-          </button>
-          
-          <div class="schedule-grid">
-          <!-- Compact Legend with Filters -->
-          <div class="legend-bar">
-            <div class="legend-section">
-              <span class="legend-title">
-                <mat-icon>palette</mat-icon>
-                Bed Status:
-              </span>
-              <div class="legend-items">
-                <div class="legend-chip available">
-                  <mat-icon>check_circle</mat-icon>
-                  <span>Available</span>
-                </div>
-                <div class="legend-chip occupied">
-                  <mat-icon>person</mat-icon>
-                  <span>Occupied</span>
-                </div>
-                <div class="legend-chip pre-scheduled">
-                  <mat-icon>event</mat-icon>
-                  <span>Pre-Scheduled</span>
-                </div>
-                <div class="legend-chip completed">
-                  <mat-icon>verified</mat-icon>
-                  <span>Completed</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Schedule Cards -->
-          <div class="slots-container">
-            @for (slot of schedule.slots; track slot.slotID) {
-              <div class="slot-card">
-                <!-- Slot Header -->
-                <div class="slot-card-header">
-                  <div class="slot-info">
-                    <h3>{{ slot.slotName }}</h3>
-                    <span class="time-range">
-                      <mat-icon>schedule</mat-icon>
-                      {{ slot.timeRange }}
-                    </span>
-                  </div>
-                  <div class="slot-stats">
-                    <span class="stat-badge occupied">
+      <ejs-tab [selectedItem]="selectedTab" (selected)="onTabChange($event.selectedIndex)">
+        <e-tabitems>
+          <!-- Tab 1: Today's Daily Schedule -->
+          <e-tabitem [header]="{'text': 'Today\'s Schedule'}">
+            <ng-template #content>
+              <!-- Statistics -->
+              @if (schedule && !loading) {
+                <div class="stats-row">
+                  <div class="stat-card occupied-stat">
+                    <div class="stat-icon">
                       <mat-icon>person</mat-icon>
-                      {{ getSlotOccupied(slot) }}
-                    </span>
-                    <span class="stat-badge available">
+                    </div>
+                    <div class="stat-content">
+                      <div class="stat-value">{{ getTotalOccupied() }}</div>
+                      <div class="stat-label">Occupied Beds</div>
+                    </div>
+                  </div>
+                  <div class="stat-card pre-scheduled-stat">
+                    <div class="stat-icon">
+                      <mat-icon>event</mat-icon>
+                    </div>
+                    <div class="stat-content">
+                      <div class="stat-value">{{ getTotalPreScheduled() }}</div>
+                      <div class="stat-label">Pre-Scheduled</div>
+                    </div>
+                  </div>
+                  <div class="stat-card available-stat">
+                    <div class="stat-icon">
                       <mat-icon>check_circle</mat-icon>
-                      {{ getSlotAvailable(slot) }}
-                    </span>
+                    </div>
+                    <div class="stat-content">
+                      <div class="stat-value">{{ getTotalCapacity() - getTotalOccupied() }}</div>
+                      <div class="stat-label">Available Beds</div>
+                    </div>
+                  </div>
+                  <div class="stat-card occupancy-stat">
+                    <div class="stat-icon">
+                      <mat-icon>pie_chart</mat-icon>
+                    </div>
+                    <div class="stat-content">
+                      <div class="stat-value">{{ getOccupancyRate() }}%</div>
+                      <div class="stat-label">Occupancy Rate</div>
+                    </div>
                   </div>
                 </div>
+              }
 
-                <!-- Beds Grid -->
-                <div class="beds-grid">
-                  @for (bed of getBedsForSlot(slot); track bed) {
-                    <div class="bed-card" 
-                         [class]="getBedClass(slot.slotID, bed)"
-                         [class.clickable]="getBed(slot.slotID, bed)?.status === 'occupied' || getBed(slot.slotID, bed)?.status === 'pre-scheduled' || getBed(slot.slotID, bed)?.status === 'completed'"
-                         [matTooltip]="getBedTooltip(slot.slotID, bed)"
-                         (click)="onBedClick(slot.slotID, bed)">
-                      
-                      <div class="bed-number">
-                        <mat-icon>hotel</mat-icon>
-                        <span>{{ bed }}</span>
-                      </div>
+              <!-- Loading Spinner -->
+              @if (loading) {
+                <div class="loading-container">
+                  <div class="e-spinner-pane">
+                    <div class="e-spinner-inner">
+                      <div class="e-spin-material"></div>
+                    </div>
+                  </div>
+                </div>
+              }
 
-                      @if (getBed(slot.slotID, bed)?.patient) {
-                        <div class="patient-card-info">
-                          <div class="patient-name">{{ getBed(slot.slotID, bed)?.patient?.name }}</div>
-                          <div class="patient-details">
-                            <span class="age">
-                              <mat-icon>cake</mat-icon>
-                              {{ getBed(slot.slotID, bed)?.patient?.age }} yrs
-                            </span>
+              <!-- Error Message -->
+              @if (errorMessage && !loading) {
+                <div class="error-message">
+                  <mat-icon>error</mat-icon>
+                  {{ errorMessage }}
+                </div>
+              }
+
+              <!-- Schedule Grid -->
+              @if (!loading && !errorMessage && schedule) {
+                <div class="grid-navigation-wrapper">
+                  <button class="e-btn e-fab nav-button nav-button-left" (click)="goToPreviousDay()" ejs-tooltip content="Previous Day">
+                    <mat-icon>chevron_left</mat-icon>
+                  </button>
+                  
+                  <div class="schedule-grid">
+                    <!-- Compact Legend with Filters -->
+                    <div class="legend-bar">
+                      <div class="legend-section">
+                        <span class="legend-title">
+                          <mat-icon>palette</mat-icon>
+                          Bed Status:
+                        </span>
+                        <div class="legend-items">
+                          <div class="legend-chip available">
+                            <mat-icon>check_circle</mat-icon>
+                            <span>Available</span>
                           </div>
-                          <div class="session-info">{{ getSessionInfo(getBed(slot.slotID, bed)) }}</div>
-                          <button mat-mini-fab 
-                                  class="action-btn"
-                                  color="primary"
-                                  matTooltip="View Details"
-                                  (click)="$event.stopPropagation(); onBedClick(slot.slotID, bed)">
-                            <mat-icon>visibility</mat-icon>
-                          </button>
+                          <div class="legend-chip occupied">
+                            <mat-icon>person</mat-icon>
+                            <span>Occupied</span>
+                          </div>
+                          <div class="legend-chip pre-scheduled">
+                            <mat-icon>event</mat-icon>
+                            <span>Pre-Scheduled</span>
+                          </div>
+                          <div class="legend-chip completed">
+                            <mat-icon>verified</mat-icon>
+                            <span>Completed</span>
+                          </div>
                         </div>
-                      } @else {
-                        <div class="empty-bed">
-                          <mat-icon>event_available</mat-icon>
-                          <span>Available</span>
+                      </div>
+                    </div>
+
+                    <!-- Schedule Cards -->
+                    <div class="slots-container">
+                      @for (slot of schedule.slots; track slot.slotID) {
+                        <div class="slot-card">
+                          <!-- Slot Header -->
+                          <div class="slot-card-header">
+                            <div class="slot-info">
+                              <h3>{{ slot.slotName }}</h3>
+                              <span class="time-range">
+                                <mat-icon>schedule</mat-icon>
+                                {{ slot.timeRange }}
+                              </span>
+                            </div>
+                            <div class="slot-stats">
+                              <span class="stat-badge occupied">
+                                <mat-icon>person</mat-icon>
+                                {{ getSlotOccupied(slot) }}
+                              </span>
+                              <span class="stat-badge available">
+                                <mat-icon>check_circle</mat-icon>
+                                {{ getSlotAvailable(slot) }}
+                              </span>
+                            </div>
+                          </div>
+
+                          <!-- Beds Grid -->
+                          <div class="beds-grid">
+                            @for (bed of getBedsForSlot(slot); track bed) {
+                              <div class="bed-card" 
+                                   [class]="getBedClass(slot.slotID, bed)"
+                                   [class.clickable]="getBed(slot.slotID, bed)?.status === 'occupied' || getBed(slot.slotID, bed)?.status === 'pre-scheduled' || getBed(slot.slotID, bed)?.status === 'completed'"
+                                   [title]="getBedTooltip(slot.slotID, bed)"
+                                   (click)="onBedClick(slot.slotID, bed)">
+                                
+                                <div class="bed-number">
+                                  <mat-icon>hotel</mat-icon>
+                                  <span>{{ bed }}</span>
+                                </div>
+
+                                @if (getBed(slot.slotID, bed)?.patient) {
+                                  <div class="patient-card-info">
+                                    <div class="patient-name">{{ getBed(slot.slotID, bed)?.patient?.name }}</div>
+                                    <div class="patient-details">
+                                      <span class="age">
+                                        <mat-icon>cake</mat-icon>
+                                        {{ getBed(slot.slotID, bed)?.patient?.age }} yrs
+                                      </span>
+                                    </div>
+                                    <div class="session-info">{{ getSessionInfo(getBed(slot.slotID, bed)) }}</div>
+                                    <button class="e-btn e-small e-round action-btn"
+                                            ejs-tooltip content="View Details"
+                                            (click)="$event.stopPropagation(); onBedClick(slot.slotID, bed)">
+                                      <mat-icon>visibility</mat-icon>
+                                    </button>
+                                  </div>
+                                } @else {
+                                  <div class="empty-bed">
+                                    <mat-icon>event_available</mat-icon>
+                                    <span>Available</span>
+                                  </div>
+                                }
+                              </div>
+                            }
+                          </div>
                         </div>
                       }
                     </div>
-                  }
+
+                    @if (schedule.slots.length === 0) {
+                      <div class="empty-state">
+                        <mat-icon>event_busy</mat-icon>
+                        <h3>No Slots Available</h3>
+                        <p>There are no dialysis slots scheduled for {{ formatDate(selectedDate) }}.</p>
+                      </div>
+                    }
+                  </div>
+
+                  <button class="e-btn e-fab nav-button nav-button-right" (click)="goToNextDay()" ejs-tooltip content="Next Day">
+                    <mat-icon>chevron_right</mat-icon>
+                  </button>
                 </div>
-              </div>
-            }
-          </div>
-        </div>
-        
-        <button mat-fab class="nav-button nav-button-right" (click)="goToNextDay()" matTooltip="Next Day">
-          <mat-icon>chevron_right</mat-icon>
-        </button>
-      </div>
-      }
+              }
+            </ng-template>
+          </e-tabitem>
 
-          <!-- Empty State -->
-          @if (!loading && !errorMessage && !schedule) {
-            <div class="empty-state">
-              <mat-icon>event_busy</mat-icon>
-              <h3>No Schedule Available</h3>
-              <p>No schedule found for the selected date</p>
-            </div>
-          }
-        </mat-tab>
+          <!-- Tab 2: Future Bed Schedule -->
+          <e-tabitem [header]="{'text': 'Future Bed Schedule'}">
+            <ng-template #content>
+              @if (loading) {
+                <div class="loading-container">
+                  <div class="e-spinner-pane">
+                    <div class="e-spinner-inner">
+                      <div class="e-spin-material"></div>
+                    </div>
+                  </div>
+                </div>
+              }
 
-        <!-- Tab 2: Future Bed Schedule -->
-        <mat-tab label="Bed Schedule (Future Sessions)">
-          <div class="future-schedule-container">
-            <div class="info-banner">
-              <mat-icon>info</mat-icon>
-              <span>This shows all future scheduled dialysis sessions. History tab shows only completed treatments.</span>
-            </div>
+              @if (!loading && futureSessions.length > 0) {
+                <!-- Syncfusion Grid for Future Sessions -->
+                <ejs-grid
+                  [dataSource]="futureSessions"
+                  [allowPaging]="true"
+                  [allowSorting]="true"
+                  [allowFiltering]="true"
+                  [pageSettings]="{ pageSize: 10, pageSizes: [10, 20, 50, 100] }"
+                  [filterSettings]="{ type: 'Excel' }"
+                  [sortSettings]="{ columns: [{ field: 'sessionDate', direction: 'Ascending' }] }">
+                  
+                  <e-columns>
+                    <e-column field="sessionDate" headerText="Session Date" width="120" textAlign="Center" type="date" format="dd MMM yyyy"></e-column>
+                    <e-column field="patientName" headerText="Patient Name" width="150"></e-column>
+                    <e-column field="age" headerText="Age" width="80" textAlign="Center"></e-column>
+                    <e-column field="slotName" headerText="Shift" width="120"></e-column>
+                    <e-column field="bedNumber" headerText="Bed" width="80" textAlign="Center"></e-column>
+                    <e-column field="hdCycle" headerText="HD Cycle" width="100" textAlign="Center"></e-column>
+                    <e-column 
+                      field="status" 
+                      headerText="Status" 
+                      width="120" 
+                      textAlign="Center"
+                      [template]="statusTemplate">
+                    </e-column>
+                    <e-column 
+                      headerText="Actions" 
+                      width="120" 
+                      textAlign="Center"
+                      [template]="actionsTemplate">
+                    </e-column>
+                  </e-columns>
+                </ejs-grid>
 
-            <!-- Loading Spinner -->
-            @if (loadingFuture) {
-              <div class="loading-container">
-                <mat-spinner></mat-spinner>
-              </div>
-            }
+                <!-- Status Template -->
+                <ng-template #statusTemplate let-data>
+                  <ejs-chiplist>
+                    <e-chips>
+                      <e-chip 
+                        [text]="data.status === 'pre-scheduled' ? 'Pre-Scheduled' : 'Pending'"
+                        [cssClass]="data.status === 'pre-scheduled' ? 'e-success' : 'e-warning'">
+                      </e-chip>
+                    </e-chips>
+                  </ejs-chiplist>
+                </ng-template>
 
-            <!-- Future Sessions Table -->
-            @if (!loadingFuture && futureScheduledSessions.length > 0) {
-              <div class="future-schedule-table">
-                <table mat-table [dataSource]="futureScheduledSessions" class="mat-elevation-z2">
-                  <!-- Date Column -->
-                  <ng-container matColumnDef="sessionDate">
-                    <th mat-header-cell *matHeaderCellDef>Session Date</th>
-                    <td mat-cell *matCellDef="let session">
-                      <div class="session-date">
-                        <mat-icon>event</mat-icon>
-                        {{ formatDate(session.sessionDate) }}
-                      </div>
-                    </td>
-                  </ng-container>
+                <!-- Actions Template -->
+                <ng-template #actionsTemplate let-data>
+                  <button class="e-btn e-small e-info" (click)="navigateToWorkflow(data.patientId, data.scheduleId)">
+                    <mat-icon>timeline</mat-icon>
+                    Workflow
+                  </button>
+                </ng-template>
+              }
 
-                  <!-- Patient Name Column -->
-                  <ng-container matColumnDef="patientName">
-                    <th mat-header-cell *matHeaderCellDef>Patient</th>
-                    <td mat-cell *matCellDef="let session">
-                      <div class="patient-info">
-                        <strong>{{ session.patientName }}</strong>
-                        <div class="patient-mrn">MRN: {{ session.patientMRN || 'N/A' }}</div>
-                      </div>
-                    </td>
-                  </ng-container>
-
-                  <!-- Age Column -->
-                  <ng-container matColumnDef="age">
-                    <th mat-header-cell *matHeaderCellDef>Age</th>
-                    <td mat-cell *matCellDef="let session">{{ session.patientAge || 'N/A' }}</td>
-                  </ng-container>
-
-                  <!-- Slot Column -->
-                  <ng-container matColumnDef="slotName">
-                    <th mat-header-cell *matHeaderCellDef>Time Slot</th>
-                    <td mat-cell *matCellDef="let session">
-                      <div class="slot-info">
-                        <mat-icon>schedule</mat-icon>
-                        {{ getSlotName(session.slotID) }}
-                      </div>
-                    </td>
-                  </ng-container>
-
-                  <!-- Bed Number Column -->
-                  <ng-container matColumnDef="bedNumber">
-                    <th mat-header-cell *matHeaderCellDef>Bed</th>
-                    <td mat-cell *matCellDef="let session">
-                      <mat-chip [class.chip-assigned]="session.bedNumber" [class.chip-unassigned]="!session.bedNumber">
-                        {{ session.bedNumber ? 'Bed ' + session.bedNumber : 'Not Assigned' }}
-                      </mat-chip>
-                    </td>
-                  </ng-container>
-
-                  <!-- HD Cycle Column -->
-                  <ng-container matColumnDef="hdCycle">
-                    <th mat-header-cell *matHeaderCellDef>HD Cycle</th>
-                    <td mat-cell *matCellDef="let session">
-                      <div class="hd-cycle">
-                        <mat-icon>repeat</mat-icon>
-                        {{ session.hdCycle || 'N/A' }}
-                      </div>
-                    </td>
-                  </ng-container>
-
-                  <!-- Status Column -->
-                  <ng-container matColumnDef="status">
-                    <th mat-header-cell *matHeaderCellDef>Status</th>
-                    <td mat-cell *matCellDef="let session">
-                      <mat-chip [class.chip-pre-scheduled]="session.sessionStatus === 'Pre-Scheduled'" [class.chip-active]="session.sessionStatus !== 'Pre-Scheduled'">
-                        {{ session.sessionStatus || 'Active' }}
-                      </mat-chip>
-                    </td>
-                  </ng-container>
-
-                  <!-- Actions Column -->
-                  <ng-container matColumnDef="actions">
-                    <th mat-header-cell *matHeaderCellDef>Actions</th>
-                    <td mat-cell *matCellDef="let session">
-                      <button mat-icon-button 
-                              color="primary"
-                              matTooltip="View/Edit Session Details"
-                              (click)="viewSessionDetails(session.scheduleID)">
-                        <mat-icon>visibility</mat-icon>
-                      </button>
-                    </td>
-                  </ng-container>
-
-                  <tr mat-header-row *matHeaderRowDef="futureScheduleColumns"></tr>
-                  <tr mat-row *matRowDef="let row; columns: futureScheduleColumns;" 
-                      class="future-session-row"></tr>
-                </table>
-              </div>
-
-              <div class="summary-info">
-                <mat-icon>info_outline</mat-icon>
-                <span>Total Future Sessions: <strong>{{ futureScheduledSessions.length }}</strong></span>
-              </div>
-            }
-
-            <!-- Empty State -->
-            @if (!loadingFuture && futureScheduledSessions.length === 0) {
-              <div class="empty-state">
-                <mat-icon>event_available</mat-icon>
-                <h3>No Future Sessions Scheduled</h3>
-                <p>There are no upcoming dialysis sessions scheduled at this time.</p>
-              </div>
-            }
-          </div>
-        </mat-tab>
-      </mat-tab-group>
-    </mat-card-content>
-  </mat-card>
+              @if (!loading && futureSessions.length === 0) {
+                <div class="empty-state">
+                  <mat-icon>event_available</mat-icon>
+                  <h3>No Future Sessions</h3>
+                  <p>There are no pre-scheduled sessions for future dates.</p>
+                </div>
+              }
+            </ng-template>
+          </e-tabitem>
+        </e-tabitems>
+      </ejs-tab>
+    </div>
+  </div>
 </div>

@@ -1,22 +1,15 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { Router } from '@angular/router';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule } from '@angular/material/core';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatTabsModule } from '@angular/material/tabs';
-import { MatTableModule } from '@angular/material/table';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { FormsModule } from '@angular/forms';
+// Syncfusion imports
+import { GridModule, PageService, SortService, FilterService, ToolbarService } from '@syncfusion/ej2-angular-grids';
+import { DatePickerModule } from '@syncfusion/ej2-angular-calendars';
+import { ButtonModule, ChipListModule, SwitchModule } from '@syncfusion/ej2-angular-buttons';
+import { ToastModule, ToastUtility } from '@syncfusion/ej2-angular-notifications';
+import { TabModule } from '@syncfusion/ej2-angular-navigations';
+import { TooltipModule } from '@syncfusion/ej2-angular-popups';
 import { ScheduleService } from '../../../core/services/schedule.service';
 import { DailyScheduleResponse, SlotSchedule, BedStatus } from '../../../core/models/schedule.model';
 
@@ -25,22 +18,17 @@ import { DailyScheduleResponse, SlotSchedule, BedStatus } from '../../../core/mo
   imports: [
     CommonModule,
     FormsModule,
-    MatCardModule,
-    MatButtonModule,
-    MatIconModule,
-    MatProgressSpinnerModule,
-    MatDatepickerModule,
-    MatNativeDateModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatTooltipModule,
-    MatCheckboxModule,
-    MatSnackBarModule,
-    MatTabsModule,
-    MatTableModule,
-    MatChipsModule,
-    MatSlideToggleModule
+    MatIconModule, // Keep Material icons for now
+    GridModule,
+    DatePickerModule,
+    ButtonModule,
+    ChipListModule,
+    SwitchModule,
+    ToastModule,
+    TabModule,
+    TooltipModule
   ],
+  providers: [PageService, SortService, FilterService, ToolbarService],
   templateUrl: './schedule-grid.html',
   styleUrl: './schedule-grid.scss',
 })
@@ -61,18 +49,14 @@ export class ScheduleGrid implements OnInit, OnDestroy {
   private readonly REFRESH_INTERVAL_MS = 30000; // 30 seconds
 
   // Future scheduled sessions (Bed Schedule)
-  futureScheduledSessions: any[] = [];
+  futureSessions: any[] = [];
   loadingFuture = false;
   selectedTab = 0;
-
-  // Columns for future schedule table
-  futureScheduleColumns: string[] = ['sessionDate', 'patientName', 'age', 'slotName', 'bedNumber', 'hdCycle', 'status', 'actions'];
 
   constructor(
     private scheduleService: ScheduleService,
     private location: Location,
-    private router: Router,
-    private snackBar: MatSnackBar
+    private router: Router
   ) {}
 
   goBack(): void {
@@ -94,11 +78,21 @@ export class ScheduleGrid implements OnInit, OnDestroy {
   toggleAutoRefresh(): void {
     if (this.autoRefreshEnabled) {
       this.startAutoRefresh();
-      this.snackBar.open('Auto-refresh enabled (every 30 seconds)', 'Close', { duration: 3000 });
+      this.showToast('Auto-refresh enabled (every 30 seconds)', 'Information');
     } else {
       this.stopAutoRefresh();
-      this.snackBar.open('Auto-refresh disabled', 'Close', { duration: 3000 });
+      this.showToast('Auto-refresh disabled', 'Information');
     }
+  }
+  
+  private showToast(message: string, title: string = 'Notification'): void {
+    ToastUtility.show({
+      title: title,
+      content: message,
+      position: { X: 'Right', Y: 'Top' },
+      showCloseButton: true,
+      timeOut: 3000
+    });
   }
 
   startAutoRefresh(): void {
@@ -286,8 +280,8 @@ export class ScheduleGrid implements OnInit, OnDestroy {
     this.scheduleService.getFutureScheduledSessions().subscribe({
       next: (response: any) => {
         if (response.success && response.data) {
-          this.futureScheduledSessions = response.data;
-          console.log('Future scheduled sessions:', this.futureScheduledSessions);
+          this.futureSessions = response.data;
+          console.log('Future scheduled sessions:', this.futureSessions);
         }
         this.loadingFuture = false;
       },
@@ -320,8 +314,8 @@ export class ScheduleGrid implements OnInit, OnDestroy {
     return slotNames[slotId] || 'Unknown Slot';
   }
 
-  formatDate(dateString: string): string {
-    const date = new Date(dateString);
+  formatDate(dateString: string | Date): string {
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
     return date.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
   }
 
@@ -360,7 +354,7 @@ export class ScheduleGrid implements OnInit, OnDestroy {
     console.log('Bed clicked:', { slotId, bedNumber, bed });
     
     if (!bed) {
-      this.snackBar.open('Bed information not available', 'Close', { duration: 3000 });
+      this.showToast('Bed information not available', 'Warning');
       return;
     }
 
@@ -370,16 +364,16 @@ export class ScheduleGrid implements OnInit, OnDestroy {
       console.log('Navigating to edit session:', bed.scheduleId);
       this.router.navigate(['/schedule/hd-session/edit', bed.scheduleId]);
     } else if (bed.status === 'available') {
-      this.snackBar.open('This bed is available. Please select a patient first.', 'Close', { duration: 3000 });
+      this.showToast('This bed is available. Please select a patient first.', 'Information');
     } else {
       // For any other status, show a generic message
-      this.snackBar.open(`Bed is ${bed.status}. No action available.`, 'Close', { duration: 3000 });
+      this.showToast(`Bed is ${bed.status}. No action available.`, 'Information');
     }
   }
 
   navigateToWorkflow(patientId: number, scheduleId: number): void {
     if (!patientId || !scheduleId) {
-      this.snackBar.open('Session information incomplete', 'Close', { duration: 3000 });
+      this.showToast('Session information incomplete', 'Warning');
       return;
     }
     this.router.navigate(['/patients', patientId, 'workflow', scheduleId]);

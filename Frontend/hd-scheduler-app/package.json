@@ -40,6 +40,8 @@
     "@syncfusion/ej2-angular-dropdowns": "^31.2.18",
     "@syncfusion/ej2-angular-grids": "^31.2.18",
     "@syncfusion/ej2-angular-inputs": "^31.2.15",
+    "@syncfusion/ej2-angular-navigations": "^31.2.16",
+    "@syncfusion/ej2-angular-notifications": "^31.2.12",
     "@syncfusion/ej2-angular-popups": "^31.2.12",
     "@syncfusion/ej2-angular-schedule": "^31.2.15",
     "@syncfusion/ej2-base": "^31.2.18",
