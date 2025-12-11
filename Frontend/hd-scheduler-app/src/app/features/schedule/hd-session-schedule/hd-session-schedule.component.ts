@@ -302,14 +302,34 @@ export class HdSessionScheduleComponent implements OnInit {
               this.autoFilledFields.push({ label: 'Dry Weight', value: `${this.patient.dryWeight} kg` });
             }
             
-            if (this.patient.hdStartDate) {
+            // Calculate next treatment date based on HD Cycle and last session
+            let nextTreatmentDate = new Date(); // Default to today
+            if (this.patient.hdStartDate && this.patient.hdCycle) {
+              const hdStartDate = new Date(this.patient.hdStartDate);
+              this.sessionForm.patchValue({ hdStartDate: hdStartDate });
+              this.autoFilledFields.push({ label: 'HD Start Date', value: hdStartDate.toLocaleDateString() });
+              
+              // Calculate next treatment date based on HD Cycle
+              nextTreatmentDate = this.calculateNextTreatmentDate(this.patient.hdCycle, hdStartDate);
+              this.sessionForm.patchValue({ treatmentDate: nextTreatmentDate });
+              this.autoFilledFields.push({ label: 'Treatment Date', value: nextTreatmentDate.toLocaleDateString() });
+            } else if (this.patient.hdStartDate) {
               const hdStartDate = new Date(this.patient.hdStartDate);
               this.sessionForm.patchValue({ 
                 hdStartDate: hdStartDate,
-                treatmentDate: hdStartDate // Set treatment date to HD start date
+                treatmentDate: new Date() // Default to today if no HD Cycle
               });
               this.autoFilledFields.push({ label: 'HD Start Date', value: hdStartDate.toLocaleDateString() });
-              this.autoFilledFields.push({ label: 'Treatment Date', value: hdStartDate.toLocaleDateString() });
+            }
+            
+            // Populate preferred time slot if available
+            if (this.patient.preferredSlotID) {
+              this.sessionForm.patchValue({ slotID: this.patient.preferredSlotID });
+              this.selectedSlot = this.patient.preferredSlotID;
+              const slotName = this.getSlotName(this.patient.preferredSlotID);
+              this.autoFilledFields.push({ label: 'Preferred Time Slot', value: slotName });
+              // Load occupied beds for the selected slot
+              this.loadOccupiedBeds();
             }
             
             if (this.patient.hdCycle) {
@@ -1804,6 +1824,112 @@ export class HdSessionScheduleComponent implements OnInit {
     if (confidence >= 0.8) return 'high';
     if (confidence >= 0.6) return 'medium';
     return 'low';
+  }
+
+  calculateNextTreatmentDate(hdCycle: string, hdStartDate: Date): Date {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const startDate = new Date(hdStartDate);
+    startDate.setHours(0, 0, 0, 0);
+    
+    // If HD start date is in the future, use it
+    if (startDate > today) {
+      return startDate;
+    }
+    
+    // Calculate next treatment date based on HD Cycle
+    switch (hdCycle) {
+      case 'Daily':
+        return today;
+      
+      case 'Every 2 days':
+        const daysSinceStart2 = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        const remainder2 = daysSinceStart2 % 2;
+        if (remainder2 === 0) {
+          return today;
+        } else {
+          const nextDate = new Date(today);
+          nextDate.setDate(today.getDate() + (2 - remainder2));
+          return nextDate;
+        }
+      
+      case 'Every 3 days':
+      case '2x/week':
+        const daysSinceStart3 = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        const remainder3 = daysSinceStart3 % 3;
+        if (remainder3 === 0) {
+          return today;
+        } else {
+          const nextDate = new Date(today);
+          nextDate.setDate(today.getDate() + (3 - remainder3));
+          return nextDate;
+        }
+      
+      case 'Every 4 days':
+        const daysSinceStart4 = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        const remainder4 = daysSinceStart4 % 4;
+        if (remainder4 === 0) {
+          return today;
+        } else {
+          const nextDate = new Date(today);
+          nextDate.setDate(today.getDate() + (4 - remainder4));
+          return nextDate;
+        }
+      
+      case 'Every 5 days':
+        const daysSinceStart5 = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        const remainder5 = daysSinceStart5 % 5;
+        if (remainder5 === 0) {
+          return today;
+        } else {
+          const nextDate = new Date(today);
+          nextDate.setDate(today.getDate() + (5 - remainder5));
+          return nextDate;
+        }
+      
+      case 'Every 7 days':
+        const daysSinceStart7 = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        const remainder7 = daysSinceStart7 % 7;
+        if (remainder7 === 0) {
+          return today;
+        } else {
+          const nextDate = new Date(today);
+          nextDate.setDate(today.getDate() + (7 - remainder7));
+          return nextDate;
+        }
+      
+      case '3x/week':
+        // MWF pattern: Monday, Wednesday, Friday
+        const dayOfWeek = today.getDay();
+        if (dayOfWeek === 1 || dayOfWeek === 3 || dayOfWeek === 5) {
+          return today; // Today is a treatment day
+        } else if (dayOfWeek === 0) {
+          // Sunday -> next Monday
+          const nextDate = new Date(today);
+          nextDate.setDate(today.getDate() + 1);
+          return nextDate;
+        } else if (dayOfWeek === 2) {
+          // Tuesday -> next Wednesday
+          const nextDate = new Date(today);
+          nextDate.setDate(today.getDate() + 1);
+          return nextDate;
+        } else if (dayOfWeek === 4) {
+          // Thursday -> next Friday
+          const nextDate = new Date(today);
+          nextDate.setDate(today.getDate() + 1);
+          return nextDate;
+        } else {
+          // Saturday -> next Monday
+          const nextDate = new Date(today);
+          nextDate.setDate(today.getDate() + 2);
+          return nextDate;
+        }
+      
+      default:
+        // For unknown patterns, default to today
+        return today;
+    }
   }
 
   ngOnDestroy(): void {

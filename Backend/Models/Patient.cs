@@ -14,6 +14,7 @@ public class Patient
     public string? GuardianName { get; set; } // Guardian name
     public string? HDCycle { get; set; } // HD Cycle pattern (e.g., "MWF", "TTS", "Daily")
     public int? HDFrequency { get; set; } // Number of sessions per week
+    public int? PreferredSlotID { get; set; } // Preferred time slot for recurring sessions (1=Morning, 2=Afternoon, 3=Evening, 4=Night)
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

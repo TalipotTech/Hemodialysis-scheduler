@@ -575,6 +575,22 @@
               }
             }
 
+            &.suggested {
+              background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+              color: #e65100;
+              border: 2px dashed #ffb74d;
+
+              span:first-child {
+                font-size: 18px;
+              }
+
+              &:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(255, 183, 77, 0.3);
+                background: linear-gradient(135deg, #ffecb3 0%, #ffe082 100%);
+              }
+            }
+
             &.completed {
               background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
               color: #1565c0;
@@ -931,6 +947,96 @@
                 box-shadow: 0 8px 24px rgba(156, 39, 176, 0.5);
                 transform: translateY(-4px);
                 border-color: #ba68c8;
+              }
+            }
+
+            &.bed-suggested {
+              background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+              color: #e65100;
+              border: 3px dashed #ffb74d;
+              box-shadow: 0 4px 12px rgba(255, 183, 77, 0.3);
+              position: relative;
+              
+              // Add a badge indicator for suggested sessions
+              &::after {
+                content: '📋';
+                position: absolute;
+                top: 4px;
+                right: 4px;
+                font-size: 14px;
+              }
+
+              .bed-number {
+                color: #e65100;
+                border-bottom-color: rgba(230, 81, 0, 0.2);
+
+                mat-icon {
+                  color: #f57c00;
+                }
+              }
+
+              &:hover {
+                background: linear-gradient(135deg, #ffe0b2 0%, #ffcc80 100%);
+                box-shadow: 0 8px 24px rgba(255, 183, 77, 0.5);
+                transform: translateY(-4px);
+                border-color: #ff9800;
+              }
+              
+              .patient-card-info {
+                .patient-name {
+                  color: #e65100;
+                  font-weight: 700;
+                }
+                
+                .patient-details {
+                  color: #ef6c00;
+                }
+                
+                .session-info {
+                  color: #f57c00;
+                }
+              }
+              
+              // Action buttons for suggested sessions
+              .action-buttons {
+                display: flex;
+                gap: 6px;
+                margin-top: 8px;
+                
+                .confirm-btn, .edit-btn {
+                  padding: 4px 10px;
+                  border: none;
+                  border-radius: 4px;
+                  font-size: 10px;
+                  font-weight: 600;
+                  cursor: pointer;
+                  transition: all 0.2s ease;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  gap: 4px;
+                  flex: 1;
+                }
+                
+                .confirm-btn {
+                  background: #4caf50;
+                  color: white;
+                  
+                  &:hover {
+                    background: #388e3c;
+                    transform: scale(1.05);
+                  }
+                }
+                
+                .edit-btn {
+                  background: #ff6f00;
+                  color: white;
+                  
+                  &:hover {
+                    background: #e65100;
+                    transform: scale(1.05);
+                  }
+                }
               }
             }
 

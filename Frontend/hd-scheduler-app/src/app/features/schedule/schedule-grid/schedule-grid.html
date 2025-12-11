@@ -123,6 +123,10 @@
                             <mat-icon>person</mat-icon>
                             <span>Occupied</span>
                           </div>
+                          <div class="legend-chip suggested">
+                            <span>📋</span>
+                            <span>Suggested (Needs Confirmation)</span>
+                          </div>
                           <div class="legend-chip pre-scheduled">
                             <mat-icon>event</mat-icon>
                             <span>Pre-Scheduled</span>
@@ -184,11 +188,29 @@
                                       </span>
                                     </div>
                                     <div class="session-info">{{ getSessionInfo(getBed(slot.slotID, bed)) }}</div>
-                                    <button class="e-btn e-small e-round action-btn"
-                                            ejs-tooltip content="View Details"
-                                            (click)="$event.stopPropagation(); onBedClick(slot.slotID, bed)">
-                                      <mat-icon>visibility</mat-icon>
-                                    </button>
+                                    
+                                    @if (getBed(slot.slotID, bed)?.scheduleId === 0) {
+                                      <div class="action-buttons">
+                                        <button class="confirm-btn"
+                                                (click)="$event.stopPropagation(); confirmSuggestedSession(getBed(slot.slotID, bed))"
+                                                title="Confirm this suggested session">
+                                          <mat-icon style="font-size: 14px; width: 14px; height: 14px;">check_circle</mat-icon>
+                                          Confirm
+                                        </button>
+                                        <button class="edit-btn"
+                                                (click)="$event.stopPropagation(); editSuggestedSession(getBed(slot.slotID, bed))"
+                                                title="Edit and schedule">
+                                          <mat-icon style="font-size: 14px; width: 14px; height: 14px;">edit</mat-icon>
+                                          Edit
+                                        </button>
+                                      </div>
+                                    } @else {
+                                      <button class="e-btn e-small e-round action-btn"
+                                              ejs-tooltip content="View Details"
+                                              (click)="$event.stopPropagation(); onBedClick(slot.slotID, bed)">
+                                        <mat-icon>visibility</mat-icon>
+                                      </button>
+                                    }
                                   </div>
                                 } @else {
                                   <div class="empty-bed">

@@ -102,7 +102,7 @@ export class PatientForm implements OnInit, OnDestroy {
       hdStartDate: [''], // Date when HD treatment started
       hdCycle: [''], // HD frequency pattern
       hdFrequency: [''], // Sessions per week
-      preferredSlotID: [1], // Preferred time slot (default to Morning)
+      preferredSlotID: [null], // Preferred time slot (null = not set yet)
       prescribedDuration: [''], // Duration in hours
       
       // Dialyser & Dialysate
@@ -268,6 +268,7 @@ export class PatientForm implements OnInit, OnDestroy {
             hdStartDate: patient.hdStartDate || '',
             hdCycle: patient.hdCycle || '',
             hdFrequency: patient.hdFrequency || '',
+            preferredSlotID: patient.preferredSlotID != null ? patient.preferredSlotID : null,
             prescribedDuration: patient.prescribedDuration || '',
             dialyserType: patient.dialyserType || '',
             dialyserModel: patient.dialyserModel || '',
@@ -302,6 +303,18 @@ export class PatientForm implements OnInit, OnDestroy {
 
     // Create patient with basic information and HD treatment details
     const formValue = this.patientForm.value;
+    
+    // Helper function to format date as YYYY-MM-DD to avoid timezone issues
+    const formatDateOnly = (date: any): string | null => {
+      if (!date) return null;
+      const d = new Date(date);
+      if (isNaN(d.getTime())) return null;
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    
     const patientData: CreatePatientRequest = {
       mrn: formValue.mrn || null,
       name: formValue.name,
@@ -314,10 +327,10 @@ export class PatientForm implements OnInit, OnDestroy {
       
       // HD Information
       dryWeight: formValue.dryWeight ? Number(formValue.dryWeight) : null,
-      hdStartDate: formValue.hdStartDate || null,
+      hdStartDate: formatDateOnly(formValue.hdStartDate) as any, // Format as YYYY-MM-DD to avoid timezone shift
       hdCycle: formValue.hdCycle || null,
       hdFrequency: formValue.hdFrequency ? Number(formValue.hdFrequency) : null,
-      preferredSlotID: formValue.preferredSlotID ? Number(formValue.preferredSlotID) : 1,
+      preferredSlotID: formValue.preferredSlotID != null ? Number(formValue.preferredSlotID) : null,
       prescribedDuration: formValue.prescribedDuration ? Number(formValue.prescribedDuration) : null,
       dialyserType: formValue.dialyserType || null,
       dialyserModel: formValue.dialyserModel || null,
@@ -329,6 +342,12 @@ export class PatientForm implements OnInit, OnDestroy {
       bloodTubingCount: formValue.bloodTubingCount ? Number(formValue.bloodTubingCount) : 0,
       totalDialysisCompleted: formValue.totalDialysisCompleted ? Number(formValue.totalDialysisCompleted) : 0
     };
+    
+    // Debug logging
+    console.log('Form Values:', formValue);
+    console.log('Patient Data being sent:', patientData);
+    console.log('PreferredSlotID - Raw:', formValue.preferredSlotID, 'Type:', typeof formValue.preferredSlotID);
+    console.log('PreferredSlotID - Converted:', patientData.preferredSlotID);
 
     if (this.isEditMode && this.patientId) {
       // Update patient information

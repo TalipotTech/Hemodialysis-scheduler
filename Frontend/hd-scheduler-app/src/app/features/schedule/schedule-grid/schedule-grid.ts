@@ -202,13 +202,22 @@ export class ScheduleGrid implements OnInit, OnDestroy {
     const bed = this.getBed(slotId, bedNumber);
     if (!bed) return 'bed-empty';
     
+    // Check if this is an auto-suggested session FIRST (ScheduleID = 0)
+    if (bed.scheduleId === 0) {
+      let className = 'bed-suggested'; // Light blue/cyan - needs confirmation
+      if (!this.shouldShowBed('pre-scheduled')) {
+        className += ' bed-filtered';
+      }
+      return className;
+    }
+    
     let className = '';
     switch (bed.status) {
       case 'occupied':
         className = 'bed-occupied';
         break;
       case 'pre-scheduled':
-        className = 'bed-pre-scheduled';
+        className = 'bed-pre-scheduled'; // Purple - confirmed future session
         break;
       case 'completed':
         className = 'bed-completed';
@@ -377,5 +386,61 @@ export class ScheduleGrid implements OnInit, OnDestroy {
       return;
     }
     this.router.navigate(['/patients', patientId, 'workflow', scheduleId]);
+  }
+  
+  confirmSuggestedSession(bed: any): void {
+    console.log('🟢 Confirm button clicked!', bed);
+    
+    if (!bed || !bed.patient) {
+      console.error('❌ No bed or patient data', bed);
+      this.showToast('Invalid bed data', 'Error');
+      return;
+    }
+    
+    const patientId = bed.patient.patientId;
+    const slotId = bed.slotId;
+    const bedNumber = bed.bedNumber;
+    
+    console.log('📋 Navigating with:', { patientId, slotId, bedNumber });
+    
+    // Navigate to HD Schedule form with pre-filled data
+    this.router.navigate(['/schedule/hd-session/new', patientId], {
+      queryParams: {
+        date: this.formatDateForUrl(this.selectedDate),
+        slotId: slotId,
+        bedNumber: bedNumber,
+        confirm: 'true'
+      }
+    });
+  }
+  
+  editSuggestedSession(bed: any): void {
+    console.log('🟡 Edit button clicked!', bed);
+    
+    if (!bed || !bed.patient) {
+      console.error('❌ No bed or patient data', bed);
+      this.showToast('Invalid bed data', 'Error');
+      return;
+    }
+    
+    const patientId = bed.patient.patientId;
+    
+    console.log('✏️ Navigating to edit for patient:', patientId);
+    
+    // Navigate to HD Schedule form for editing
+    this.router.navigate(['/schedule/hd-session/new', patientId], {
+      queryParams: {
+        date: this.formatDateForUrl(this.selectedDate),
+        slotId: bed.slotId,
+        bedNumber: bed.bedNumber
+      }
+    });
+  }
+  
+  private formatDateForUrl(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }

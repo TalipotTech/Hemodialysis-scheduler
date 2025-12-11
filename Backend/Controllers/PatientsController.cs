@@ -177,6 +177,7 @@ public class PatientsController : ControllerBase
                 GuardianName = request.GuardianName,
                 HDCycle = request.HDCycle,
                 HDFrequency = request.HDFrequency,
+                PreferredSlotID = request.PreferredSlotID,
                 DryWeight = request.DryWeight,
                 HDStartDate = request.HDStartDate,
                 DialyserType = request.DialyserType,
@@ -292,6 +293,9 @@ public class PatientsController : ControllerBase
     {
         try
         {
+            _logger.LogInformation("UpdatePatient called for ID {PatientId}. PreferredSlotID: {SlotId}, DialyserCount: {DialyserCount}, BloodTubingCount: {BloodTubingCount}", 
+                id, request.PreferredSlotID, request.DialyserCount, request.BloodTubingCount);
+            
             var existingPatient = await _patientRepository.GetByIdAsync(id);
             if (existingPatient == null)
             {
@@ -308,6 +312,7 @@ public class PatientsController : ControllerBase
             existingPatient.GuardianName = request.GuardianName;
             existingPatient.HDCycle = request.HDCycle;
             existingPatient.HDFrequency = request.HDFrequency;
+            existingPatient.PreferredSlotID = request.PreferredSlotID;
             existingPatient.DryWeight = request.DryWeight;
             existingPatient.HDStartDate = request.HDStartDate;
             existingPatient.DialyserType = request.DialyserType;

@@ -88,24 +88,12 @@
                       <e-column field="gender" headerText="Gender" width="80"></e-column>
                       <e-column field="contactNumber" headerText="Contact" width="120"></e-column>
                       <e-column 
-                        headerText="Status" 
-                        width="120" 
-                        [template]="statusTemplate">
-                      </e-column>
-                      <e-column 
                         headerText="Actions" 
                         width="400" 
                         [template]="actionsTemplate">
                       </e-column>
                     </e-columns>
                   </ejs-grid>
-
-                  <!-- Status Template -->
-                  <ng-template #statusTemplate let-data>
-                    <span [class]="getPatientStatusClass(data)">
-                      {{ getPatientStatus(data) }}
-                    </span>
-                  </ng-template>
 
                   <!-- Actions Template -->
                   <ng-template #actionsTemplate let-data>

@@ -11,6 +11,7 @@ export interface Patient {
   guardianName?: string; // Guardian name
   hdCycle?: string; // HD Cycle pattern (e.g., "3x/week", "2x/week")
   hdFrequency?: number; // Number of sessions per week
+  preferredSlotID?: number | null; // Preferred time slot (1=Morning, 2=Afternoon, 3=Evening, 4=Night)
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
