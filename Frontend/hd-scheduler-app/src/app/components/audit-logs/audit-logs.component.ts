@@ -4,10 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatTabsModule } from '@angular/material/tabs';
-import { MatPaginatorModule, MatPaginator } from '@angular/material/paginator';
-import { MatSortModule, MatSort } from '@angular/material/sort';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -16,6 +13,7 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { GridModule, PageService, SortService, FilterService, ToolbarService } from '@syncfusion/ej2-angular-grids';
 import { Location } from '@angular/common';
 import { AuditLogsService, AuditLog, AuditStatistics, UserActivity } from '../../services/audit-logs.service';
 
@@ -28,10 +26,7 @@ import { AuditLogsService, AuditLog, AuditStatistics, UserActivity } from '../..
     MatCardModule,
     MatButtonModule,
     MatIconModule,
-    MatTableModule,
     MatTabsModule,
-    MatPaginatorModule,
-    MatSortModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
@@ -39,27 +34,27 @@ import { AuditLogsService, AuditLog, AuditStatistics, UserActivity } from '../..
     MatNativeDateModule,
     MatProgressSpinnerModule,
     MatChipsModule,
-    MatTooltipModule
+    MatTooltipModule,
+    GridModule
   ],
+  providers: [PageService, SortService, FilterService, ToolbarService],
   templateUrl: './audit-logs.component.html',
   styleUrls: ['./audit-logs.component.scss']
 })
 export class AuditLogsComponent implements OnInit {
-  @ViewChild('allLogsPaginator') allLogsPaginator!: MatPaginator;
-  @ViewChild('allLogsSort') allLogsSort!: MatSort;
-  @ViewChild('loginPaginator') loginPaginator!: MatPaginator;
-  @ViewChild('loginSort') loginSort!: MatSort;
-
   // All Logs
-  allLogsDataSource = new MatTableDataSource<AuditLog>([]);
-  allLogsColumns: string[] = ['logID', 'createdAt', 'username', 'action', 'entityType', 'entityID', 'details'];
+  allLogsData: AuditLog[] = [];
   allLogsLoading = true;
   
   // Login History
-  loginHistoryDataSource = new MatTableDataSource<AuditLog>([]);
-  loginHistoryColumns: string[] = ['createdAt', 'username', 'action', 'ipAddress'];
+  loginHistoryData: AuditLog[] = [];
   loginHistoryLoading = true;
   loginDays = 30;
+
+  // Grid settings
+  public pageSettings = { pageSize: 10, pageSizes: [10, 20, 50, 100] };
+  public filterSettings = { type: 'Excel' };
+  public toolbar = ['Search'];
 
   // Statistics
   statistics: AuditStatistics | null = null;
@@ -88,18 +83,11 @@ export class AuditLogsComponent implements OnInit {
     this.loadUserActivity();
   }
 
-  ngAfterViewInit() {
-    this.allLogsDataSource.paginator = this.allLogsPaginator;
-    this.allLogsDataSource.sort = this.allLogsSort;
-    this.loginHistoryDataSource.paginator = this.loginPaginator;
-    this.loginHistoryDataSource.sort = this.loginSort;
-  }
-
   loadAllLogs(): void {
     this.allLogsLoading = true;
     this.auditLogsService.getAllLogs(1, 1000).subscribe({
       next: (response) => {
-        this.allLogsDataSource.data = response.data;
+        this.allLogsData = response.data;
         this.allLogsLoading = false;
       },
       error: (error) => {
@@ -113,7 +101,7 @@ export class AuditLogsComponent implements OnInit {
     this.loginHistoryLoading = true;
     this.auditLogsService.getLoginHistory(undefined, this.loginDays).subscribe({
       next: (response) => {
-        this.loginHistoryDataSource.data = response.data;
+        this.loginHistoryData = response.data;
         this.loginHistoryLoading = false;
       },
       error: (error) => {
@@ -151,17 +139,12 @@ export class AuditLogsComponent implements OnInit {
     });
   }
 
-  applyFilter(event: Event): void {
-    const filterValue = (event.target as HTMLInputElement).value;
-    this.allLogsDataSource.filter = filterValue.trim().toLowerCase();
-  }
-
   filterByAction(): void {
     if (this.selectedAction) {
       this.allLogsLoading = true;
       this.auditLogsService.getLogsByAction(this.selectedAction).subscribe({
         next: (response) => {
-          this.allLogsDataSource.data = response.data;
+          this.allLogsData = response.data;
           this.allLogsLoading = false;
         },
         error: (error) => {
@@ -179,7 +162,7 @@ export class AuditLogsComponent implements OnInit {
       this.allLogsLoading = true;
       this.auditLogsService.getLogsByDateRange(this.startDate, this.endDate).subscribe({
         next: (response) => {
-          this.allLogsDataSource.data = response.data;
+          this.allLogsData = response.data;
           this.allLogsLoading = false;
         },
         error: (error) => {
@@ -194,7 +177,6 @@ export class AuditLogsComponent implements OnInit {
     this.selectedAction = '';
     this.startDate = null;
     this.endDate = null;
-    this.allLogsDataSource.filter = '';
     this.loadAllLogs();
   }
 

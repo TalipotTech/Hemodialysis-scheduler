@@ -24,12 +24,6 @@
             <!-- Filters -->
             <div class="filters-container">
               <mat-form-field appearance="outline" class="filter-field">
-                <mat-label>Search</mat-label>
-                <input matInput (keyup)="applyFilter($event)" placeholder="Search logs..." #input>
-                <mat-icon matPrefix>search</mat-icon>
-              </mat-form-field>
-
-              <mat-form-field appearance="outline" class="filter-field">
                 <mat-label>Action Type</mat-label>
                 <mat-select [(ngModel)]="selectedAction" (selectionChange)="filterByAction()">
                   <mat-option value="">All Actions</mat-option>
@@ -71,76 +65,26 @@
               <p>Loading audit logs...</p>
             </div>
 
-            <!-- Data Table -->
+            <!-- Syncfusion Grid -->
             <div *ngIf="!allLogsLoading" class="table-container">
-              <table mat-table [dataSource]="allLogsDataSource" matSort #allLogsSort="matSort" class="logs-table">
-                <!-- Log ID Column -->
-                <ng-container matColumnDef="logID">
-                  <th mat-header-cell *matHeaderCellDef mat-sort-header> ID </th>
-                  <td mat-cell *matCellDef="let log"> {{ log.logID }} </td>
-                </ng-container>
-
-                <!-- Timestamp Column -->
-                <ng-container matColumnDef="createdAt">
-                  <th mat-header-cell *matHeaderCellDef mat-sort-header> Timestamp </th>
-                  <td mat-cell *matCellDef="let log"> {{ formatDate(log.createdAt) }} </td>
-                </ng-container>
-
-                <!-- User Column -->
-                <ng-container matColumnDef="username">
-                  <th mat-header-cell *matHeaderCellDef mat-sort-header> User </th>
-                  <td mat-cell *matCellDef="let log"> 
-                    <mat-chip class="user-chip">{{ log.username }}</mat-chip>
-                  </td>
-                </ng-container>
-
-                <!-- Action Column -->
-                <ng-container matColumnDef="action">
-                  <th mat-header-cell *matHeaderCellDef mat-sort-header> Action </th>
-                  <td mat-cell *matCellDef="let log">
-                    <mat-chip [class]="'action-chip action-' + log.action.toLowerCase()">
-                      {{ log.action }}
-                    </mat-chip>
-                  </td>
-                </ng-container>
-
-                <!-- Entity Type Column -->
-                <ng-container matColumnDef="entityType">
-                  <th mat-header-cell *matHeaderCellDef mat-sort-header> Entity Type </th>
-                  <td mat-cell *matCellDef="let log"> {{ log.entityType || '-' }} </td>
-                </ng-container>
-
-                <!-- Entity ID Column -->
-                <ng-container matColumnDef="entityID">
-                  <th mat-header-cell *matHeaderCellDef mat-sort-header> Entity ID </th>
-                  <td mat-cell *matCellDef="let log"> {{ log.entityID || '-' }} </td>
-                </ng-container>
-
-                <!-- Details Column -->
-                <ng-container matColumnDef="details">
-                  <th mat-header-cell *matHeaderCellDef> Details </th>
-                  <td mat-cell *matCellDef="let log">
-                    <button mat-icon-button *ngIf="log.oldValues || log.newValues" 
-                            [matTooltip]="'Old: ' + (log.oldValues || 'N/A') + '\nNew: ' + (log.newValues || 'N/A')">
-                      <mat-icon>info</mat-icon>
-                    </button>
-                    <span *ngIf="log.ipAddress" class="ip-address">{{ log.ipAddress }}</span>
-                  </td>
-                </ng-container>
-
-                <tr mat-header-row *matHeaderRowDef="allLogsColumns"></tr>
-                <tr mat-row *matRowDef="let row; columns: allLogsColumns;" class="log-row"></tr>
-
-                <!-- No Data Row -->
-                <tr class="mat-row" *matNoDataRow>
-                  <td class="mat-cell no-data" [attr.colspan]="allLogsColumns.length">
-                    No audit logs found
-                  </td>
-                </tr>
-              </table>
-
-              <mat-paginator #allLogsPaginator [pageSizeOptions]="[10, 25, 50, 100]" 
-                             showFirstLastButtons></mat-paginator>
+              <ejs-grid [dataSource]="allLogsData" 
+                        [allowPaging]="true" 
+                        [allowSorting]="true"
+                        [allowFiltering]="true"
+                        [pageSettings]="pageSettings"
+                        [filterSettings]="filterSettings"
+                        [toolbar]="toolbar"
+                        height="500">
+                <e-columns>
+                  <e-column field="logID" headerText="ID" width="80" textAlign="Center"></e-column>
+                  <e-column field="createdAt" headerText="Timestamp" width="180" format="yMd"></e-column>
+                  <e-column field="username" headerText="User" width="150"></e-column>
+                  <e-column field="action" headerText="Action" width="120"></e-column>
+                  <e-column field="entityType" headerText="Entity Type" width="150"></e-column>
+                  <e-column field="entityID" headerText="Entity ID" width="120"></e-column>
+                  <e-column field="ipAddress" headerText="IP Address" width="150"></e-column>
+                </e-columns>
+              </ejs-grid>
             </div>
           </div>
         </mat-tab>
@@ -173,55 +117,23 @@
               <p>Loading login history...</p>
             </div>
 
-            <!-- Login History Table -->
+            <!-- Syncfusion Grid for Login History -->
             <div *ngIf="!loginHistoryLoading" class="table-container">
-              <table mat-table [dataSource]="loginHistoryDataSource" matSort #loginSort="matSort" class="logs-table">
-                <!-- Timestamp Column -->
-                <ng-container matColumnDef="createdAt">
-                  <th mat-header-cell *matHeaderCellDef mat-sort-header> Timestamp </th>
-                  <td mat-cell *matCellDef="let log"> {{ formatDate(log.createdAt) }} </td>
-                </ng-container>
-
-                <!-- User Column -->
-                <ng-container matColumnDef="username">
-                  <th mat-header-cell *matHeaderCellDef mat-sort-header> User </th>
-                  <td mat-cell *matCellDef="let log">
-                    <mat-chip class="user-chip">{{ log.username }}</mat-chip>
-                  </td>
-                </ng-container>
-
-                <!-- Action Column -->
-                <ng-container matColumnDef="action">
-                  <th mat-header-cell *matHeaderCellDef mat-sort-header> Action </th>
-                  <td mat-cell *matCellDef="let log">
-                    <mat-chip [class]="log.action === 'LOGIN' ? 'action-chip action-login' : 'action-chip action-logout'">
-                      <mat-icon class="chip-icon">{{ log.action === 'LOGIN' ? 'login' : 'logout' }}</mat-icon>
-                      {{ log.action }}
-                    </mat-chip>
-                  </td>
-                </ng-container>
-
-                <!-- IP Address Column -->
-                <ng-container matColumnDef="ipAddress">
-                  <th mat-header-cell *matHeaderCellDef> IP Address </th>
-                  <td mat-cell *matCellDef="let log"> 
-                    <span class="ip-address">{{ log.ipAddress || 'N/A' }}</span>
-                  </td>
-                </ng-container>
-
-                <tr mat-header-row *matHeaderRowDef="loginHistoryColumns"></tr>
-                <tr mat-row *matRowDef="let row; columns: loginHistoryColumns;" class="log-row"></tr>
-
-                <!-- No Data Row -->
-                <tr class="mat-row" *matNoDataRow>
-                  <td class="mat-cell no-data" [attr.colspan]="loginHistoryColumns.length">
-                    No login history found for the selected period
-                  </td>
-                </tr>
-              </table>
-
-              <mat-paginator #loginPaginator [pageSizeOptions]="[10, 25, 50]" 
-                             showFirstLastButtons></mat-paginator>
+              <ejs-grid [dataSource]="loginHistoryData"
+                        [allowPaging]="true"
+                        [allowSorting]="true"
+                        [allowFiltering]="true"
+                        [pageSettings]="pageSettings"
+                        [filterSettings]="filterSettings"
+                        [toolbar]="toolbar"
+                        height="500">
+                <e-columns>
+                  <e-column field="createdAt" headerText="Timestamp" width="180" format="yMd"></e-column>
+                  <e-column field="username" headerText="User" width="150"></e-column>
+                  <e-column field="action" headerText="Action" width="120"></e-column>
+                  <e-column field="ipAddress" headerText="IP Address" width="150"></e-column>
+                </e-columns>
+              </ejs-grid>
             </div>
           </div>
         </mat-tab>

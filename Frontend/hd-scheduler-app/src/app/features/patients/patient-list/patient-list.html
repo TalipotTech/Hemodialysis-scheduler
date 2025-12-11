@@ -1,369 +1,227 @@
 <div class="patient-list-container">
-  <mat-card>
-    <mat-card-header>
-      <mat-card-title>
+  <div class="e-card">
+    <div class="e-card-header">
+      <div class="e-card-header-title">
         <div class="header-row">
           <div class="header-left">
-            <button mat-icon-button (click)="goHome()" class="home-button" matTooltip="Home">
+            <button class="e-btn e-icon-btn" (click)="goHome()" title="Home">
               <mat-icon>home</mat-icon>
             </button>
-            <button mat-icon-button (click)="goBack()" class="back-button" matTooltip="Back">
+            <button class="e-btn e-icon-btn" (click)="goBack()" title="Back">
               <mat-icon>arrow_back</mat-icon>
             </button>
             <h2>Patient Management</h2>
           </div>
           <div class="header-actions">
             @if (isReadOnly) {
-              <mat-chip class="warning-chip">
+              <span class="warning-chip">
                 <mat-icon>lock</mat-icon>
                 READ-ONLY ACCESS
-              </mat-chip>
+              </span>
             }
-            <button mat-icon-button (click)="onRefresh()" matTooltip="Refresh" class="refresh-button">
+            <button class="e-btn e-icon-btn refresh-button" (click)="onRefresh()" title="Refresh">
               <mat-icon>refresh</mat-icon>
             </button>
             @if (!isReadOnly) {
-              <button mat-raised-button color="primary" (click)="onAddPatient()">
+              <button class="e-btn e-primary" (click)="onAddPatient()">
                 <mat-icon>add</mat-icon>
                 Add New Patient
               </button>
             }
           </div>
         </div>
-      </mat-card-title>
-    </mat-card-header>
+      </div>
+    </div>
 
-    <mat-card-content>
+    <div class="e-card-content">
       <!-- Tabs for Active Patients and Discharged History -->
-      <mat-tab-group [(selectedIndex)]="selectedTabIndex" (selectedIndexChange)="onTabChange($event)">
-        
-        <!-- Active Patients Tab -->
-        <mat-tab label="Active Patients">
-          <div class="tab-content">
-            <!-- Search Bar -->
-            <mat-form-field appearance="outline" class="search-field">
-              <mat-label>Search Patients</mat-label>
-              <input matInput [(ngModel)]="searchTerm" (input)="onSearch()" 
-                     placeholder="Search by name, MRN, or phone">
-              <mat-icon matPrefix>search</mat-icon>
-            </mat-form-field>
-
-            <!-- Loading Spinner -->
-            @if (loading) {
-              <div class="loading-container">
-                <mat-spinner></mat-spinner>
-              </div>
-            }
-
-            <!-- Error Message -->
-            @if (errorMessage && !loading) {
-              <div class="error-message">
-                <mat-icon>error</mat-icon>
-                {{ errorMessage }}
-              </div>
-            }
-
-            <!-- Patient Table -->
-            @if (!loading && !errorMessage && filteredPatients.length > 0) {
-        <div class="table-container">
-          <table mat-table [dataSource]="filteredPatients" class="patients-table">
-            
-            <!-- ID Column -->
-            <ng-container matColumnDef="id">
-              <th mat-header-cell *matHeaderCellDef>ID</th>
-              <td mat-cell *matCellDef="let patient">{{ patient.patientID }}</td>
-            </ng-container>
-
-            <!-- Name Column -->
-            <ng-container matColumnDef="name">
-              <th mat-header-cell *matHeaderCellDef>Patient Name</th>
-              <td mat-cell *matCellDef="let patient">
-                <div class="patient-name">
-                  <strong>{{ patient.name }}</strong>
+      <ejs-tab [selectedItem]="selectedTabIndex" (selected)="onTabChange($event.selectedIndex)">
+        <e-tabitems>
+          
+          <!-- Active Patients Tab -->
+          <e-tabitem [header]="{'text': 'Active Patients'}">
+            <ng-template #content>
+              <div class="tab-content">
+                <!-- Search Bar -->
+                <div class="search-container">
+                  <input type="text" 
+                         [(ngModel)]="searchTerm" 
+                         (input)="onSearch()" 
+                         placeholder="Search by name, MRN, or phone"
+                         class="search-field">
                 </div>
-              </td>
-            </ng-container>
 
-            <!-- MRN Column -->
-            <ng-container matColumnDef="mrn">
-              <th mat-header-cell *matHeaderCellDef>MRN</th>
-              <td mat-cell *matCellDef="let patient">{{ patient.mrn || '-' }}</td>
-            </ng-container>
-
-            <!-- Age Column -->
-            <ng-container matColumnDef="age">
-              <th mat-header-cell *matHeaderCellDef>Age</th>
-              <td mat-cell *matCellDef="let patient">{{ patient.age }}</td>
-            </ng-container>
-
-            <!-- Gender Column -->
-            <ng-container matColumnDef="gender">
-              <th mat-header-cell *matHeaderCellDef>Gender</th>
-              <td mat-cell *matCellDef="let patient">{{ patient.gender || '-' }}</td>
-            </ng-container>
-
-            <!-- Contact Number Column -->
-            <ng-container matColumnDef="contact">
-              <th mat-header-cell *matHeaderCellDef>Contact Number</th>
-              <td mat-cell *matCellDef="let patient">{{ patient.contactNumber }}</td>
-            </ng-container>
-
-            <!-- Emergency Contact Column -->
-            <ng-container matColumnDef="emergencyContact">
-              <th mat-header-cell *matHeaderCellDef>Emergency Contact</th>
-              <td mat-cell *matCellDef="let patient">{{ patient.emergencyContact || '-' }}</td>
-            </ng-container>
-
-            <!-- Address Column -->
-            <ng-container matColumnDef="address">
-              <th mat-header-cell *matHeaderCellDef>Address</th>
-              <td mat-cell *matCellDef="let patient">
-                <div class="address-cell">{{ patient.address || '-' }}</div>
-              </td>
-            </ng-container>
-
-            <!-- Guardian Name Column -->
-            <ng-container matColumnDef="guardian">
-              <th mat-header-cell *matHeaderCellDef>Guardian Name</th>
-              <td mat-cell *matCellDef="let patient">{{ patient.guardianName || '-' }}</td>
-            </ng-container>
-
-            <!-- Status Column -->
-            <ng-container matColumnDef="status">
-              <th mat-header-cell *matHeaderCellDef>Status</th>
-              <td mat-cell *matCellDef="let patient">
-                <mat-chip [class]="getPatientStatusClass(patient)">
-                  {{ getPatientStatus(patient) }}
-                </mat-chip>
-              </td>
-            </ng-container>
-
-            <!-- Daily HD Schedule Column -->
-            <ng-container matColumnDef="schedule">
-              <th mat-header-cell *matHeaderCellDef>Daily HD Schedule</th>
-              <td mat-cell *matCellDef="let patient">
-                <div class="schedule-buttons">
-                  <button mat-raised-button color="primary" 
-                          (click)="onScheduleHD(patient)"
-                          [disabled]="patient.isDischarged">
-                    <mat-icon>event_available</mat-icon>
-                    Schedule HD
-                  </button>
-                  <button mat-raised-button 
-                          style="background-color: #9c27b0; color: white;"
-                          (click)="onQuickSchedule(patient)"
-                          [disabled]="patient.isDischarged"
-                          matTooltip="Quick schedule with AI recommendations">
-                    <mat-icon>psychology</mat-icon>
-                    AI Quick Schedule
-                  </button>
-                  <button mat-raised-button color="accent" 
-                          (click)="onPostSchedule(patient)"
-                          [disabled]="!patient.scheduleID || patient.isDischarged"
-                          matTooltip="Complete post-dialysis data entry">
-                    <mat-icon>assignment_turned_in</mat-icon>
-                    Post Schedule
-                  </button>
-                  <button mat-raised-button 
-                          style="background-color: #673ab7; color: white;"
-                          (click)="onRecordVitals(patient)"
-                          [disabled]="!patient.scheduleID || patient.isDischarged"
-                          matTooltip="Record intra-dialytic vital signs">
-                    <mat-icon>monitor_heart</mat-icon>
-                    Record Vitals
-                  </button>
-                </div>
-              </td>
-            </ng-container>
-
-            <!-- Actions Column -->
-            <ng-container matColumnDef="actions">
-              <th mat-header-cell *matHeaderCellDef>Actions</th>
-              <td mat-cell *matCellDef="let patient">
-                <button mat-icon-button color="accent" 
-                        (click)="onViewHistory(patient)"
-                        matTooltip="View Treatment History">
-                  <mat-icon>history</mat-icon>
-                </button>
-                @if (!isReadOnly) {
-                  <button mat-icon-button color="primary" 
-                          (click)="onEditPatient(patient)"
-                          matTooltip="Edit Patient">
-                    <mat-icon>edit</mat-icon>
-                  </button>
-                  @if (!patient.isDischarged) {
-                    <button mat-icon-button color="warn" 
-                            (click)="onDischargePatient(patient)"
-                            matTooltip="Discharge Patient">
-                      <mat-icon>logout</mat-icon>
-                    </button>
-                  }
-                }
-                @if (isReadOnly) {
-                  <button mat-icon-button color="primary" 
-                          (click)="onEditPatient(patient)"
-                          matTooltip="View Patient Details (Read-Only)">
-                    <mat-icon>visibility</mat-icon>
-                  </button>
-                }
-              </td>
-            </ng-container>
-
-            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-          </table>
-        </div>
-      }
-
-            <!-- Empty State -->
-            @if (!loading && !errorMessage && filteredPatients.length === 0) {
-              <div class="empty-state">
-                <mat-icon>people_outline</mat-icon>
-                <h3>No Patients Found</h3>
-                <p>{{ searchTerm ? 'Try a different search term' : 'Start by adding a new patient' }}</p>
-                @if (!searchTerm) {
-                  <button mat-raised-button color="primary" (click)="onAddPatient()">
-                    <mat-icon>add</mat-icon>
-                    Add First Patient
-                  </button>
-                }
-              </div>
-            }
-          </div>
-        </mat-tab>
-
-        <!-- Discharged Patients History Tab -->
-        <mat-tab label="Discharged History">
-          <div class="tab-content">
-            <div class="tab-header">
-              <h3><mat-icon>history</mat-icon> Discharged Patients Treatment History</h3>
-              <p class="subtitle">Complete records of all discharged patients and their treatment sessions</p>
-            </div>
-
-            <!-- Search Bar for Discharged -->
-            <mat-form-field appearance="outline" class="search-field">
-              <mat-label>Search Discharged Patients</mat-label>
-              <input matInput [(ngModel)]="dischargedSearchTerm" (input)="onDischargedSearch()" 
-                     placeholder="Search by name, MRN, or phone">
-              <mat-icon matPrefix>search</mat-icon>
-            </mat-form-field>
-
-            <!-- Loading Spinner -->
-            @if (loadingDischarged) {
-              <div class="loading-container">
-                <mat-spinner></mat-spinner>
-              </div>
-            }
-
-            <!-- Error Message -->
-            @if (dischargedErrorMessage && !loadingDischarged) {
-              <div class="error-message">
-                <mat-icon>error</mat-icon>
-                {{ dischargedErrorMessage }}
-              </div>
-            }
-
-            <!-- Discharged Patients List -->
-            @if (!loadingDischarged && !dischargedErrorMessage && filteredDischargedPatients.length > 0) {
-              <div class="discharged-patients-list">
-                @for (patient of filteredDischargedPatients; track patient.patientID) {
-                  <mat-expansion-panel class="patient-history-panel">
-                    <mat-expansion-panel-header>
-                      <mat-panel-title>
-                        <div class="patient-header-info">
-                          <mat-icon>person</mat-icon>
-                          <div class="patient-details">
-                            <h4>{{ patient.name }}</h4>
-                            <span class="patient-meta">ID: {{ patient.patientID }} | MRN: {{ patient.mrn || 'N/A' }} | Age: {{ patient.age }} | {{ patient.gender }}</span>
-                          </div>
-                        </div>
-                      </mat-panel-title>
-                      <mat-panel-description>
-                        <mat-chip color="accent" highlighted>
-                          {{ patient.totalDialysisCompleted || 0 }} Sessions Completed
-                        </mat-chip>
-                      </mat-panel-description>
-                    </mat-expansion-panel-header>
-
-                    <div class="patient-history-details">
-                      <!-- Patient Summary Info -->
-                      <div class="info-section">
-                        <h4><mat-icon>info</mat-icon> Patient Information</h4>
-                        <div class="info-grid-compact">
-                          <div class="info-item-compact">
-                            <label>Dry Weight:</label>
-                            <span>{{ patient.dryWeight ? (patient.dryWeight + ' kg') : 'N/A' }}</span>
-                          </div>
-                          <div class="info-item-compact">
-                            <label>HD Cycle:</label>
-                            <span>{{ patient.hdCycle || 'N/A' }}</span>
-                          </div>
-                          <div class="info-item-compact">
-                            <label>HD Start Date:</label>
-                            <span>{{ patient.hdStartDate ? (patient.hdStartDate | date:'MMM d, y') : 'N/A' }}</span>
-                          </div>
-                          <div class="info-item-compact">
-                            <label>Dialyser Type:</label>
-                            <span>{{ patient.dialyserType || 'N/A' }}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- Equipment Usage Summary -->
-                      <div class="equipment-section">
-                        <h4><mat-icon>build_circle</mat-icon> Equipment Usage Summary</h4>
-                        <div class="equipment-summary-grid">
-                          <div class="equipment-stat">
-                            <div class="stat-icon dialyser"><mat-icon>water_drop</mat-icon></div>
-                            <div class="stat-details">
-                              <label>Dialyser Usage</label>
-                              <div class="stat-value">{{ patient.dialyserCount || 0 }} / 7 uses</div>
-                              <div class="stat-meta">Purchased: {{ patient.dialysersPurchased || 0 }} times</div>
-                            </div>
-                          </div>
-                          <div class="equipment-stat">
-                            <div class="stat-icon tubing"><mat-icon>line_style</mat-icon></div>
-                            <div class="stat-details">
-                              <label>Blood Tubing Usage</label>
-                              <div class="stat-value">{{ patient.bloodTubingCount || 0 }} / 12 uses</div>
-                              <div class="stat-meta">Purchased: {{ patient.bloodTubingPurchased || 0 }} times</div>
-                            </div>
-                          </div>
-                          <div class="equipment-stat">
-                            <div class="stat-icon sessions"><mat-icon>event_available</mat-icon></div>
-                            <div class="stat-details">
-                              <label>Total Dialysis</label>
-                              <div class="stat-value">{{ patient.totalDialysisCompleted || 0 }} sessions</div>
-                              <div class="stat-meta">Completed treatments</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- Action Buttons -->
-                      <div class="history-actions">
-                        <button mat-raised-button color="primary" (click)="viewFullHistory(patient.patientID)">
-                          <mat-icon>history</mat-icon>
-                          View Full Treatment History
-                        </button>
+                <!-- Loading Spinner -->
+                @if (loading) {
+                  <div class="loading-container">
+                    <div class="e-spinner-pane">
+                      <div class="e-spinner-inner">
+                        <div class="e-spin-material"></div>
                       </div>
                     </div>
-                  </mat-expansion-panel>
+                  </div>
+                }
+
+                <!-- Error Message -->
+                @if (errorMessage && !loading) {
+                  <div class="error-message">
+                    <mat-icon>error</mat-icon>
+                    {{ errorMessage }}
+                  </div>
+                }
+
+                <!-- Patient Grid -->
+                @if (!loading && !errorMessage && filteredPatients.length > 0) {
+                  <ejs-grid
+                    [dataSource]="filteredPatients"
+                    [allowPaging]="true"
+                    [allowSorting]="true"
+                    [allowFiltering]="true"
+                    [pageSettings]="{ pageSize: 20, pageSizes: [10, 20, 50, 100] }"
+                    [filterSettings]="{ type: 'Excel' }">
+                    
+                    <e-columns>
+                      <e-column field="patientID" headerText="ID" width="70"></e-column>
+                      <e-column field="name" headerText="Patient Name" width="150"></e-column>
+                      <e-column field="mrn" headerText="MRN" width="100"></e-column>
+                      <e-column field="age" headerText="Age" width="60"></e-column>
+                      <e-column field="gender" headerText="Gender" width="80"></e-column>
+                      <e-column field="contactNumber" headerText="Contact" width="120"></e-column>
+                      <e-column 
+                        headerText="Status" 
+                        width="120" 
+                        [template]="statusTemplate">
+                      </e-column>
+                      <e-column 
+                        headerText="Actions" 
+                        width="400" 
+                        [template]="actionsTemplate">
+                      </e-column>
+                    </e-columns>
+                  </ejs-grid>
+
+                  <!-- Status Template -->
+                  <ng-template #statusTemplate let-data>
+                    <span [class]="getPatientStatusClass(data)">
+                      {{ getPatientStatus(data) }}
+                    </span>
+                  </ng-template>
+
+                  <!-- Actions Template -->
+                  <ng-template #actionsTemplate let-data>
+                    <div class="action-buttons">
+                      <button class="e-btn e-small e-info" (click)="onScheduleHD(data)" [disabled]="data.isDischarged" title="Schedule HD">
+                        <mat-icon>event_available</mat-icon>
+                      </button>
+                      <button class="e-btn e-small e-success" (click)="onQuickSchedule(data)" [disabled]="data.isDischarged" title="AI Quick">
+                        <mat-icon>psychology</mat-icon>
+                      </button>
+                      <button class="e-btn e-small e-warning" (click)="onPostSchedule(data)" [disabled]="!data.scheduleID" title="Post">
+                        <mat-icon>assignment_turned_in</mat-icon>
+                      </button>
+                      <button class="e-btn e-small" (click)="onRecordVitals(data)" [disabled]="!data.scheduleID" title="Vitals">
+                        <mat-icon>monitor_heart</mat-icon>
+                      </button>
+                      <button class="e-btn e-small e-info" (click)="onViewHistory(data)" title="History">
+                        <mat-icon>history</mat-icon>
+                      </button>
+                      @if (!isReadOnly) {
+                        <button class="e-btn e-small e-primary" (click)="onEditPatient(data)" title="Edit">
+                          <mat-icon>edit</mat-icon>
+                        </button>
+                        @if (!data.isDischarged) {
+                          <button class="e-btn e-small e-danger" (click)="onDischargePatient(data)" title="Discharge">
+                            <mat-icon>logout</mat-icon>
+                          </button>
+                        }
+                      }
+                    </div>
+                  </ng-template>
+                }
+
+                <!-- Empty State -->
+                @if (!loading && !errorMessage && filteredPatients.length === 0) {
+                  <div class="empty-state">
+                    <mat-icon>people_outline</mat-icon>
+                    <h3>No Patients Found</h3>
+                    <p>{{ searchTerm ? 'Try a different search term' : 'Start by adding a new patient' }}</p>
+                  </div>
                 }
               </div>
-            }
+            </ng-template>
+          </e-tabitem>
 
-            <!-- Empty State for Discharged -->
-            @if (!loadingDischarged && !dischargedErrorMessage && filteredDischargedPatients.length === 0) {
-              <div class="empty-state">
-                <mat-icon>history</mat-icon>
-                <h3>No Discharged Patients Found</h3>
-                <p>{{ dischargedSearchTerm ? 'Try a different search term' : 'No patients have been discharged yet' }}</p>
+          <!-- Discharged Patients History Tab -->
+          <e-tabitem [header]="{'text': 'Discharged History'}">
+            <ng-template #content>
+              <div class="tab-content">
+                <div class="tab-header">
+                  <h3><mat-icon>history</mat-icon> Discharged Patients Treatment History</h3>
+                </div>
+
+                <!-- Search -->
+                <div class="search-container">
+                  <input type="text" 
+                         [(ngModel)]="dischargedSearchTerm" 
+                         (input)="onDischargedSearch()" 
+                         placeholder="Search discharged patients"
+                         class="search-field">
+                </div>
+
+                <!-- Loading -->
+                @if (loadingDischarged) {
+                  <div class="loading-container">
+                    <div class="e-spinner-pane">
+                      <div class="e-spinner-inner">
+                        <div class="e-spin-material"></div>
+                      </div>
+                    </div>
+                  </div>
+                }
+
+                <!-- Discharged Grid -->
+                @if (!loadingDischarged && filteredDischargedPatients.length > 0) {
+                  <ejs-grid
+                    [dataSource]="filteredDischargedPatients"
+                    [allowPaging]="true"
+                    [allowSorting]="true"
+                    [allowFiltering]="true"
+                    [pageSettings]="{ pageSize: 10 }">
+                    
+                    <e-columns>
+                      <e-column field="patientID" headerText="ID" width="70"></e-column>
+                      <e-column field="name" headerText="Name" width="150"></e-column>
+                      <e-column field="mrn" headerText="MRN" width="100"></e-column>
+                      <e-column field="age" headerText="Age" width="60"></e-column>
+                      <e-column field="totalDialysisCompleted" headerText="Sessions" width="100"></e-column>
+                      <e-column 
+                        headerText="Actions" 
+                        width="150" 
+                        [template]="dischargedActionsTemplate">
+                      </e-column>
+                    </e-columns>
+                  </ejs-grid>
+
+                  <ng-template #dischargedActionsTemplate let-data>
+                    <button class="e-btn e-small e-primary" (click)="viewFullHistory(data.patientID)">
+                      <mat-icon>history</mat-icon>
+                      View History
+                    </button>
+                  </ng-template>
+                }
+
+                <!-- Empty State -->
+                @if (!loadingDischarged && filteredDischargedPatients.length === 0) {
+                  <div class="empty-state">
+                    <mat-icon>history</mat-icon>
+                    <h3>No Discharged Patients Found</h3>
+                  </div>
+                }
               </div>
-            }
-          </div>
-        </mat-tab>
-      </mat-tab-group>
-    </mat-card-content>
-  </mat-card>
+            </ng-template>
+          </e-tabitem>
+        </e-tabitems>
+      </ejs-tab>
+    </div>
+  </div>
 </div>

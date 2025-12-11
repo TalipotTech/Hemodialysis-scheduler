@@ -1,20 +1,15 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { Router } from '@angular/router';
-import { MatTableModule } from '@angular/material/table';
-import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatCardModule } from '@angular/material/card';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatTabsModule } from '@angular/material/tabs';
-import { MatExpansionModule } from '@angular/material/expansion';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { FormsModule } from '@angular/forms';
+// Syncfusion imports
+import { GridModule, PageService, SortService, FilterService, ToolbarService, ExcelExportService, PdfExportService } from '@syncfusion/ej2-angular-grids';
+import { ButtonModule, ChipListModule } from '@syncfusion/ej2-angular-buttons';
+import { ToastModule, ToastUtility } from '@syncfusion/ej2-angular-notifications';
+import { TabModule } from '@syncfusion/ej2-angular-navigations';
+import { TooltipModule } from '@syncfusion/ej2-angular-popups';
+import { TextBoxModule } from '@syncfusion/ej2-angular-inputs';
 import { PatientService } from '../../../core/services/patient.service';
 import { ScheduleService } from '../../../core/services/schedule.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -25,20 +20,16 @@ import { Patient } from '../../../core/models/patient.model';
   imports: [
     CommonModule,
     FormsModule,
-    MatTableModule,
-    MatButtonModule,
     MatIconModule,
-    MatCardModule,
-    MatProgressSpinnerModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatChipsModule,
-    MatTooltipModule,
-    MatSnackBarModule,
-    MatTabsModule,
-    MatExpansionModule,
-    MatProgressBarModule
+    GridModule,
+    ButtonModule,
+    ChipListModule,
+    ToastModule,
+    TabModule,
+    TooltipModule,
+    TextBoxModule
   ],
+  providers: [PageService, SortService, FilterService, ToolbarService, ExcelExportService, PdfExportService],
   templateUrl: './patient-list.html',
   styleUrl: './patient-list.scss',
 })
@@ -62,29 +53,26 @@ export class PatientList implements OnInit {
   userRole = '';
   isReadOnly = false;
   
-  displayedColumns: string[] = [
-    'id',
-    'mrn',
-    'name',
-    'age',
-    'gender',
-    'contact',
-    'emergencyContact',
-    'address',
-    'guardian',
-    'status',
-    'schedule',
-    'actions'
-  ];
+  // Expanded patient cards tracking
+  private expandedPatients: Set<number> = new Set();
 
   constructor(
     private patientService: PatientService,
     private scheduleService: ScheduleService,
     private authService: AuthService,
     private router: Router,
-    private location: Location,
-    private snackBar: MatSnackBar
+    private location: Location
   ) {}
+
+  private showToast(message: string, title: string = 'Notification'): void {
+    ToastUtility.show({
+      title: title,
+      content: message,
+      position: { X: 'Right', Y: 'Top' },
+      showCloseButton: true,
+      timeOut: 3000
+    });
+  }
 
   goHome(): void {
     this.router.navigate(['/admin']);
@@ -188,9 +176,7 @@ export class PatientList implements OnInit {
     if (patient.scheduleID && !patient.isDischarged) {
       this.router.navigate(['/patients', patient.patientID, 'post-schedule', patient.scheduleID]);
     } else {
-      this.snackBar.open('No active session found for this patient', 'Close', {
-        duration: 3000
-      });
+      this.showToast('No active session found for this patient', 'Warning');
     }
   }
 
@@ -199,9 +185,7 @@ export class PatientList implements OnInit {
     if (patient.scheduleID && !patient.isDischarged) {
       this.router.navigate(['/patients', patient.patientID, 'monitoring', patient.scheduleID]);
     } else {
-      this.snackBar.open('No active session found for this patient', 'Close', {
-        duration: 3000
-      });
+      this.showToast('No active session found for this patient', 'Warning');
     }
   }
 
@@ -219,9 +203,7 @@ export class PatientList implements OnInit {
         this.scheduleService.forceDischargeSession(patient.scheduleID).subscribe({
           next: (response) => {
             if (response.success) {
-              this.snackBar.open('Patient session completed and discharged successfully', 'Close', {
-                duration: 3000
-              });
+              this.showToast('Patient session completed and discharged successfully', 'Success');
               // Small delay to ensure database transaction completes
               setTimeout(() => {
                 // Reload both active and discharged patient lists
@@ -230,17 +212,13 @@ export class PatientList implements OnInit {
                 this.loadDischargedPatients();
               }, 500);
             } else {
-              this.snackBar.open(response.message || 'Failed to complete session', 'Close', {
-                duration: 3000
-              });
+              this.showToast(response.message || 'Failed to complete session', 'Error');
               this.loading = false;
             }
           },
           error: (error: any) => {
             console.error('Error completing session:', error);
-            this.snackBar.open('Failed to complete session. Please try again.', 'Close', {
-              duration: 3000
-            });
+            this.showToast('Failed to complete session. Please try again.', 'Error');
             this.loading = false;
           }
         });
@@ -249,9 +227,7 @@ export class PatientList implements OnInit {
         this.patientService.dischargePatient(patient.patientID).subscribe({
           next: (response: any) => {
             if (response.success) {
-              this.snackBar.open('Patient discharged successfully', 'Close', {
-                duration: 3000
-              });
+              this.showToast('Patient discharged successfully', 'Success');
               // Small delay to ensure database transaction completes
               setTimeout(() => {
                 // Reload both active and discharged patient lists
@@ -260,17 +236,13 @@ export class PatientList implements OnInit {
                 this.loadDischargedPatients();
               }, 500);
             } else {
-              this.snackBar.open(response.message || 'Failed to discharge patient', 'Close', {
-                duration: 3000
-              });
+              this.showToast(response.message || 'Failed to discharge patient', 'Error');
               this.loading = false;
             }
           },
           error: (error: any) => {
             console.error('Error discharging patient:', error);
-            this.snackBar.open('Failed to discharge patient. Please try again.', 'Close', {
-              duration: 3000
-            });
+            this.showToast('Failed to discharge patient. Please try again.', 'Error');
             this.loading = false;
           }
         });
@@ -392,5 +364,17 @@ export class PatientList implements OnInit {
 
   viewFullHistory(patientId: number): void {
     this.router.navigate(['/patients', patientId, 'history']);
+  }
+
+  togglePatientCard(patientId: number): void {
+    if (this.expandedPatients.has(patientId)) {
+      this.expandedPatients.delete(patientId);
+    } else {
+      this.expandedPatients.add(patientId);
+    }
+  }
+
+  isPatientExpanded(patientId: number): boolean {
+    return this.expandedPatients.has(patientId);
   }
 }

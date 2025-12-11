@@ -5,8 +5,13 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build:prod": "ng build --configuration production",
+    "build:stats": "ng build --stats-json",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "syncfusion:info": "echo Syncfusion Essential JS 2 - Version 31.x.x - Community License",
+    "syncfusion:docs": "echo Opening Syncfusion Documentation... && start https://ej2.syncfusion.com/angular/documentation/",
+    "syncfusion:demos": "echo Opening Syncfusion Demos... && start https://ej2.syncfusion.com/angular/demos/"
   },
   "prettier": {
     "overrides": [
@@ -30,6 +35,16 @@
     "@angular/platform-browser": "^20.1.0",
     "@angular/router": "^20.1.0",
     "@auth0/angular-jwt": "^5.2.0",
+    "@syncfusion/ej2-angular-buttons": "^31.2.18",
+    "@syncfusion/ej2-angular-calendars": "^31.2.18",
+    "@syncfusion/ej2-angular-dropdowns": "^31.2.18",
+    "@syncfusion/ej2-angular-grids": "^31.2.18",
+    "@syncfusion/ej2-angular-inputs": "^31.2.15",
+    "@syncfusion/ej2-angular-navigations": "^31.2.16",
+    "@syncfusion/ej2-angular-notifications": "^31.2.12",
+    "@syncfusion/ej2-angular-popups": "^31.2.12",
+    "@syncfusion/ej2-angular-schedule": "^31.2.15",
+    "@syncfusion/ej2-base": "^31.2.18",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"
