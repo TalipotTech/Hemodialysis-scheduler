@@ -186,6 +186,31 @@ export const routes: Routes = [
     canActivate: [authGuard],
     data: { roles: ['Admin'], breadcrumb: 'Audit Logs' }
   },
+  // Syncfusion Demo Routes (Development/Testing)
+  {
+    path: 'syncfusion',
+    loadComponent: () => import('./components/syncfusion-demo-hub.component').then(m => m.SyncfusionDemoHubComponent),
+    canActivate: [authGuard],
+    data: { roles: ['Admin', 'HOD', 'Doctor', 'Nurse'], breadcrumb: 'Syncfusion Demo Hub' }
+  },
+  {
+    path: 'syncfusion/scheduler',
+    loadComponent: () => import('./components/syncfusion-demo-scheduler.component').then(m => m.SyncfusionDemoSchedulerComponent),
+    canActivate: [authGuard],
+    data: { roles: ['Admin', 'HOD', 'Doctor', 'Nurse'], breadcrumb: 'Syncfusion Scheduler Demo' }
+  },
+  {
+    path: 'syncfusion/advanced-scheduler',
+    loadComponent: () => import('./components/syncfusion-advanced-scheduler.component').then(m => m.SyncfusionAdvancedSchedulerComponent),
+    canActivate: [authGuard],
+    data: { roles: ['Admin', 'HOD', 'Doctor', 'Nurse'], breadcrumb: 'Advanced Scheduler Demo' }
+  },
+  {
+    path: 'syncfusion/grid',
+    loadComponent: () => import('./components/syncfusion-demo-grid.component').then(m => m.SyncfusionDemoGridComponent),
+    canActivate: [authGuard],
+    data: { roles: ['Admin', 'HOD', 'Doctor', 'Nurse'], breadcrumb: 'Syncfusion Grid Demo' }
+  },
   {
     path: '',
     redirectTo: '/login',
