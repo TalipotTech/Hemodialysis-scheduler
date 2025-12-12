@@ -1,13 +1,14 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../../environments/environment';
+// import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ReservationService {
-  private apiUrl = `${environment.apiUrl}/api/reservation`;
+  // Temporarily hardcoded for local development
+  private apiUrl = 'http://localhost:5000/api/reservation';
 
   constructor(private http: HttpClient) { }
 
@@ -47,5 +48,22 @@ export class ReservationService {
   getPatientsWithReservationStatus(date?: string): Observable<any> {
     const params: any = date ? { date } : {};
     return this.http.get(`${this.apiUrl}/patients-status`, { params });
+  }
+
+  /**
+   * Activate a reserved patient for TODAY
+   * Changes session status from "Pre-Scheduled" to "Active"
+   * Bed color changes from purple to red in schedule grid
+   */
+  activateReservedPatient(patientId: number): Observable<any> {
+    return this.http.post(`${this.apiUrl}/activate/${patientId}`, {});
+  }
+
+  /**
+   * Mark a pre-scheduled session as "Missed" when patient doesn't arrive
+   */
+  markSessionAsMissed(patientId: number, date?: string): Observable<any> {
+    const params: any = date ? { date } : {};
+    return this.http.post(`${this.apiUrl}/mark-missed/${patientId}`, {}, { params });
   }
 }

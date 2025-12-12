@@ -199,7 +199,7 @@ public class ScheduleController : ControllerBase
                         var patient = await _patientRepository.GetByIdAsync(schedule.PatientID);
                         
                         // Determine bed status based on session status, discharge status, and date
-                        string bedStatus = "occupied"; // Default for today's active sessions
+                        string bedStatus;
                         
                         // Check if this is a past date (should show as completed/blue)
                         if (schedule.SessionDate.Date < DateTime.Today)
@@ -210,9 +210,17 @@ public class ScheduleController : ControllerBase
                         {
                             bedStatus = "completed"; // Completed/discharged session (for today)
                         }
-                        else if (schedule.SessionStatus == "Pre-Scheduled" || schedule.SessionDate.Date > DateTime.Today)
+                        else if (schedule.SessionDate.Date > DateTime.Today)
                         {
-                            bedStatus = "pre-scheduled"; // Future scheduled session
+                            bedStatus = "pre-scheduled"; // Future scheduled session (not today)
+                        }
+                        else if (schedule.SessionStatus == "Pre-Scheduled")
+                        {
+                            bedStatus = "pre-scheduled"; // Today's session but not yet activated
+                        }
+                        else
+                        {
+                            bedStatus = "occupied"; // Today's active/in-treatment session (RED)
                         }
                         
                         // Calculate weekly session info
@@ -239,9 +247,12 @@ public class ScheduleController : ControllerBase
                             patient = new
                             {
                                 id = schedule.PatientID,
+                                patientId = schedule.PatientID,
                                 name = schedule.PatientName ?? patient?.Name ?? "Unknown",
                                 age = patient?.Age ?? 0,
-                                bloodPressure = schedule.BloodPressure
+                                bloodPressure = schedule.BloodPressure,
+                                hdCycle = patient?.HDCycle,
+                                isDischarged = schedule.IsDischarged
                             }
                         });
                     }
@@ -310,9 +321,12 @@ public class ScheduleController : ControllerBase
                                     patient = new
                                     {
                                         id = schedule.PatientID,
+                                        patientId = schedule.PatientID,
                                         name = schedule.PatientName ?? patient?.Name ?? "Unknown",
                                         age = patient?.Age ?? 0,
-                                        bloodPressure = schedule.BloodPressure
+                                        bloodPressure = schedule.BloodPressure,
+                                        hdCycle = patient?.HDCycle,
+                                        isDischarged = schedule.IsDischarged
                                     }
                                 };
                                 break; // Move to next schedule

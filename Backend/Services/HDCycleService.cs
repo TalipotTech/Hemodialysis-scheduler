@@ -42,14 +42,44 @@ public class HDCycleService : IHDCycleService
 
         var cycle = hdCycle.Trim().ToLower();
         
-        // Handle "Every X days" pattern
-        if (cycle.Contains("every") && cycle.Contains("day"))
+        // Handle "Every day" pattern
+        if (cycle == "every day" || cycle == "daily" || cycle == "everyday")
+        {
+            return lastSessionDate.AddDays(1);
+        }
+        
+        // Handle "Every X days" pattern (Every 2 days, Every 3 days, Every 4 days, Every 5 days)
+        if (cycle.StartsWith("every") && cycle.Contains("day"))
         {
             var daysBetween = ExtractNumberFromCycle(cycle);
-            if (daysBetween.HasValue)
+            if (daysBetween.HasValue && daysBetween.Value > 0)
             {
                 return lastSessionDate.AddDays(daysBetween.Value);
             }
+        }
+        
+        // Handle "Every week" pattern
+        if (cycle.Contains("every week") || cycle == "weekly")
+        {
+            return lastSessionDate.AddDays(7);
+        }
+        
+        // Handle specific day patterns (MWF, TTS, etc.)
+        if (cycle.Contains("monday") && cycle.Contains("wednesday") && cycle.Contains("friday"))
+        {
+            return GetNextMWFDate(lastSessionDate);
+        }
+        else if (cycle.Contains("tuesday") && cycle.Contains("thursday") && cycle.Contains("saturday"))
+        {
+            return GetNextTTSDate(lastSessionDate);
+        }
+        else if (cycle.Contains("mwf"))
+        {
+            return GetNextMWFDate(lastSessionDate);
+        }
+        else if (cycle.Contains("tts"))
+        {
+            return GetNextTTSDate(lastSessionDate);
         }
         
         // Handle "X times per week" or "X/week" pattern
@@ -64,27 +94,15 @@ public class HDCycleService : IHDCycleService
             }
         }
         
-        // Handle specific day patterns (MWF, TTS, etc.)
-        if (cycle.Contains("mwf") || cycle == "monday wednesday friday")
-        {
-            return GetNextMWFDate(lastSessionDate);
-        }
-        else if (cycle.Contains("tts") || cycle == "tuesday thursday saturday")
-        {
-            return GetNextTTSDate(lastSessionDate);
-        }
-        else if (cycle == "daily" || cycle == "everyday")
-        {
-            return lastSessionDate.AddDays(1);
-        }
-        else if (cycle.Contains("alternate") || cycle.Contains("every other day"))
+        // Handle alternate day
+        if (cycle.Contains("alternate") || cycle.Contains("every other day"))
         {
             return lastSessionDate.AddDays(2);
         }
         
         // Default: try to extract number of days
         var days = ExtractNumberFromCycle(cycle);
-        if (days.HasValue)
+        if (days.HasValue && days.Value > 0)
         {
             return lastSessionDate.AddDays(days.Value);
         }
@@ -95,8 +113,10 @@ public class HDCycleService : IHDCycleService
     public List<DateTime> GetUpcomingDialysisDates(string hdCycle, DateTime lastSessionDate, int daysAhead = 30)
     {
         var dates = new List<DateTime>();
-        var currentDate = lastSessionDate;
         var endDate = DateTime.Today.AddDays(daysAhead);
+        
+        // If the start date is today or in the future, include it as the first session
+        var currentDate = lastSessionDate.Date >= DateTime.Today ? lastSessionDate.Date.AddDays(-1) : lastSessionDate;
         
         int maxIterations = 100; // Safety limit
         int iterations = 0;
@@ -123,33 +143,43 @@ public class HDCycleService : IHDCycleService
         var cycle = hdCycle.Trim().ToLower();
         
         // Daily cycles
-        if (cycle == "daily" || cycle == "everyday")
+        if (cycle == "every day" || cycle == "daily" || cycle == "everyday")
         {
             return true;
         }
         
-        // Alternate day cycle
-        if (cycle.Contains("alternate") || cycle.Contains("every other day") || cycle == "every 2 days")
+        // Every X days patterns
+        if (cycle.StartsWith("every") && cycle.Contains("day"))
         {
-            var daysDiff = (sessionDate.Date - hdStartDate.Date).Days;
-            return daysDiff % 2 == 0;
+            var daysBetween = ExtractNumberFromCycle(cycle);
+            if (daysBetween.HasValue && daysBetween.Value > 0)
+            {
+                var daysDiff = (sessionDate.Date - hdStartDate.Date).Days;
+                return daysDiff >= 0 && daysDiff % daysBetween.Value == 0;
+            }
         }
         
-        // Every X days
-        var daysBetween = GetDaysBetweenSessions(cycle);
-        if (daysBetween.HasValue)
+        // Every week
+        if (cycle.Contains("every week") || cycle == "weekly")
         {
             var daysDiff = (sessionDate.Date - hdStartDate.Date).Days;
-            return daysDiff % daysBetween.Value == 0;
+            return daysDiff >= 0 && daysDiff % 7 == 0;
+        }
+        
+        // Alternate day cycle
+        if (cycle.Contains("alternate") || cycle.Contains("every other day"))
+        {
+            var daysDiff = (sessionDate.Date - hdStartDate.Date).Days;
+            return daysDiff >= 0 && daysDiff % 2 == 0;
         }
         
         // Specific day patterns
-        if (cycle.Contains("mwf"))
+        if (cycle.Contains("monday") && cycle.Contains("wednesday") && cycle.Contains("friday") || cycle.Contains("mwf"))
         {
             var dow = sessionDate.DayOfWeek;
             return dow == DayOfWeek.Monday || dow == DayOfWeek.Wednesday || dow == DayOfWeek.Friday;
         }
-        else if (cycle.Contains("tts"))
+        else if (cycle.Contains("tuesday") && cycle.Contains("thursday") && cycle.Contains("saturday") || cycle.Contains("tts"))
         {
             var dow = sessionDate.DayOfWeek;
             return dow == DayOfWeek.Tuesday || dow == DayOfWeek.Thursday || dow == DayOfWeek.Saturday;
@@ -165,11 +195,18 @@ public class HDCycleService : IHDCycleService
 
         var cycle = hdCycle.Trim().ToLower();
         
-        if (cycle == "daily" || cycle == "everyday")
+        if (cycle == "every day" || cycle == "daily" || cycle == "everyday")
             return 1;
+        
+        if (cycle.Contains("every week") || cycle == "weekly")
+            return 7;
             
-        if (cycle.Contains("every") && cycle.Contains("day"))
-            return ExtractNumberFromCycle(cycle);
+        if (cycle.StartsWith("every") && cycle.Contains("day"))
+        {
+            var daysBetween = ExtractNumberFromCycle(cycle);
+            if (daysBetween.HasValue && daysBetween.Value > 0)
+                return daysBetween.Value;
+        }
             
         if (cycle.Contains("alternate") || cycle.Contains("every other day"))
             return 2;

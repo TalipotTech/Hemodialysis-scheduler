@@ -43,7 +43,11 @@ export class ScheduleService {
   }
 
   forceDischargeSession(scheduleId: number): Observable<ApiResponse<any>> {
-    return this.http.post<ApiResponse<any>>(`${this.apiUrl}/force-discharge/${scheduleId}`, {});
+    return this.http.post<ApiResponse<any>>(`${environment.apiUrl}/api/hdschedule/force-discharge/${scheduleId}`, {});
+  }
+
+  activateSession(scheduleId: number): Observable<ApiResponse<boolean>> {
+    return this.http.put<ApiResponse<boolean>>(`${environment.apiUrl}/api/hdschedule/${scheduleId}/activate`, {});
   }
 
   getBedAvailability(date?: Date): Observable<ApiResponse<BedAvailability[]>> {

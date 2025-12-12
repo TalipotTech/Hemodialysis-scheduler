@@ -101,6 +101,79 @@
 
               <!-- Schedule Grid -->
               @if (!loading && !errorMessage && schedule) {
+                <!-- Search and Filter Controls -->
+                <div class="filter-controls">
+                  <div class="search-box">
+                    <mat-icon>search</mat-icon>
+                    <input type="text" 
+                           placeholder="Search by patient name..." 
+                           [(ngModel)]="searchText"
+                           class="search-input">
+                  </div>
+                  
+                  <div class="hd-cycle-filter">
+                    <mat-icon>repeat</mat-icon>
+                    <select [(ngModel)]="filterHDCycle" class="filter-select">
+                      <option value="">All HD Cycles</option>
+                      @for (cycle of getUniqueHDCycles(); track cycle) {
+                        <option [value]="cycle">{{ cycle }}</option>
+                      }
+                    </select>
+                  </div>
+
+                  <div class="status-filters">
+                    <button class="filter-btn bed-release-btn" 
+                            [class.active]="showOccupied"
+                            (click)="showOccupied = !showOccupied"
+                            title="Show beds requiring release">
+                      <mat-icon>logout</mat-icon>
+                      <span>Bed Release</span>
+                      <span class="count-badge">{{ getTotalBedRelease() }}</span>
+                    </button>
+                    
+                    <button class="filter-btn available-btn" 
+                            [class.active]="showAvailable"
+                            (click)="showAvailable = !showAvailable"
+                            title="Show available beds">
+                      <mat-icon>check_circle</mat-icon>
+                      <span>Available</span>
+                      <span class="count-badge">{{ getTotalAvailable() }}</span>
+                    </button>
+                    
+                    <button class="filter-btn pre-scheduled-btn" 
+                            [class.active]="showReserved"
+                            (click)="showReserved = !showReserved"
+                            title="Show pre-scheduled patients">
+                      <mat-icon>event</mat-icon>
+                      <span>Pre-Schedule</span>
+                      <span class="count-badge">{{ getTotalPreScheduled() }}</span>
+                    </button>
+                    
+                    <button class="filter-btn completed-btn" 
+                            [class.active]="showCompleted"
+                            (click)="showCompleted = !showCompleted"
+                            title="Show completed sessions">
+                      <mat-icon>verified</mat-icon>
+                      <span>Completed</span>
+                      <span class="count-badge">{{ getTotalCompleted() }}</span>
+                    </button>
+                    
+                    <button class="filter-btn discharged-btn" 
+                            [class.active]="showDischarged"
+                            (click)="showDischarged = !showDischarged"
+                            title="Show discharged patients">
+                      <mat-icon>exit_to_app</mat-icon>
+                      <span>Discharged</span>
+                      <span class="count-badge">{{ getTotalDischarged() }}</span>
+                    </button>
+                  </div>
+
+                  <div class="current-time-display">
+                    <mat-icon>access_time</mat-icon>
+                    <span>{{ currentTime | date:'short' }}</span>
+                  </div>
+                </div>
+
                 <div class="grid-navigation-wrapper">
                   <button class="e-btn e-fab nav-button nav-button-left" (click)="goToPreviousDay()" ejs-tooltip content="Previous Day">
                     <mat-icon>chevron_left</mat-icon>
@@ -123,13 +196,9 @@
                             <mat-icon>person</mat-icon>
                             <span>Occupied</span>
                           </div>
-                          <div class="legend-chip suggested">
-                            <span>📋</span>
-                            <span>Suggested (Needs Confirmation)</span>
-                          </div>
                           <div class="legend-chip pre-scheduled">
                             <mat-icon>event</mat-icon>
-                            <span>Pre-Scheduled</span>
+                            <span>Pre-Scheduled (Ready to Activate)</span>
                           </div>
                           <div class="legend-chip completed">
                             <mat-icon>verified</mat-icon>
@@ -153,13 +222,13 @@
                               </span>
                             </div>
                             <div class="slot-stats">
+                              <span class="capacity-badge">
+                                <mat-icon>meeting_room</mat-icon>
+                                <span class="capacity-text">{{ getSlotAvailable(slot) }} of {{ slot.maxBeds || 10 }} Available</span>
+                              </span>
                               <span class="stat-badge occupied">
                                 <mat-icon>person</mat-icon>
                                 {{ getSlotOccupied(slot) }}
-                              </span>
-                              <span class="stat-badge available">
-                                <mat-icon>check_circle</mat-icon>
-                                {{ getSlotAvailable(slot) }}
                               </span>
                             </div>
                           </div>
@@ -187,35 +256,85 @@
                                         {{ getBed(slot.slotID, bed)?.patient?.age }} yrs
                                       </span>
                                     </div>
+                                    
+                                    <!-- HD Cycle Badge -->
+                                    @if (getBed(slot.slotID, bed)?.patient?.hdCycle) {
+                                      <div class="hd-cycle-badge">
+                                        <mat-icon>repeat</mat-icon>
+                                        <span>{{ getBed(slot.slotID, bed)?.patient?.hdCycle }}</span>
+                                      </div>
+                                    }
+                                    
+                                    <!-- Session Info with Date -->
                                     <div class="session-info">{{ getSessionInfo(getBed(slot.slotID, bed)) }}</div>
                                     
-                                    @if (getBed(slot.slotID, bed)?.scheduleId === 0) {
+                                    <!-- Session Duration for Active Beds -->
+                                    @if (getBed(slot.slotID, bed)?.status === 'occupied' && getBed(slot.slotID, bed)?.sessionStartTime) {
+                                      <div class="session-duration">
+                                        <mat-icon>timer</mat-icon>
+                                        <span>{{ getSessionDuration(getBed(slot.slotID, bed)) }}</span>
+                                      </div>
+                                    }
+                                    
+                                    <!-- Action Buttons -->
+                                    @if (getBed(slot.slotID, bed)?.scheduleId === 0 || getBed(slot.slotID, bed)?.status === 'pre-scheduled') {
                                       <div class="action-buttons">
                                         <button class="confirm-btn"
-                                                (click)="$event.stopPropagation(); confirmSuggestedSession(getBed(slot.slotID, bed))"
-                                                title="Confirm this suggested session">
-                                          <mat-icon style="font-size: 14px; width: 14px; height: 14px;">check_circle</mat-icon>
-                                          Confirm
+                                                (click)="$event.stopPropagation(); confirmSuggestedSession(slot.slotID, bed)"
+                                                title="Activate patient and start treatment">
+                                          <mat-icon style="font-size: 14px; width: 14px; height: 14px;">play_arrow</mat-icon>
+                                          Activate
                                         </button>
                                         <button class="edit-btn"
-                                                (click)="$event.stopPropagation(); editSuggestedSession(getBed(slot.slotID, bed))"
-                                                title="Edit and schedule">
-                                          <mat-icon style="font-size: 14px; width: 14px; height: 14px;">edit</mat-icon>
-                                          Edit
+                                                (click)="$event.stopPropagation(); editSuggestedSession(slot.slotID, bed)"
+                                                title="Modify schedule details">
+                                          <mat-icon style="font-size: 14px; width: 14px; height: 14px;">edit_calendar</mat-icon>
+                                          Modify
                                         </button>
                                       </div>
-                                    } @else {
-                                      <button class="e-btn e-small e-round action-btn"
-                                              ejs-tooltip content="View Details"
-                                              (click)="$event.stopPropagation(); onBedClick(slot.slotID, bed)">
-                                        <mat-icon>visibility</mat-icon>
+                                    } @else if (false) {
+                                      <!-- Green Activate Button for Pre-Scheduled Patients -->
+                                      <button class="activate-btn"
+                                              (click)="$event.stopPropagation(); onBedClick(slot.slotID, bed)"
+                                              title="Activate patient and start treatment">
+                                        <mat-icon>play_arrow</mat-icon>
+                                        <span>Activate Patient</span>
                                       </button>
+                                    } @else {
+                                      <div class="action-buttons horizontal">
+                                        <button class="view-btn"
+                                                ejs-tooltip content="View Session Details"
+                                                (click)="$event.stopPropagation(); onBedClick(slot.slotID, bed)">
+                                          <mat-icon>visibility</mat-icon>
+                                        </button>
+                                        @if (getBed(slot.slotID, bed)?.status === 'occupied') {
+                                          <button class="complete-btn"
+                                                  ejs-tooltip content="Mark as Completed"
+                                                  (click)="$event.stopPropagation(); completeActiveSession(getBed(slot.slotID, bed))"
+                                                  title="Mark treatment as completed">
+                                            <mat-icon>check_circle</mat-icon>
+                                            <span>Complete</span>
+                                          </button>
+                                        }
+                                        @if (getBed(slot.slotID, bed)?.status === 'occupied' || getBed(slot.slotID, bed)?.status === 'completed') {
+                                          <button class="edit-btn"
+                                                  ejs-tooltip content="Edit Session"
+                                                  (click)="$event.stopPropagation(); onBedClick(slot.slotID, bed)">
+                                            <mat-icon>edit</mat-icon>
+                                          </button>
+                                        }
+                                      </div>
                                     }
                                   </div>
                                 } @else {
                                   <div class="empty-bed">
                                     <mat-icon>event_available</mat-icon>
                                     <span>Available</span>
+                                    <button class="quick-assign-btn"
+                                            (click)="$event.stopPropagation(); onQuickAssign(slot.slotID, bed)"
+                                            title="Quick assign walk-in patient">
+                                      <mat-icon>add</mat-icon>
+                                    </button>
                                   </div>
                                 }
                               </div>

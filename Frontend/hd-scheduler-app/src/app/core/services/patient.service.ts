@@ -52,4 +52,8 @@ export class PatientService {
   getPatientHistory(id: number): Observable<ApiResponse<any>> {
     return this.http.get<ApiResponse<any>>(`${environment.apiUrl}/api/PatientHistory/${id}`);
   }
+
+  checkMrnExists(mrn: string): Observable<ApiResponse<boolean>> {
+    return this.http.get<ApiResponse<boolean>>(`${this.apiUrl}/check-mrn/${encodeURIComponent(mrn)}`);
+  }
 }

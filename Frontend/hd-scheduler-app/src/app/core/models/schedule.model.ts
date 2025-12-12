@@ -47,6 +47,8 @@ export interface BedStatus {
   sessionNumber?: number;
   totalWeeklySessions?: number;
   needsBedAssignment?: boolean;
+  sessionStartTime?: string;
+  slotId?: number;
 }
 
 export interface HDSchedule {
@@ -70,6 +72,8 @@ export interface PatientSummary {
   name: string;
   age: number;
   bloodPressure?: string;
+  hdCycle?: string;
+  isDischarged?: boolean;
 }
 
 export interface AssignBedRequest {

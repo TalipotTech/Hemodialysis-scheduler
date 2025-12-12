@@ -15,17 +15,20 @@ public class ReservationController : ControllerBase
     private readonly IHDScheduleRepository _scheduleRepository;
     private readonly IPatientRepository _patientRepository;
     private readonly IHDCycleService _hdCycleService;
+    private readonly IBedAssignmentService _bedAssignmentService;
     private readonly ILogger<ReservationController> _logger;
 
     public ReservationController(
         IHDScheduleRepository scheduleRepository,
         IPatientRepository patientRepository,
         IHDCycleService hdCycleService,
+        IBedAssignmentService bedAssignmentService,
         ILogger<ReservationController> logger)
     {
         _scheduleRepository = scheduleRepository;
         _patientRepository = patientRepository;
         _hdCycleService = hdCycleService;
+        _bedAssignmentService = bedAssignmentService;
         _logger = logger;
     }
 
@@ -386,6 +389,7 @@ public class ReservationController : ControllerBase
                 var futureSchedules = allSchedules.Where(s => 
                     s.PatientID == patient.PatientID && 
                     s.SessionDate.Date > targetDate && 
+                    s.SessionStatus == "Pre-Scheduled" && // Only pre-scheduled sessions
                     !s.IsDischarged && 
                     !s.IsMovedToHistory)
                     .OrderBy(s => s.SessionDate)
@@ -396,20 +400,31 @@ public class ReservationController : ControllerBase
                     .FirstOrDefault();
 
                 DateTime? nextExpectedDate = null;
+                string nextExpectedDay = null;
                 if (!string.IsNullOrEmpty(patient.HDCycle) && lastSession != null)
                 {
                     nextExpectedDate = _hdCycleService.CalculateNextDialysisDate(patient.HDCycle, lastSession.SessionDate);
+                    if (nextExpectedDate.HasValue)
+                    {
+                        nextExpectedDay = nextExpectedDate.Value.ToString("dddd, MMM dd"); // "Monday, Dec 13"
+                    }
                 }
 
                 string status = "Inactive";
-                if (todaySchedule != null)
+                if (todaySchedule != null && todaySchedule.SessionStatus == "Active")
                 {
                     status = "Active";
+                }
+                else if (todaySchedule != null && todaySchedule.SessionStatus == "Pre-Scheduled")
+                {
+                    status = "Reserved"; // Has session today but not yet activated
                 }
                 else if (futureSchedules.Any())
                 {
                     status = "Reserved";
                 }
+
+                var nextSession = futureSchedules.FirstOrDefault();
 
                 patientsWithStatus.Add(new
                 {
@@ -417,6 +432,7 @@ public class ReservationController : ControllerBase
                     name = patient.Name,
                     mrn = patient.MRN,
                     age = patient.Age,
+                    gender = patient.Gender,
                     hdCycle = patient.HDCycle,
                     hdFrequency = patient.HDFrequency,
                     status = status,
@@ -428,8 +444,10 @@ public class ReservationController : ControllerBase
                         sessionStatus = todaySchedule.SessionStatus
                     } : null,
                     futureSessionsCount = futureSchedules.Count,
-                    nextScheduledDate = futureSchedules.FirstOrDefault()?.SessionDate.ToString("yyyy-MM-dd"),
+                    nextScheduledDate = nextSession?.SessionDate.ToString("yyyy-MM-dd"),
+                    nextScheduledDay = nextSession?.SessionDate.ToString("dddd, MMM dd"), // "Monday, Dec 13"
                     nextExpectedDate = nextExpectedDate?.ToString("yyyy-MM-dd"),
+                    nextExpectedDay = nextExpectedDay,
                     lastSessionDate = lastSession?.SessionDate.ToString("yyyy-MM-dd")
                 });
             }
@@ -452,6 +470,136 @@ public class ReservationController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting patients with reservation status");
+            return StatusCode(500, ApiResponse<object>.ErrorResponse("An error occurred"));
+        }
+    }
+
+    /// <summary>
+    /// Activate a reserved patient for TODAY - moves patient from Reserved to Active
+    /// Finds today's pre-scheduled session and changes status from "Pre-Scheduled" to "Active"
+    /// Bed color changes from purple to red in the schedule grid
+    /// </summary>
+    [HttpPost("activate/{patientId}")]
+    [Authorize(Roles = "Admin,Doctor,Nurse")]
+    public async Task<ActionResult<ApiResponse<object>>> ActivateReservedPatient(int patientId)
+    {
+        try
+        {
+            var patient = await _patientRepository.GetByIdAsync(patientId);
+            if (patient == null)
+            {
+                return NotFound(ApiResponse<object>.ErrorResponse("Patient not found"));
+            }
+
+            // Find today's pre-scheduled session for this patient
+            var todaySession = await _scheduleRepository.GetByPatientAndDateAsync(patientId, DateTime.Today);
+            
+            if (todaySession == null)
+            {
+                return NotFound(ApiResponse<object>.ErrorResponse($"No pre-scheduled session found for {patient.Name} today ({DateTime.Today:yyyy-MM-dd})"));
+            }
+
+            if (todaySession.SessionStatus == "Active")
+            {
+                return BadRequest(ApiResponse<object>.ErrorResponse($"Patient {patient.Name} is already active today"));
+            }
+
+            if (todaySession.SessionStatus != "Pre-Scheduled")
+            {
+                return BadRequest(ApiResponse<object>.ErrorResponse($"Cannot activate session with status: {todaySession.SessionStatus}"));
+            }
+
+            // Change status from Pre-Scheduled to Active
+            todaySession.SessionStatus = "Active";
+            todaySession.UpdatedAt = DateTime.Now;
+            
+            // If no bed assigned yet, assign one now
+            if (!todaySession.BedNumber.HasValue && todaySession.SlotID.HasValue)
+            {
+                var availableBed = await _bedAssignmentService.GetNextAvailableBedAsync(todaySession.SlotID.Value, DateTime.Today);
+                if (availableBed.HasValue)
+                {
+                    todaySession.BedNumber = availableBed.Value;
+                }
+            }
+
+            await _scheduleRepository.UpdateAsync(todaySession);
+
+            _logger.LogInformation("✅ Patient {PatientName} (ID: {PatientId}) activated for today. Session {ScheduleId} changed from Pre-Scheduled to Active. Bed: {Bed}",
+                patient.Name, patientId, todaySession.ScheduleID, todaySession.BedNumber?.ToString() ?? "Not Assigned");
+
+            return Ok(ApiResponse<object>.SuccessResponse(new
+            {
+                message = $"Patient {patient.Name} activated successfully",
+                patientId = patient.PatientID,
+                patientName = patient.Name,
+                scheduleId = todaySession.ScheduleID,
+                sessionDate = todaySession.SessionDate.ToString("yyyy-MM-dd"),
+                slotId = todaySession.SlotID,
+                bedNumber = todaySession.BedNumber,
+                sessionStatus = todaySession.SessionStatus
+            }));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error activating reserved patient {PatientId}", patientId);
+            return StatusCode(500, ApiResponse<object>.ErrorResponse("An error occurred while activating the patient"));
+        }
+    }
+
+    /// <summary>
+    /// Mark a pre-scheduled session as "Missed" when patient doesn't show up
+    /// </summary>
+    [HttpPost("mark-missed/{patientId}")]
+    [Authorize(Roles = "Admin,Doctor,Nurse")]
+    public async Task<ActionResult<ApiResponse<object>>> MarkSessionAsMissed(int patientId, [FromQuery] string? date = null)
+    {
+        try
+        {
+            DateTime targetDate = string.IsNullOrEmpty(date) 
+                ? DateTime.Today 
+                : DateTime.Parse(date).Date;
+
+            var patient = await _patientRepository.GetByIdAsync(patientId);
+            if (patient == null)
+            {
+                return NotFound(ApiResponse<object>.ErrorResponse("Patient not found"));
+            }
+
+            var session = await _scheduleRepository.GetByPatientAndDateAsync(patientId, targetDate);
+            
+            if (session == null)
+            {
+                return NotFound(ApiResponse<object>.ErrorResponse($"No session found for {patient.Name} on {targetDate:yyyy-MM-dd}"));
+            }
+
+            if (session.SessionStatus == "Completed")
+            {
+                return BadRequest(ApiResponse<object>.ErrorResponse("Cannot mark completed session as missed"));
+            }
+
+            // Change status to Missed
+            session.SessionStatus = "Missed";
+            session.UpdatedAt = DateTime.Now;
+            
+            await _scheduleRepository.UpdateAsync(session);
+
+            _logger.LogInformation("⚠️ Session marked as MISSED for patient {PatientName} (ID: {PatientId}) on {Date}",
+                patient.Name, patientId, targetDate.ToString("yyyy-MM-dd"));
+
+            return Ok(ApiResponse<object>.SuccessResponse(new
+            {
+                message = $"Session marked as missed for {patient.Name}",
+                patientId = patient.PatientID,
+                patientName = patient.Name,
+                scheduleId = session.ScheduleID,
+                sessionDate = session.SessionDate.ToString("yyyy-MM-dd"),
+                sessionStatus = session.SessionStatus
+            }));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error marking session as missed for patient {PatientId}", patientId);
             return StatusCode(500, ApiResponse<object>.ErrorResponse("An error occurred"));
         }
     }

@@ -691,6 +691,47 @@ public class HDScheduleController : ControllerBase
         }
     }
 
+    [HttpPut("{id}/activate")]
+    [AllowAnonymous] // Temporarily allow anonymous for debugging
+    public async Task<ActionResult<ApiResponse<bool>>> ActivateSession(int id)
+    {
+        try
+        {
+            _logger.LogInformation($"Activating session {id}");
+            
+            var schedule = await _scheduleRepository.GetByIdAsync(id);
+            if (schedule == null)
+            {
+                return NotFound(ApiResponse<bool>.ErrorResponse("Schedule not found"));
+            }
+
+            // Update session status to indicate it's active (in treatment)
+            // Only update SessionStatus - don't update StartTime as it may not exist in database
+            var updates = new Dictionary<string, object>
+            {
+                { "SessionStatus", "In Progress" }
+            };
+            
+            var result = await _scheduleRepository.PartialUpdateAsync(id, updates);
+            
+            if (result)
+            {
+                _logger.LogInformation($"✅ Session {id} activated successfully");
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "Session activated successfully"));
+            }
+            else
+            {
+                _logger.LogWarning($"⚠️ Failed to update session {id}");
+                return StatusCode(500, ApiResponse<bool>.ErrorResponse("Failed to activate session"));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error activating session {ScheduleId}", id);
+            return StatusCode(500, ApiResponse<bool>.ErrorResponse($"An error occurred: {ex.Message}"));
+        }
+    }
+
     // Helper method to calculate next dialysis date
     private DateTime? CalculateNextDialysisDate(string hdCycle, DateTime lastSessionDate)
     {

@@ -42,11 +42,19 @@ export class ScheduleGrid implements OnInit, OnDestroy {
   showAvailable = true;
   showOccupied = true;
   showReserved = true;
+  showCompleted = true;
+  showDischarged = false;
+
+  // Search and filter
+  searchText = '';
+  filterHDCycle = '';
+  currentTime = new Date();
 
   // Auto-refresh settings
   autoRefreshEnabled = false;
   private refreshInterval: any;
   private readonly REFRESH_INTERVAL_MS = 30000; // 30 seconds
+  private timeUpdateInterval: any;
 
   // Future scheduled sessions (Bed Schedule)
   futureSessions: any[] = [];
@@ -68,11 +76,27 @@ export class ScheduleGrid implements OnInit, OnDestroy {
     this.loadFutureScheduledSessions();
     // Auto-refresh when page becomes visible again (e.g., after returning from discharge)
     document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
+    // Update current time every minute
+    this.startTimeUpdate();
   }
 
   ngOnDestroy(): void {
     document.removeEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
     this.stopAutoRefresh();
+    this.stopTimeUpdate();
+  }
+
+  startTimeUpdate(): void {
+    this.timeUpdateInterval = setInterval(() => {
+      this.currentTime = new Date();
+    }, 60000); // Update every minute
+  }
+
+  stopTimeUpdate(): void {
+    if (this.timeUpdateInterval) {
+      clearInterval(this.timeUpdateInterval);
+      this.timeUpdateInterval = null;
+    }
   }
 
   toggleAutoRefresh(): void {
@@ -133,12 +157,12 @@ export class ScheduleGrid implements OnInit, OnDestroy {
           this.schedule = response.data;
           console.log('Schedule data loaded:', this.schedule);
           
-          // Debug: Log all beds with their statuses
+          // Debug: Log all beds with their statuses and HD Cycles
           if (this.schedule && this.schedule.slots) {
             this.schedule.slots.forEach((slot: any) => {
               slot.beds.forEach((bed: any) => {
-                if (bed.status !== 'available') {
-                  console.log(`Slot ${slot.slotName}, Bed ${bed.bedNumber}: ${bed.status}, Patient: ${bed.patient?.name}`);
+                if (bed.status !== 'available' && bed.patient) {
+                  console.log(`Slot ${slot.slotName}, Bed ${bed.bedNumber}: ${bed.status}, Patient: ${bed.patient?.name}, HD Cycle: ${bed.patient?.hdCycle || 'NOT PROVIDED'}`);
                 }
               });
             });
@@ -202,9 +226,10 @@ export class ScheduleGrid implements OnInit, OnDestroy {
     const bed = this.getBed(slotId, bedNumber);
     if (!bed) return 'bed-empty';
     
-    // Check if this is an auto-suggested session FIRST (ScheduleID = 0)
+    // Check if this is an auto-generated suggested session (scheduleId === 0)
+    // Treat it as pre-scheduled (purple) since it's already scheduled, just needs activation
     if (bed.scheduleId === 0) {
-      let className = 'bed-suggested'; // Light blue/cyan - needs confirmation
+      let className = 'bed-pre-scheduled'; // Purple - auto-generated, ready to activate
       if (!this.shouldShowBed('pre-scheduled')) {
         className += ' bed-filtered';
       }
@@ -346,6 +371,79 @@ export class ScheduleGrid implements OnInit, OnDestroy {
     }, 0);
   }
 
+  getTotalCompleted(): number {
+    if (!this.schedule) return 0;
+    return this.schedule.slots.reduce((total: number, slot: SlotSchedule) => {
+      return total + slot.beds.filter((b: BedStatus) => b.status === 'completed').length;
+    }, 0);
+  }
+
+  getTotalBedRelease(): number {
+    if (!this.schedule) return 0;
+    // Beds that need to be released (completed but not yet moved to history)
+    return this.schedule.slots.reduce((total: number, slot: SlotSchedule) => {
+      return total + slot.beds.filter((b: BedStatus) => 
+        b.status === 'completed' && !b.patient?.isDischarged
+      ).length;
+    }, 0);
+  }
+
+  getTotalAvailable(): number {
+    if (!this.schedule) return 0;
+    return this.getTotalCapacity() - this.getTotalOccupied();
+  }
+
+  getTotalDischarged(): number {
+    if (!this.schedule) return 0;
+    return this.schedule.slots.reduce((total: number, slot: SlotSchedule) => {
+      return total + slot.beds.filter((b: BedStatus) => 
+        b.patient?.isDischarged === true
+      ).length;
+    }, 0);
+  }
+
+  getSessionDuration(bed: any): string {
+    if (!bed.sessionStartTime) return '';
+    const start = new Date(bed.sessionStartTime);
+    const now = this.currentTime;
+    const diffMs = now.getTime() - start.getTime();
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${minutes}m`;
+  }
+
+  matchesSearch(bed: BedStatus): boolean {
+    if (!this.searchText) return true;
+    const search = this.searchText.toLowerCase();
+    return bed.patient?.name?.toLowerCase().includes(search) || false;
+  }
+
+  matchesHDCycleFilter(bed: BedStatus): boolean {
+    if (!this.filterHDCycle) return true;
+    return bed.patient?.hdCycle === this.filterHDCycle;
+  }
+
+  shouldShowBedWithFilters(bed: BedStatus): boolean {
+    return this.shouldShowBed(bed.status) && 
+           this.matchesSearch(bed) && 
+           this.matchesHDCycleFilter(bed);
+  }
+
+  getUniqueHDCycles(): string[] {
+    if (!this.schedule) return [];
+    const cycles = new Set<string>();
+    this.schedule.slots.forEach(slot => {
+      slot.beds.forEach(bed => {
+        if (bed.patient?.hdCycle) {
+          cycles.add(bed.patient.hdCycle);
+        }
+      });
+    });
+    const uniqueCycles = Array.from(cycles).sort();
+    console.log('Unique HD Cycles found:', uniqueCycles);
+    return uniqueCycles;
+  }
+
   getTotalCapacity(): number {
     if (!this.schedule) return 0;
     return this.schedule.slots.length * 10;
@@ -388,8 +486,16 @@ export class ScheduleGrid implements OnInit, OnDestroy {
     this.router.navigate(['/patients', patientId, 'workflow', scheduleId]);
   }
   
-  confirmSuggestedSession(bed: any): void {
-    console.log('🟢 Confirm button clicked!', bed);
+  onQuickAssign(slotId: number, bedNumber: number): void {
+    console.log('Quick assign clicked for slot:', slotId, 'bed:', bedNumber);
+    this.showToast('Quick assign feature - Coming soon! Navigate to Patient Management to assign a patient.', 'Information');
+    // TODO: Implement quick assign modal or navigate to patient assignment
+  }
+  
+  confirmSuggestedSession(slotId: number, bedNumber: number): void {
+    console.log('🟢 Activate button clicked for slot:', slotId, 'bed:', bedNumber);
+    
+    const bed = this.getBed(slotId, bedNumber);
     
     if (!bed || !bed.patient) {
       console.error('❌ No bed or patient data', bed);
@@ -398,24 +504,87 @@ export class ScheduleGrid implements OnInit, OnDestroy {
     }
     
     const patientId = bed.patient.patientId;
-    const slotId = bed.slotId;
-    const bedNumber = bed.bedNumber;
+    const patientName = bed.patient?.name || 'Unknown';
+    const scheduleId = bed.scheduleId;
     
-    console.log('📋 Navigating with:', { patientId, slotId, bedNumber });
+    // Confirm activation
+    if (!confirm(`Activate ${patientName} and start dialysis treatment?`)) {
+      return;
+    }
     
-    // Navigate to HD Schedule form with pre-filled data
-    this.router.navigate(['/schedule/hd-session/new', patientId], {
-      queryParams: {
-        date: this.formatDateForUrl(this.selectedDate),
-        slotId: slotId,
-        bedNumber: bedNumber,
-        confirm: 'true'
+    console.log('📋 Activating patient:', { patientName, patientId, scheduleId, slotId, bedNumber });
+    
+    // For real scheduleId (not auto-generated 0), activate session then navigate to workflow
+    if (scheduleId && scheduleId > 0) {
+      // First, activate the session (update status to "In Progress")
+      this.scheduleService.activateSession(scheduleId).subscribe({
+        next: (response) => {
+          if (response.success) {
+            console.log('✅ Session activated successfully:', response);
+            this.showToast(`${patientName} activated - Starting treatment`, 'Success');
+            
+            // Reload schedule to show updated color (red instead of purple)
+            this.loadSchedule();
+            
+            // Navigate to workflow after a short delay to show color change
+            setTimeout(() => {
+              this.navigateToWorkflow(patientId, scheduleId);
+            }, 500);
+          } else {
+            console.error('❌ Failed to activate session:', response);
+            this.showToast('Failed to activate session', 'Error');
+          }
+        },
+        error: (error) => {
+          console.error('❌ Error activating session:', error);
+          this.showToast('Error activating session', 'Error');
+        }
+      });
+    } else {
+      // Auto-generated (scheduleId === 0): Need to create session first
+      // Show error - they should use Modify to create it properly
+      this.showToast('Please use "Modify" button to complete schedule details first', 'Warning');
+    }
+  }
+  
+  completeActiveSession(bed: any): void {
+    console.log('✅ Complete button clicked for active session!', bed);
+    
+    if (!bed || !bed.scheduleId) {
+      console.error('❌ No bed or schedule data', bed);
+      this.showToast('Invalid bed data', 'Error');
+      return;
+    }
+    
+    const scheduleId = bed.scheduleId;
+    const patientName = bed.patient?.name || 'Unknown';
+    
+    // Confirm with user
+    if (!confirm(`Mark treatment as completed for ${patientName}?`)) {
+      return;
+    }
+    
+    console.log('📋 Marking session as completed:', scheduleId);
+    
+    // Call the force-discharge endpoint to mark as completed
+    this.scheduleService.forceDischargeSession(scheduleId).subscribe({
+      next: (response) => {
+        console.log('✅ Session marked as completed:', response);
+        this.showToast(`Treatment completed for ${patientName}`, 'Success');
+        // Reload the schedule to show updated status
+        this.loadSchedule();
+      },
+      error: (error) => {
+        console.error('❌ Error completing session:', error);
+        this.showToast('Failed to complete session. Please try again.', 'Error');
       }
     });
   }
   
-  editSuggestedSession(bed: any): void {
-    console.log('🟡 Edit button clicked!', bed);
+  editSuggestedSession(slotId: number, bedNumber: number): void {
+    console.log('🟡 Edit button clicked for slot:', slotId, 'bed:', bedNumber);
+    
+    const bed = this.getBed(slotId, bedNumber);
     
     if (!bed || !bed.patient) {
       console.error('❌ No bed or patient data', bed);
@@ -431,8 +600,8 @@ export class ScheduleGrid implements OnInit, OnDestroy {
     this.router.navigate(['/schedule/hd-session/new', patientId], {
       queryParams: {
         date: this.formatDateForUrl(this.selectedDate),
-        slotId: bed.slotId,
-        bedNumber: bed.bedNumber
+        slotId: slotId,
+        bedNumber: bedNumber
       }
     });
   }

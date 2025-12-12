@@ -139,6 +139,96 @@
             </ng-template>
           </e-tabitem>
 
+          <!-- Pre Schedule Tab -->
+          <e-tabitem [header]="{'text': 'Pre Schedule'}">
+            <ng-template #content>
+              <div class="tab-content">
+                <div class="section-header">
+                  <h3><mat-icon>event</mat-icon> Pre Schedule (Pre-Scheduled & Future Sessions)</h3>
+                  <p class="tab-description">Patients with upcoming dialysis sessions but no active treatment today. Includes both pre-scheduled (auto-generated) and manually scheduled sessions.</p>
+                </div>
+
+                <!-- Search -->
+                <div class="search-container">
+                  <input type="text" 
+                         [(ngModel)]="reservedSearchTerm" 
+                         (input)="onReservedSearch()" 
+                         placeholder="Search pre-scheduled patients"
+                         class="search-field">
+                </div>
+
+                <!-- Loading -->
+                @if (loadingReserved) {
+                  <div class="loading-container">
+                    <div class="e-spinner-pane">
+                      <div class="e-spinner-inner">
+                        <div class="e-spin-material"></div>
+                      </div>
+                    </div>
+                  </div>
+                }
+
+                <!-- Reserved Grid -->
+                @if (!loadingReserved && filteredReservedPatients.length > 0) {
+                  <ejs-grid
+                    [dataSource]="filteredReservedPatients"
+                    [allowPaging]="true"
+                    [allowSorting]="true"
+                    [allowFiltering]="true"
+                    [pageSettings]="{ pageSize: 20, pageSizes: [10, 20, 50] }">
+                    
+                    <e-columns>
+                      <e-column field="patientId" headerText="ID" width="70"></e-column>
+                      <e-column field="name" headerText="Patient Name" width="150"></e-column>
+                      <e-column field="mrn" headerText="MRN" width="100"></e-column>
+                      <e-column field="age" headerText="Age" width="60"></e-column>
+                      <e-column field="gender" headerText="Gender" width="80"></e-column>
+                      <e-column field="hdCycle" headerText="HD Cycle" width="150"></e-column>
+                      <e-column field="futureSessionsCount" headerText="Future Sessions" width="120"></e-column>
+                      <e-column field="nextScheduledDay" headerText="Next Session" width="150"></e-column>
+                      <e-column 
+                        headerText="Actions" 
+                        width="250" 
+                        [template]="reservedActionsTemplate">
+                      </e-column>
+                    </e-columns>
+                  </ejs-grid>
+
+                  <ng-template #reservedActionsTemplate let-data>
+                    <div class="action-buttons">
+                      <button class="e-btn e-small e-success" 
+                              (click)="onActivateReservedPatient(data)" 
+                              title="Activate Patient - Schedule Today's Session">
+                        <mat-icon>play_arrow</mat-icon>
+                        Active
+                      </button>
+                      <button class="e-btn e-small e-info" 
+                              (click)="onViewReservedPatientHistory(data)" 
+                              title="View Patient History">
+                        <mat-icon>history</mat-icon>
+                        History
+                      </button>
+                      <button class="e-btn e-small e-primary" 
+                              (click)="onEditPatient(data)" 
+                              title="View Patient Details">
+                        <mat-icon>visibility</mat-icon>
+                      </button>
+                    </div>
+                  </ng-template>
+                }
+
+                <!-- Empty State -->
+                @if (!loadingReserved && filteredReservedPatients.length === 0) {
+                  <div class="empty-state">
+                    <mat-icon>event_busy</mat-icon>
+                    <h3>No Pre-Scheduled Patients Found</h3>
+                    <p>Pre-scheduled patients have future scheduled sessions but no active treatment today</p>
+                  </div>
+                }
+              </div>
+            </ng-template>
+          </e-tabitem>
+
           <!-- Discharged Patients History Tab -->
           <e-tabitem [header]="{'text': 'Discharged History'}">
             <ng-template #content>

@@ -16,6 +16,7 @@ public class PatientsController : ControllerBase
     private readonly IHDScheduleRepository _scheduleRepository;
     private readonly IRecurringSessionService _recurringSessionService;
     private readonly IBedAssignmentService _bedAssignmentService;
+    private readonly IHDCycleService _hdCycleService;
     private readonly ILogger<PatientsController> _logger;
 
     public PatientsController(
@@ -23,12 +24,14 @@ public class PatientsController : ControllerBase
         IHDScheduleRepository scheduleRepository,
         IRecurringSessionService recurringSessionService,
         IBedAssignmentService bedAssignmentService,
+        IHDCycleService hdCycleService,
         ILogger<PatientsController> logger)
     {
         _patientRepository = patientRepository;
         _scheduleRepository = scheduleRepository;
         _recurringSessionService = recurringSessionService;
         _bedAssignmentService = bedAssignmentService;
+        _hdCycleService = hdCycleService;
         _logger = logger;
     }
 
@@ -101,6 +104,29 @@ public class PatientsController : ControllerBase
         {
             _logger.LogError(ex, "Error searching patients");
             return StatusCode(500, ApiResponse<List<Patient>>.ErrorResponse("An error occurred while searching patients"));
+        }
+    }
+
+    [HttpGet("check-mrn/{mrn}")]
+    [Authorize(Roles = "Admin,HOD,Doctor,Nurse,Technician")]
+    public async Task<ActionResult<ApiResponse<bool>>> CheckMrnExists(string mrn)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(mrn))
+            {
+                return BadRequest(ApiResponse<bool>.ErrorResponse("MRN is required"));
+            }
+
+            var patients = await _patientRepository.GetAllAsync();
+            var exists = patients.Any(p => p.MRN?.Equals(mrn, StringComparison.OrdinalIgnoreCase) == true);
+            
+            return Ok(ApiResponse<bool>.SuccessResponse(exists));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking MRN existence");
+            return StatusCode(500, ApiResponse<bool>.ErrorResponse("An error occurred while checking MRN"));
         }
     }
 
@@ -193,23 +219,22 @@ public class PatientsController : ControllerBase
 
             var patientId = await _patientRepository.CreateAsync(patient);
             
-            // If patient has HD cycle, automatically generate recurring sessions with slot/bed assignment
+            // AUTO-GENERATE 3 MONTHS OF PRE-SCHEDULED SESSIONS
             if (!string.IsNullOrEmpty(request.HDCycle) && request.HDStartDate.HasValue)
             {
                 try
                 {
-                    // Validate preferred slot
                     int preferredSlot = request.PreferredSlotID ?? 1; // Default to Morning if not specified
                     if (preferredSlot < 1 || preferredSlot > 4)
                     {
                         preferredSlot = 1; // Fallback to Morning
                     }
                     
-                    _logger.LogInformation("🔄 Auto-generating recurring sessions for patient {PatientName} with HDCycle={HDCycle}, PreferredSlot={Slot}",
+                    _logger.LogInformation("🔄 Auto-generating 3 MONTHS of pre-scheduled sessions for patient {PatientName} with HDCycle={HDCycle}, PreferredSlot={Slot}",
                         request.Name, request.HDCycle, preferredSlot);
                     
-                    // Calculate session dates based on HD Cycle for next 4 weeks (28 days)
-                    var sessionDates = CalculateSessionDates(request.HDCycle, request.HDStartDate.Value, 28);
+                    // Use HDCycleService to calculate session dates for next 3 months (90 days)
+                    var sessionDates = _hdCycleService.GetUpcomingDialysisDates(request.HDCycle, request.HDStartDate.Value, 90);
                     var createdSessions = new List<int>();
                     
                     foreach (var sessionDate in sessionDates)
@@ -219,13 +244,11 @@ public class PatientsController : ControllerBase
                         
                         if (!assignedBed.HasValue)
                         {
-                            _logger.LogWarning("⚠️ No available beds for {Date} in Slot {Slot}, skipping", sessionDate, preferredSlot);
-                            continue;
+                            _logger.LogWarning("⚠️ No available beds for {Date} in Slot {Slot}, session created without bed", sessionDate, preferredSlot);
                         }
                         
-                        // Determine session status: "Active" if today, "Pre-Scheduled" if future
-                        var sessionStatus = sessionDate.Date == DateTime.Today ? "Active" : "Pre-Scheduled";
-                        
+                        // ALL sessions are Pre-Scheduled initially (purple color)
+                        // Admin will activate them when patient arrives
                         var schedule = new HDSchedule
                         {
                             PatientID = patientId,
@@ -238,9 +261,9 @@ public class PatientsController : ControllerBase
                             PrescribedDuration = request.PrescribedDuration,
                             PrescribedBFR = request.PrescribedBFR,
                             DialysatePrescription = request.DialysatePrescription,
-                            SlotID = preferredSlot,  // Assigned based on user preference
-                            BedNumber = assignedBed.Value,  // Smart bed assignment with spacing
-                            SessionStatus = sessionStatus,
+                            SlotID = preferredSlot,
+                            BedNumber = assignedBed,  // Pre-assign bed (shows purple in grid)
+                            SessionStatus = "Pre-Scheduled",  // All sessions start as Pre-Scheduled
                             IsAutoGenerated = true,
                             IsDischarged = false,
                             CreatedByStaffName = "System",
@@ -253,20 +276,19 @@ public class PatientsController : ControllerBase
                         createdSessions.Add(scheduleId);
                     }
                     
-                    _logger.LogInformation("✅ Auto-generated {Count} recurring sessions for patient {PatientName}",
+                    _logger.LogInformation("✅ Auto-generated {Count} pre-scheduled sessions (3 months) for patient {PatientName}",
                         createdSessions.Count, request.Name);
                     
                     return CreatedAtAction(nameof(GetPatient), new { id = patientId }, 
                         ApiResponse<int>.SuccessResponse(patientId, 
-                            $"Patient created successfully with {createdSessions.Count} pre-scheduled sessions"));
+                            $"Patient created successfully with {createdSessions.Count} pre-scheduled sessions (3 months)"));
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "❌ Failed to auto-generate recurring sessions for patient {PatientName}", request.Name);
-                    // Don't fail patient creation if recurring session generation fails
                     return CreatedAtAction(nameof(GetPatient), new { id = patientId }, 
                         ApiResponse<int>.SuccessResponse(patientId, 
-                            "Patient created successfully, but recurring session generation failed. Please create sessions manually."));
+                            "Patient created successfully, but session generation failed. Please create sessions manually."));
                 }
             }
             
@@ -302,6 +324,10 @@ public class PatientsController : ControllerBase
                 return NotFound(ApiResponse<bool>.ErrorResponse("Patient not found"));
             }
 
+            // CHECK FOR CHANGES BEFORE UPDATING
+            bool hdCycleChanged = existingPatient.HDCycle != request.HDCycle;
+            bool startDateChanged = existingPatient.HDStartDate != request.HDStartDate;
+
             existingPatient.MRN = request.MRN;
             existingPatient.Name = request.Name;
             existingPatient.Age = request.Age;
@@ -325,6 +351,78 @@ public class PatientsController : ControllerBase
             existingPatient.TotalDialysisCompleted = request.TotalDialysisCompleted ?? existingPatient.TotalDialysisCompleted;
 
             var result = await _patientRepository.UpdateAsync(existingPatient);
+            
+            // REGENERATE SESSIONS IF HD CYCLE OR START DATE CHANGED
+            // OR if patient has HD Cycle but no pre-scheduled sessions (fix for patients created with unsupported cycles)
+            var existingSessions = await _scheduleRepository.GetByPatientIdAsync(id);
+            var preScheduledSessions = existingSessions.Where(s => s.SessionStatus == "Pre-Scheduled").ToList();
+            bool hasNoSessions = !preScheduledSessions.Any() && !string.IsNullOrEmpty(request.HDCycle) && request.HDStartDate.HasValue;
+            
+            if (result && ((hdCycleChanged || startDateChanged || hasNoSessions) && !string.IsNullOrEmpty(request.HDCycle) && request.HDStartDate.HasValue))
+            {
+                try
+                {
+                    _logger.LogInformation("🔄 HD Cycle or Start Date changed for patient {PatientName}. Regenerating sessions...", request.Name);
+                    
+                    // Delete old auto-generated pre-scheduled sessions
+                    var autoGeneratedSessions = existingSessions.Where(s => s.IsAutoGenerated && s.SessionStatus == "Pre-Scheduled").ToList();
+                    
+                    foreach (var session in autoGeneratedSessions)
+                    {
+                        await _scheduleRepository.DeleteAsync(session.ScheduleID);
+                    }
+                    
+                    _logger.LogInformation("Deleted {Count} old auto-generated sessions", autoGeneratedSessions.Count);
+                    
+                    // Generate new sessions for 3 months
+                    int preferredSlot = request.PreferredSlotID ?? 1;
+                    var sessionDates = _hdCycleService.GetUpcomingDialysisDates(request.HDCycle, request.HDStartDate.Value, 90);
+                    var createdSessions = new List<int>();
+                    
+                    foreach (var sessionDate in sessionDates)
+                    {
+                        var assignedBed = await _bedAssignmentService.GetNextAvailableBedAsync(preferredSlot, sessionDate);
+                        
+                        var schedule = new HDSchedule
+                        {
+                            PatientID = id,
+                            SessionDate = sessionDate,
+                            HDCycle = request.HDCycle,
+                            DryWeight = request.DryWeight,
+                            HDStartDate = request.HDStartDate,
+                            DialyserType = request.DialyserType,
+                            DialyserModel = request.DialyserModel,
+                            PrescribedDuration = request.PrescribedDuration,
+                            PrescribedBFR = request.PrescribedBFR,
+                            DialysatePrescription = request.DialysatePrescription,
+                            SlotID = preferredSlot,
+                            BedNumber = assignedBed,
+                            SessionStatus = "Pre-Scheduled",
+                            IsAutoGenerated = true,
+                            IsDischarged = false,
+                            CreatedByStaffName = "System",
+                            CreatedByStaffRole = "Auto-Scheduler",
+                            CreatedAt = DateTime.Now,
+                            UpdatedAt = DateTime.Now
+                        };
+                        
+                        var scheduleId = await _scheduleRepository.CreateAsync(schedule);
+                        createdSessions.Add(scheduleId);
+                    }
+                    
+                    _logger.LogInformation("✅ Regenerated {Count} pre-scheduled sessions for updated patient {PatientName}", 
+                        createdSessions.Count, request.Name);
+                    
+                    return Ok(ApiResponse<bool>.SuccessResponse(true, 
+                        $"Patient updated and {createdSessions.Count} sessions regenerated"));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to regenerate sessions after patient update");
+                    return Ok(ApiResponse<bool>.SuccessResponse(true, 
+                        "Patient updated but session regeneration failed"));
+                }
+            }
             
             if (result)
             {

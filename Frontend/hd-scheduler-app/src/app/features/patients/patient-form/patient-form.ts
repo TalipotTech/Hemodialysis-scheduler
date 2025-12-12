@@ -1,6 +1,6 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, Inject } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -14,6 +14,7 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDialog, MatDialogModule, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { Subject, debounceTime, takeUntil } from 'rxjs';
 import { PatientService } from '../../../core/services/patient.service';
 import { StaffManagementService } from '../../../services/staff-management.service';
@@ -38,6 +39,7 @@ import { EquipmentUsageAlertComponent } from '../../../shared/components/equipme
     MatCheckboxModule,
     MatTooltipModule,
     MatSnackBarModule,
+    MatDialogModule,
     EquipmentUsageAlertComponent
   ],
   templateUrl: './patient-form.html',
@@ -84,7 +86,8 @@ export class PatientForm implements OnInit, OnDestroy {
     private router: Router,
     private route: ActivatedRoute,
     private location: Location,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog
   ) {
     // Basic Patient Information - as per specification
     this.patientForm = this.fb.group({
@@ -115,7 +118,22 @@ export class PatientForm implements OnInit, OnDestroy {
       dialyserCount: [0, [Validators.required, Validators.min(0), Validators.max(7)]], // Current dialyser usage count (Max: 7)
       bloodTubingCount: [0, [Validators.required, Validators.min(0), Validators.max(12)]], // Current blood tubing usage count (Max: 12)
       totalDialysisCompleted: [0, [Validators.min(0)]] // Total dialysis sessions completed (auto-calculated)
-    });
+    }, { validators: this.contactNumberValidator() });
+  }
+
+  // Custom validator to ensure Contact Number and Emergency Contact are different
+  private contactNumberValidator() {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const contactNumber = control.get('contactNumber')?.value;
+      const emergencyContact = control.get('emergencyContact')?.value;
+      
+      // Only validate if both fields have values
+      if (contactNumber && emergencyContact && contactNumber === emergencyContact) {
+        return { contactsSame: true };
+      }
+      
+      return null;
+    };
   }
 
   ngOnInit(): void {
@@ -450,4 +468,64 @@ export class PatientForm implements OnInit, OnDestroy {
       console.log(`Auto-filled hdFrequency to ${cycleOption.frequency} for cycle ${selectedCycle}`);
     }
   }
+
+  // Check if MRN already exists when user leaves the MRN field
+  onMrnBlur(): void {
+    const mrnValue = this.patientForm.get('mrn')?.value;
+    
+    // Skip check if MRN is empty or if we're in edit mode
+    if (!mrnValue || this.isEditMode) {
+      return;
+    }
+    
+    this.patientService.checkMrnExists(mrnValue).subscribe({
+      next: (response) => {
+        if (response.success && response.data === true) {
+          // MRN already exists, show popup dialog
+          this.dialog.open(MrnExistsDialogComponent, {
+            width: '400px',
+            data: { mrn: mrnValue }
+          });
+          
+          // Clear the MRN field
+          this.patientForm.patchValue({ mrn: '' });
+        }
+      },
+      error: (error) => {
+        console.error('Error checking MRN:', error);
+        this.snackBar.open('Error checking MRN. Please try again.', 'OK', { duration: 3000 });
+      }
+    });
+  }
+
+  // Helper method to check if contact numbers are the same
+  get hasContactNumberError(): boolean {
+    return (this.patientForm.hasError('contactsSame') ?? false) && 
+           ((this.patientForm.get('contactNumber')?.touched ?? false) || (this.patientForm.get('emergencyContact')?.touched ?? false));
+  }
+}
+
+// Dialog component for MRN exists popup
+@Component({
+  selector: 'app-mrn-exists-dialog',
+  template: `
+    <h2 mat-dialog-title>MRN Already Exists</h2>
+    <mat-dialog-content>
+      <p>The MRN "{{ data.mrn }}" is already registered in the system.</p>
+      <p>Please enter a different MRN number or check existing patient records.</p>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-raised-button color="primary" mat-dialog-close>OK</button>
+    </mat-dialog-actions>
+  `,
+  imports: [
+    CommonModule,
+    MatDialogModule,
+    MatButtonModule
+  ]
+})
+export class MrnExistsDialogComponent {
+  constructor(
+    @Inject(MAT_DIALOG_DATA) public data: { mrn: string }
+  ) {}
 }

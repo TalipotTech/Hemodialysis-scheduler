@@ -58,7 +58,8 @@
         <div class="form-row">
           <mat-form-field appearance="outline">
             <mat-label>MRN (Medical Record Number)</mat-label>
-            <input matInput formControlName="mrn" placeholder="Enter MRN">
+            <input matInput formControlName="mrn" placeholder="Enter MRN" (blur)="onMrnBlur()">
+            <mat-hint>Leave the MRN field to check for duplicates</mat-hint>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
@@ -125,6 +126,14 @@
             }
           </mat-form-field>
         </div>
+
+        <!-- Show error if contact numbers are the same -->
+        @if (hasContactNumberError) {
+          <div class="error-message" style="margin-top: -12px; margin-bottom: 16px;">
+            <mat-icon>error</mat-icon>
+            <span style="color: #f44336;">Contact Number and Emergency Contact must be different</span>
+          </div>
+        }
 
         <div class="form-row">
           <mat-form-field appearance="outline" class="full-width">

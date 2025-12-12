@@ -12,6 +12,7 @@ import { TooltipModule } from '@syncfusion/ej2-angular-popups';
 import { TextBoxModule } from '@syncfusion/ej2-angular-inputs';
 import { PatientService } from '../../../core/services/patient.service';
 import { ScheduleService } from '../../../core/services/schedule.service';
+import { ReservationService } from '../../../core/services/reservation.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { Patient } from '../../../core/models/patient.model';
 
@@ -48,6 +49,12 @@ export class PatientList implements OnInit {
   dischargedErrorMessage = '';
   dischargedSearchTerm = '';
   
+  // Reserved patients tab
+  reservedPatients: any[] = [];
+  filteredReservedPatients: any[] = [];
+  loadingReserved = false;
+  reservedSearchTerm = '';
+  
   // Role-based access control
   canEdit = false;
   userRole = '';
@@ -59,6 +66,7 @@ export class PatientList implements OnInit {
   constructor(
     private patientService: PatientService,
     private scheduleService: ScheduleService,
+    private reservationService: ReservationService,
     private authService: AuthService,
     private router: Router,
     private location: Location
@@ -145,11 +153,15 @@ export class PatientList implements OnInit {
   }
 
   onAddPatient(): void {
+    console.log('Add New Patient clicked - navigating to /patients/new');
     this.router.navigate(['/patients/new']);
   }
 
-  onEditPatient(patient: Patient): void {
-    this.router.navigate(['/patients', patient.patientID]);
+  onEditPatient(patient: any): void {
+    // Handle both Patient and reserved patient data structures
+    const patientId = patient.patientID || patient.patientId;
+    console.log('Edit patient clicked:', patientId);
+    this.router.navigate(['/patients', patientId]);
   }
 
   onViewHistory(patient: Patient): void {
@@ -308,9 +320,47 @@ export class PatientList implements OnInit {
   onTabChange(index: number): void {
     this.selectedTabIndex = index;
     if (index === 1) {
+      // Load reserved patients when switching to Reserved tab
+      this.loadReservedPatients();
+    } else if (index === 2) {
       // Load discharged patients when switching to History tab
       this.loadDischargedPatients();
     }
+  }
+
+  loadReservedPatients(): void {
+    this.loadingReserved = true;
+    
+    this.reservationService.getPatientsWithReservationStatus().subscribe({
+      next: (response) => {
+        console.log('Reserved patients response:', response);
+        if (response.success && response.data) {
+          // Filter for patients with "Reserved" status (no active session today but have future sessions)
+          // This includes both manually scheduled and pre-scheduled (auto-generated) sessions
+          this.reservedPatients = response.data.patients.filter((p: any) => p.status === 'Reserved');
+          this.filteredReservedPatients = this.reservedPatients;
+        }
+        this.loadingReserved = false;
+      },
+      error: (error) => {
+        console.error('Error loading reserved patients:', error);
+        this.loadingReserved = false;
+      }
+    });
+  }
+
+  onReservedSearch(): void {
+    const term = this.reservedSearchTerm.toLowerCase().trim();
+    if (!term) {
+      this.filteredReservedPatients = this.reservedPatients;
+      return;
+    }
+    
+    this.filteredReservedPatients = this.reservedPatients.filter(patient =>
+      patient.name.toLowerCase().includes(term) ||
+      (patient.mrn && patient.mrn.toLowerCase().includes(term)) ||
+      patient.contactNumber.includes(term)
+    );
   }
 
   loadDischargedPatients(): void {
@@ -364,6 +414,38 @@ export class PatientList implements OnInit {
 
   viewFullHistory(patientId: number): void {
     this.router.navigate(['/patients', patientId, 'history']);
+  }
+
+  // Activate a reserved patient - change from Pre-Scheduled to Active
+  onActivateReservedPatient(patient: any): void {
+    if (!patient || !patient.patientId) {
+      this.showToast('Invalid patient data', 'Error');
+      return;
+    }
+
+    this.reservationService.activateReservedPatient(patient.patientId).subscribe({
+      next: (response) => {
+        console.log('Patient activated:', response);
+        this.showToast(`Patient ${patient.name} activated successfully. Session scheduled for today.`, 'Success');
+        
+        // Refresh both reserved and active patients lists
+        this.loadReservedPatients();
+        this.loadPatients(); // Refresh active patients tab
+        
+        // Optionally switch to Active Patients tab to show the activated patient
+        this.selectedTabIndex = 0;
+      },
+      error: (error) => {
+        console.error('Error activating patient:', error);
+        const errorMsg = error.error?.message || error.message || 'Failed to activate patient';
+        this.showToast(errorMsg, 'Error');
+      }
+    });
+  }
+
+  // View history for a reserved patient
+  onViewReservedPatientHistory(patient: any): void {
+    this.router.navigate(['/patients', patient.patientId, 'history']);
   }
 
   togglePatientCard(patientId: number): void {
