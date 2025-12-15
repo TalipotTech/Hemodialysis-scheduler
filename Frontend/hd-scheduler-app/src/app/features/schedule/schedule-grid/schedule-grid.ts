@@ -12,6 +12,7 @@ import { TabModule } from '@syncfusion/ej2-angular-navigations';
 import { TooltipModule } from '@syncfusion/ej2-angular-popups';
 import { ScheduleService } from '../../../core/services/schedule.service';
 import { DailyScheduleResponse, SlotSchedule, BedStatus } from '../../../core/models/schedule.model';
+import { ApiResponse } from '../../../core/models/user.model';
 
 @Component({
   selector: 'app-schedule-grid',
@@ -162,7 +163,7 @@ export class ScheduleGrid implements OnInit, OnDestroy {
             this.schedule.slots.forEach((slot: any) => {
               slot.beds.forEach((bed: any) => {
                 if (bed.status !== 'available' && bed.patient) {
-                  console.log(`Slot ${slot.slotName}, Bed ${bed.bedNumber}: ${bed.status}, Patient: ${bed.patient?.name}, HD Cycle: ${bed.patient?.hdCycle || 'NOT PROVIDED'}`);
+                  console.log(`🛏️ Slot ${slot.slotName}, Bed ${bed.bedNumber}: STATUS="${bed.status}", SessionStatus="${bed.sessionStatus}", Patient: ${bed.patient?.name}, HD Cycle: ${bed.patient?.hdCycle || 'NOT PROVIDED'}, ScheduleID: ${bed.scheduleId}`);
                 }
               });
             });
@@ -233,6 +234,7 @@ export class ScheduleGrid implements OnInit, OnDestroy {
       if (!this.shouldShowBed('pre-scheduled')) {
         className += ' bed-filtered';
       }
+      console.log(`🎨 Bed ${bedNumber} in slot ${slotId}: scheduleId=0 → ${className}`);
       return className;
     }
     
@@ -259,6 +261,7 @@ export class ScheduleGrid implements OnInit, OnDestroy {
       className += ' bed-filtered';
     }
     
+    console.log(`🎨 Bed ${bedNumber} in slot ${slotId}: status="${bed.status}", sessionStatus="${bed.sessionStatus}" → ${className}`);
     return className;
   }
 
@@ -514,22 +517,21 @@ export class ScheduleGrid implements OnInit, OnDestroy {
     
     console.log('📋 Activating patient:', { patientName, patientId, scheduleId, slotId, bedNumber });
     
-    // For real scheduleId (not auto-generated 0), activate session then navigate to workflow
+    // For real scheduleId (not auto-generated 0), activate session and change color to red
     if (scheduleId && scheduleId > 0) {
-      // First, activate the session (update status to "In Progress")
+      // Activate the session (update status to "In Progress" which makes it red)
       this.scheduleService.activateSession(scheduleId).subscribe({
         next: (response) => {
           if (response.success) {
             console.log('✅ Session activated successfully:', response);
-            this.showToast(`${patientName} activated - Starting treatment`, 'Success');
+            this.showToast(`${patientName} activated - Treatment started`, 'Success');
             
-            // Reload schedule to show updated color (red instead of purple)
-            this.loadSchedule();
-            
-            // Navigate to workflow after a short delay to show color change
+            // Reload schedule to show red (occupied) status
+            // DO NOT navigate to workflow - just update the color
             setTimeout(() => {
-              this.navigateToWorkflow(patientId, scheduleId);
-            }, 500);
+              console.log('🔄 Reloading schedule to show red (occupied) status...');
+              this.loadSchedule();
+            }, 300);
           } else {
             console.error('❌ Failed to activate session:', response);
             this.showToast('Failed to activate session', 'Error');
@@ -541,9 +543,44 @@ export class ScheduleGrid implements OnInit, OnDestroy {
         }
       });
     } else {
-      // Auto-generated (scheduleId === 0): Need to create session first
-      // Show error - they should use Modify to create it properly
-      this.showToast('Please use "Modify" button to complete schedule details first', 'Warning');
+      // Auto-generated (scheduleId === 0): Create the session first, then activate it
+      console.log('📝 Creating auto-suggested session before activation...');
+      
+      // Create a schedule object for the auto-suggested session
+      const scheduleData = {
+        patientId: patientId,
+        sessionDate: this.selectedDate.toISOString().split('T')[0],
+        slotId: slotId,
+        bedNumber: bedNumber,
+        sessionStatus: 'In Progress' // Set to In Progress directly (occupied/red)
+      };
+      
+      console.log('Creating schedule with data:', scheduleData);
+      
+      // Create the session using createHDSession
+      this.scheduleService.createHDSession(scheduleData).subscribe({
+        next: (response: ApiResponse<number>) => {
+          if (response.success && response.data) {
+            const newScheduleId = response.data;
+            console.log('✅ Session created with ID:', newScheduleId);
+            this.showToast(`${patientName} activated - Treatment started`, 'Success');
+            
+            // Reload schedule to show the new session with red (occupied) status
+            // DO NOT navigate to workflow - just update the color
+            setTimeout(() => {
+              console.log('🔄 Reloading schedule to show red (occupied) status...');
+              this.loadSchedule();
+            }, 300);
+          } else {
+            console.error('❌ Failed to create session:', response);
+            this.showToast('Failed to create session', 'Error');
+          }
+        },
+        error: (error: any) => {
+          console.error('❌ Error creating session:', error);
+          this.showToast('Error creating session', 'Error');
+        }
+      });
     }
   }
   

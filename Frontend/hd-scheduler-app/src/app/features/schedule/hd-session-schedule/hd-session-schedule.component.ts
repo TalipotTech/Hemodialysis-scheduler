@@ -675,8 +675,16 @@ export class HdSessionScheduleComponent implements OnInit {
 
     // Include ALL editable treatment fields that have values
     // Basic HD Info
-    if (formValue.dryWeight != null && formValue.dryWeight !== '') updates.DryWeight = formValue.dryWeight;
-    if (formValue.hdStartDate) updates.HDStartDate = formValue.hdStartDate;
+    if (formValue.dryWeight != null && formValue.dryWeight !== '' && !isNaN(formValue.dryWeight)) {
+      updates.DryWeight = Number(formValue.dryWeight);
+    }
+    if (formValue.hdStartDate) {
+      // Ensure date is in proper ISO format
+      const hdStartDate = new Date(formValue.hdStartDate);
+      if (!isNaN(hdStartDate.getTime())) {
+        updates.HDStartDate = hdStartDate.toISOString();
+      }
+    }
     if (formValue.hdCycle != null && formValue.hdCycle !== '') updates.HDCycle = formValue.hdCycle;
     if (formValue.hdFrequency != null && formValue.hdFrequency !== '') updates.HDFrequency = formValue.hdFrequency;
     if (formValue.weightGain != null && formValue.weightGain !== '') updates.WeightGain = formValue.weightGain;
@@ -715,7 +723,7 @@ export class HdSessionScheduleComponent implements OnInit {
     // Test Status
     if (formValue.bloodTestDone != null) updates.BloodTestDone = formValue.bloodTestDone;
     
-    // HDTreatmentSession fields
+    // HDTreatmentSession fields - only fields that exist in HDSchedule table
     if (formValue.startTime) updates.StartTime = formValue.startTime;
     if (formValue.preWeight != null && formValue.preWeight !== '') updates.PreWeight = formValue.preWeight;
     if (formValue.preTemperature != null && formValue.preTemperature !== '') updates.PreTemperature = formValue.preTemperature;
@@ -723,68 +731,9 @@ export class HdSessionScheduleComponent implements OnInit {
     if (formValue.accessStatus) updates.AccessStatus = formValue.accessStatus;
     if (formValue.complications) updates.Complications = formValue.complications;
     
-    // IntraDialyticMonitoring fields
-    if (formValue.monitoringTime) updates.MonitoringTime = formValue.monitoringTime;
-    if (formValue.heartRate != null && formValue.heartRate !== '') updates.HeartRate = formValue.heartRate;
-    if (formValue.actualBFR != null && formValue.actualBFR !== '') updates.ActualBFR = formValue.actualBFR;
-    if (formValue.venousPressure != null && formValue.venousPressure !== '') updates.VenousPressure = formValue.venousPressure;
-    if (formValue.arterialPressure != null && formValue.arterialPressure !== '') updates.ArterialPressure = formValue.arterialPressure;
-    if (formValue.currentUFR != null && formValue.currentUFR !== '') updates.CurrentUFR = formValue.currentUFR;
-    if (formValue.totalUFAchieved != null && formValue.totalUFAchieved !== '') updates.TotalUFAchieved = formValue.totalUFAchieved;
-    if (formValue.tmpPressure != null && formValue.tmpPressure !== '') updates.TmpPressure = formValue.tmpPressure;
-    if (formValue.interventions) updates.Interventions = formValue.interventions;
-    if (formValue.staffInitials) updates.StaffInitials = formValue.staffInitials;
-    
-    // PostDialysisMedications fields
-    if (formValue.medicationType) updates.MedicationType = formValue.medicationType;
-    if (formValue.medicationName) updates.MedicationName = formValue.medicationName;
-    if (formValue.dose) updates.Dose = formValue.dose;
-    if (formValue.route) updates.Route = formValue.route;
-    if (formValue.administeredAt) updates.AdministeredAt = formValue.administeredAt;
-    
-    // TreatmentAlerts fields
-    if (formValue.alertType) updates.AlertType = formValue.alertType;
-    if (formValue.alertMessage) updates.AlertMessage = formValue.alertMessage;
-    if (formValue.severity) updates.Severity = formValue.severity;
-    if (formValue.resolution) updates.Resolution = formValue.resolution;
-    
-    // Additional Notes
-    if (formValue.notes) updates.Notes = formValue.notes;
-    
-    // Debug: Log treatment alerts fields
-    if (formValue.alertType || formValue.alertMessage || formValue.severity || formValue.resolution || formValue.notes) {
-      console.log('🚨 Treatment Alerts & Notes auto-save:', {
-        alertType: formValue.alertType,
-        alertMessage: formValue.alertMessage,
-        severity: formValue.severity,
-        resolution: formValue.resolution,
-        notes: formValue.notes
-      });
-    }
-    
-    // Post-Dialysis Vital Signs
-    if (formValue.postWeight != null && formValue.postWeight !== '') updates.PostWeight = formValue.postWeight;
-    if (formValue.postSBP != null && formValue.postSBP !== '') updates.PostSBP = formValue.postSBP;
-    if (formValue.postDBP != null && formValue.postDBP !== '') updates.PostDBP = formValue.postDBP;
-    if (formValue.postHR != null && formValue.postHR !== '') updates.PostHR = formValue.postHR;
-    if (formValue.totalFluidRemoved != null && formValue.totalFluidRemoved !== '') updates.TotalFluidRemoved = formValue.totalFluidRemoved;
-    if (formValue.postAccessStatus) updates.PostAccessStatus = formValue.postAccessStatus;
-    
-    // Debug: Log post-dialysis fields
-    if (formValue.postWeight || formValue.postSBP || formValue.postDBP) {
-      console.log('📊 Post-Dialysis fields:', {
-        postWeight: formValue.postWeight,
-        postSBP: formValue.postSBP,
-        postDBP: formValue.postDBP,
-        postHR: formValue.postHR,
-        PostWeight: updates.PostWeight,
-        PostSBP: updates.PostSBP,
-        PostDBP: updates.PostDBP
-      });
-    }
-    
-    // Additional notes field - IMPORTANT for medical records
-    if (formValue.notes) updates.Notes = formValue.notes;
+    // NOTE: Monitoring fields (heartRate, actualBFR, etc.) are saved separately via addMonitoringRecord()
+    // NOTE: Post-dialysis medication fields are saved separately to PostDialysisMedications table
+    // NOTE: Post-dialysis vitals and alerts are saved on final submit, not auto-save
 
     if (Object.keys(updates).length === 0) {
       return;
@@ -1227,47 +1176,23 @@ export class HdSessionScheduleComponent implements OnInit {
       dialyserModel: toString(formValue.dialyserModel),
       bloodTestDone: false,
       sessionsPerWeek: toNumber(formValue.sessionsPerWeek),
-      // HDTreatmentSession fields
+      // HDTreatmentSession fields - only fields that exist in HDSchedule table
       startTime: toString(formValue.startTime),
       preWeight: toNumber(formValue.preWeight),
       preBPSitting: toString(formValue.preBPSitting),
       preTemperature: toNumber(formValue.preTemperature),
+      accessBleedingTime: toString(formValue.accessBleedingTime),
       accessStatus: toString(formValue.accessStatus),
       complications: toString(formValue.complications),
-      // IntraDialyticMonitoring fields
-      monitoringTime: toString(formValue.monitoringTime),
       bloodPressure: toString(formValue.bloodPressure),
-      heartRate: toNumber(formValue.heartRate),
-      actualBFR: toNumber(formValue.actualBFR),
-      venousPressure: toNumber(formValue.venousPressure),
-      arterialPressure: toNumber(formValue.arterialPressure),
-      currentUFR: toNumber(formValue.currentUFR),
-      totalUFAchieved: toNumber(formValue.totalUFAchieved),
-      tmpPressure: toNumber(formValue.tmpPressure),
       symptoms: toString(formValue.symptoms),
-      interventions: toString(formValue.interventions),
-      staffInitials: toString(formValue.staffInitials),
-      // Post-Dialysis Vital Signs
-      postWeight: toNumber(formValue.postWeight),
-      postSBP: toNumber(formValue.postSBP),
-      postDBP: toNumber(formValue.postDBP),
-      postHR: toNumber(formValue.postHR),
-      accessBleedingTime: toString(formValue.accessBleedingTime),
-      totalFluidRemoved: toNumber(formValue.totalFluidRemoved),
-      postAccessStatus: toString(formValue.postAccessStatus),
-      // PostDialysisMedications fields
-      medicationType: toString(formValue.medicationType),
-      medicationName: toString(formValue.medicationName),
-      dose: toString(formValue.dose),
-      route: toString(formValue.route),
-      administeredAt: toString(formValue.administeredAt),
-      // TreatmentAlerts fields
-      alertType: toString(formValue.alertType),
-      alertMessage: toString(formValue.alertMessage),
-      severity: toString(formValue.severity),
-      resolution: toString(formValue.resolution),
-      // Additional notes
-      notes: toString(formValue.notes)
+      // Post-dialysis vitals (PascalCase for C# backend)
+      PostWeight: toNumber(formValue.postWeight),
+      PostSBP: toNumber(formValue.postSBP),
+      PostDBP: toNumber(formValue.postDBP),
+      PostHR: toNumber(formValue.postHR),
+      TotalFluidRemoved: toNumber(formValue.totalFluidRemoved),
+      PostAccessStatus: toString(formValue.postAccessStatus)
     };
 
     console.log('🔍 Full Form Values:', formValue);
@@ -1364,7 +1289,7 @@ export class HdSessionScheduleComponent implements OnInit {
       bloodPressure: toString(formValue.bloodPressure),
       symptoms: toString(formValue.symptoms),
       bloodTestDone: false,
-      // HDTreatmentSession fields
+      // HDTreatmentSession fields - only fields that exist in HDSchedule table
       startTime: toString(formValue.startTime),
       preWeight: toNumber(formValue.preWeight),
       preBPSitting: toString(formValue.preBPSitting),
@@ -1372,37 +1297,14 @@ export class HdSessionScheduleComponent implements OnInit {
       accessBleedingTime: toString(formValue.accessBleedingTime),
       accessStatus: toString(formValue.accessStatus),
       complications: toString(formValue.complications),
-      // IntraDialyticMonitoring fields
-      monitoringTime: toString(formValue.monitoringTime),
-      heartRate: toNumber(formValue.heartRate),
-      actualBFR: toNumber(formValue.actualBFR),
-      venousPressure: toNumber(formValue.venousPressure),
-      arterialPressure: toNumber(formValue.arterialPressure),
-      currentUFR: toNumber(formValue.currentUFR),
-      totalUFAchieved: toNumber(formValue.totalUFAchieved),
-      tmpPressure: toNumber(formValue.tmpPressure),
-      interventions: toString(formValue.interventions),
-      staffInitials: toString(formValue.staffInitials),
-      // Post-Dialysis Vital Signs
-      postWeight: toNumber(formValue.postWeight),
-      postSBP: toNumber(formValue.postSBP),
-      postDBP: toNumber(formValue.postDBP),
-      postHR: toNumber(formValue.postHR),
-      totalFluidRemoved: toNumber(formValue.totalFluidRemoved),
-      postAccessStatus: toString(formValue.postAccessStatus),
-      // PostDialysisMedications fields
-      medicationType: toString(formValue.medicationType),
-      medicationName: toString(formValue.medicationName),
-      dose: toString(formValue.dose),
-      route: toString(formValue.route),
-      administeredAt: toString(formValue.administeredAt),
-      // TreatmentAlerts fields
-      alertType: toString(formValue.alertType),
-      alertMessage: toString(formValue.alertMessage),
-      severity: toString(formValue.severity),
-      resolution: toString(formValue.resolution),
-      // Additional notes
-      notes: toString(formValue.notes),
+      // Post-dialysis vitals (PascalCase for C# backend)
+      PostWeight: toNumber(formValue.postWeight),
+      PostSBP: toNumber(formValue.postSBP),
+      PostDBP: toNumber(formValue.postDBP),
+      PostHR: toNumber(formValue.postHR),
+      TotalFluidRemoved: toNumber(formValue.totalFluidRemoved),
+      PostAccessStatus: toString(formValue.postAccessStatus),
+      // NOTE: Monitoring, medication, and alert fields are saved via separate endpoints
       isDischarged: false
     };
 
@@ -1654,10 +1556,8 @@ export class HdSessionScheduleComponent implements OnInit {
     
     // Build comprehensive monitoring record object with ALL fields
     const monitoringRecord = {
-      patientID: this.patientId,
       scheduleID: this.scheduleId,
-      sessionDate: sessionDate,
-      timeRecorded: new Date().toISOString(),
+      timeRecorded: new Date().toTimeString().slice(0, 8), // HH:MM:SS format
       bloodPressure: formValues.bloodPressure || '',
       pulseRate: formValues.heartRate || null,
       temperature: formValues.temperature || null,
@@ -1668,10 +1568,9 @@ export class HdSessionScheduleComponent implements OnInit {
       dialysateFlowRate: formValues.dialysateFlowRate || null,
       currentUFR: formValues.currentUFR || null,
       tmpPressure: formValues.tmpPressure || null,
-      symptoms: formValues.symptoms || '',
       interventions: formValues.interventions || '',
       staffInitials: formValues.staffInitials || '',
-      recordedBy: formValues.staffInitials || null,
+      // recordedBy is automatically set by backend from authenticated user
       notes: formValues.monitoringNotes || ''
     };
 

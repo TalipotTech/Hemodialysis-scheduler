@@ -294,7 +294,7 @@ export class HdSessionFormComponent implements OnInit {
     // Call the new HD Schedule API endpoint
     const apiUrl = '/api/hdschedule';
     
-    fetch(`http://localhost:5001${apiUrl}`, {
+    fetch(`http://localhost:5000${apiUrl}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

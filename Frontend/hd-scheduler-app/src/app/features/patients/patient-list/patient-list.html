@@ -82,7 +82,12 @@
                     
                     <e-columns>
                       <e-column field="patientID" headerText="ID" width="70"></e-column>
-                      <e-column field="name" headerText="Patient Name" width="150"></e-column>
+                      <e-column 
+                        field="name" 
+                        headerText="Patient Name" 
+                        width="150"
+                        [template]="nameTemplate">
+                      </e-column>
                       <e-column field="mrn" headerText="MRN" width="100"></e-column>
                       <e-column field="age" headerText="Age" width="60"></e-column>
                       <e-column field="gender" headerText="Gender" width="80"></e-column>
@@ -94,6 +99,16 @@
                       </e-column>
                     </e-columns>
                   </ejs-grid>
+
+                  <!-- Patient Name Template with Hover Info -->
+                  <ng-template #nameTemplate let-data>
+                    <div class="patient-name-cell" 
+                         [matTooltip]="getPatientTooltip(data)" 
+                         matTooltipClass="patient-info-tooltip"
+                         matTooltipPosition="right">
+                      {{ data.name }}
+                    </div>
+                  </ng-template>
 
                   <!-- Actions Template -->
                   <ng-template #actionsTemplate let-data>

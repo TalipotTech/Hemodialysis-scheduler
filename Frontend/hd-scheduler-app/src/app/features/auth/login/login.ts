@@ -103,7 +103,7 @@ export class Login implements OnInit {
       error: (error) => {
         console.error('Login error:', error);
         if (error.status === 0) {
-          this.errorMessage = 'Cannot connect to server. Please ensure the backend is running on http://localhost:5001';
+          this.errorMessage = 'Cannot connect to server. Please ensure the backend is running on http://localhost:5000';
         } else if (error.error?.message) {
           this.errorMessage = error.error.message;
         } else if (error.message) {

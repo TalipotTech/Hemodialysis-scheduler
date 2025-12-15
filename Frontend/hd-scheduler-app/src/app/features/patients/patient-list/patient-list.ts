@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { FormsModule } from '@angular/forms';
 // Syncfusion imports
 import { GridModule, PageService, SortService, FilterService, ToolbarService, ExcelExportService, PdfExportService } from '@syncfusion/ej2-angular-grids';
@@ -22,6 +23,7 @@ import { Patient } from '../../../core/models/patient.model';
     CommonModule,
     FormsModule,
     MatIconModule,
+    MatTooltipModule,
     GridModule,
     ButtonModule,
     ChipListModule,
@@ -396,6 +398,27 @@ export class PatientList implements OnInit {
         this.loadingDischarged = false;
       }
     });
+  }
+
+  getPatientTooltip(patient: any): string {
+    const hdCycle = patient.hdCycle || 'Not Set';
+    const preferredSlot = this.getPreferredSlotName(patient.preferredSlotID);
+    const bedAssignment = patient.bedNumber ? `Bed ${patient.bedNumber}` : 'Not Assigned';
+    
+    return `HD Cycle: ${hdCycle}\nPreferred Time: ${preferredSlot}\nBed Assignment: ${bedAssignment}`;
+  }
+
+  getPreferredSlotName(slotId: number | null): string {
+    if (!slotId) return 'Not Set';
+    
+    const slots: { [key: number]: string } = {
+      1: 'Morning (06:00 - 10:00)',
+      2: 'Afternoon (11:00 - 15:00)',
+      3: 'Evening (16:00 - 20:00)',
+      4: 'Night (21:00 - 01:00)'
+    };
+    
+    return slots[slotId] || 'Not Set';
   }
 
   onDischargedSearch(): void {
