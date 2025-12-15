@@ -138,7 +138,7 @@ if (-not $SkipFrontend) {
     Pop-Location
     
     Write-Host "  [OK] Frontend deployed successfully" -ForegroundColor Green
-    Write-Host "  URL: https://$frontendStorageAccount.z5.web.core.windows.net" -ForegroundColor White
+    Write-Host "  URL: https://$frontendStorageAccount.z29.web.core.windows.net" -ForegroundColor White
 } else {
     Write-Host "[2/2] Skipping Frontend deployment" -ForegroundColor Yellow
 }
@@ -153,7 +153,7 @@ if (-not $SkipBackend) {
 }
 
 if (-not $SkipFrontend) {
-    Write-Host "Frontend:     https://$frontendStorageAccount.z5.web.core.windows.net" -ForegroundColor White
+    Write-Host "Frontend:     https://$frontendStorageAccount.z29.web.core.windows.net" -ForegroundColor White
 }
 
 Write-Host ""
