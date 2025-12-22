@@ -37,11 +37,13 @@ public class Patient
     public int? ScheduleID { get; set; }
     public int? SlotID { get; set; }
     public int? BedNumber { get; set; }
+    public DateTime? SessionDate { get; set; } // Date of the session
+    public string? SessionStatus { get; set; } // Session status (Pre-Scheduled, Active, In Progress, Completed)
     public int? AssignedDoctor { get; set; }
     public int? AssignedNurse { get; set; }
     public string? AssignedDoctorName { get; set; }
     public string? AssignedNurseName { get; set; }
-    public DateTime? SessionStartTime { get; set; } // Time when dialysis session started
+    public DateTime? SessionStartTime { get; set; } // Time when dialysis session started (TreatmentStartTime)
     public bool IsDischarged { get; set; } = false;
 }
 

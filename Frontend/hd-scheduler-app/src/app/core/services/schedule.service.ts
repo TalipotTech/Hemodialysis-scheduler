@@ -143,6 +143,26 @@ export class ScheduleService {
     return this.http.delete<ApiResponse<boolean>>(`${environment.apiUrl}/api/hdschedule/monitoring/${recordId}`);
   }
 
+  // ==================== POST-DIALYSIS MEDICATIONS ====================
+  
+  addMedication(scheduleId: number, medication: any): Observable<ApiResponse<number>> {
+    return this.http.post<ApiResponse<number>>(`${environment.apiUrl}/api/hdschedule/${scheduleId}/medications`, medication);
+  }
+
+  getMedications(scheduleId: number): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/api/hdschedule/${scheduleId}/medications`);
+  }
+
+  // ==================== TREATMENT ALERTS ====================
+  
+  addAlert(scheduleId: number, alert: any): Observable<ApiResponse<number>> {
+    return this.http.post<ApiResponse<number>>(`${environment.apiUrl}/api/hdschedule/${scheduleId}/alerts`, alert);
+  }
+
+  getAlerts(scheduleId: number): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/api/hdschedule/${scheduleId}/alerts`);
+  }
+
   // ==================== PATIENT STATISTICS ====================
   
   getPatientStatistics(date?: string): Observable<ApiResponse<any>> {

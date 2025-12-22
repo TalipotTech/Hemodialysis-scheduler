@@ -29,6 +29,14 @@ export class PatientService {
     return this.http.get<ApiResponse<Patient[]>>(`${this.apiUrl}/active`);
   }
 
+  getTodayCompletedSessions(): Observable<ApiResponse<Patient[]>> {
+    return this.http.get<ApiResponse<Patient[]>>(`${this.apiUrl}/today-completed`);
+  }
+
+  getCompletedSessionsByDateRange(startDate: string, endDate: string): Observable<ApiResponse<Patient[]>> {
+    return this.http.get<ApiResponse<Patient[]>>(`${this.apiUrl}/completed-sessions?startDate=${startDate}&endDate=${endDate}`);
+  }
+
   getPatient(id: number): Observable<ApiResponse<Patient>> {
     return this.http.get<ApiResponse<Patient>>(`${this.apiUrl}/${id}`);
   }

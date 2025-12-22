@@ -1,7 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { environment } from '../../../../environments/environment.development';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -100,6 +102,8 @@ export class HdSessionScheduleComponent implements OnInit {
   alertTypes = ['Hypotension', 'Hypertension', 'Cramping', 'Chest Pain', 'Access Issue', 'Machine Alarm', 'Other'];
   severityLevels = ['Low', 'Medium', 'High', 'Critical'];
   
+  // Post-Dialysis Medication - Single medication stored in form controls
+  
   // Monitoring Records for multiple entries
   monitoringRecords: any[] = [];
   currentTime: Date = new Date();
@@ -132,6 +136,7 @@ export class HdSessionScheduleComponent implements OnInit {
     private fb: FormBuilder,
     private route: ActivatedRoute,
     private router: Router,
+    private http: HttpClient,
     private location: Location,
     private patientService: PatientService,
     private scheduleService: ScheduleService,
@@ -189,12 +194,12 @@ export class HdSessionScheduleComponent implements OnInit {
       postHR: [''],
       totalFluidRemoved: [''],
       postAccessStatus: [''],
-      // PostDialysisMedications fields
+      // PostDialysisMedications fields (Single medication only)
       medicationType: [''],
       medicationName: [''],
-      dose: [''],
-      route: [''],
-      administeredAt: [''],
+      medicationDose: [''],
+      medicationRoute: [''],
+      medicationAdministeredAt: [''],
       // TreatmentAlerts fields
       alertType: [''],
       alertMessage: [''],
@@ -653,6 +658,41 @@ export class HdSessionScheduleComponent implements OnInit {
           // Keep all treatment parameters EDITABLE so staff can update them during treatment
           // This includes: dryWeight, hdStartDate, hdCycle, prescribedDuration, prescribedBFR, 
           // ufGoal, dialysatePrescription, weightGain, bloodPressure, symptoms, etc.
+
+          // Load medications separately
+          this.scheduleService.getMedications(this.scheduleId!).subscribe({
+            next: (response) => {
+              if (response.success && response.data && response.data.length > 0) {
+                const medication = response.data[0];
+                this.sessionForm.patchValue({
+                  medicationType: medication.medicationType || medication.MedicationType || '',
+                  medicationName: medication.medicationName || medication.MedicationName || '',
+                  medicationDose: medication.dosage || medication.Dosage || '',
+                  medicationRoute: medication.route || medication.Route || '',
+                  medicationAdministeredAt: medication.givenTime ? medication.givenTime.substring(0, 5) : ''
+                });
+                console.log('✅ Medications loaded:', medication);
+              }
+            },
+            error: (err) => console.error('Error loading medications:', err)
+          });
+
+          // Load alerts separately
+          this.scheduleService.getAlerts(this.scheduleId!).subscribe({
+            next: (response) => {
+              if (response.success && response.data && response.data.length > 0) {
+                const alert = response.data[0];
+                this.sessionForm.patchValue({
+                  alertType: alert.alertType || alert.AlertType || '',
+                  alertMessage: alert.alertMessage || alert.AlertMessage || '',
+                  severity: alert.severity || alert.Severity || '',
+                  resolution: alert.resolution || alert.Resolution || ''
+                });
+                console.log('✅ Alerts loaded:', alert);
+              }
+            },
+            error: (err) => console.error('Error loading alerts:', err)
+          });
           
           this.loading = false;
         }
@@ -670,6 +710,7 @@ export class HdSessionScheduleComponent implements OnInit {
       return;
     }
 
+    this.saveStatus = 'saving';
     const formValue = this.sessionForm.getRawValue(); // Get all values including disabled fields
     const updates: any = {};
 
@@ -731,24 +772,43 @@ export class HdSessionScheduleComponent implements OnInit {
     if (formValue.accessStatus) updates.AccessStatus = formValue.accessStatus;
     if (formValue.complications) updates.Complications = formValue.complications;
     
+    // Post-Dialysis vitals - SAVE THESE TOO!
+    if (formValue.postWeight != null && formValue.postWeight !== '') updates.PostWeight = formValue.postWeight;
+    if (formValue.postSBP != null && formValue.postSBP !== '') updates.PostSBP = formValue.postSBP;
+    if (formValue.postDBP != null && formValue.postDBP !== '') updates.PostDBP = formValue.postDBP;
+    if (formValue.postHR != null && formValue.postHR !== '') updates.PostHR = formValue.postHR;
+    if (formValue.totalFluidRemoved != null && formValue.totalFluidRemoved !== '') updates.TotalFluidRemoved = formValue.totalFluidRemoved;
+    if (formValue.postAccessStatus) updates.PostAccessStatus = formValue.postAccessStatus;
+    
     // NOTE: Monitoring fields (heartRate, actualBFR, etc.) are saved separately via addMonitoringRecord()
     // NOTE: Post-dialysis medication fields are saved separately to PostDialysisMedications table
-    // NOTE: Post-dialysis vitals and alerts are saved on final submit, not auto-save
 
     if (Object.keys(updates).length === 0) {
       return;
     }
+    
+    // Also save medications when auto-saving
+    this.saveMedicationsToDatabase();
 
     this.scheduleService.autoSaveSchedule(this.scheduleId, updates).subscribe({
       next: (response) => {
         if (response.success) {
           console.log('✓ Auto-saved successfully at', new Date().toLocaleTimeString());
-          this.snackBar.open('✓ Saved', '', { duration: 1000, horizontalPosition: 'end', verticalPosition: 'top' });
+          this.saveStatus = 'saved';
+          this.lastSavedTime = new Date();
+          
+          // Reset to idle after 3 seconds
+          setTimeout(() => {
+            if (this.saveStatus === 'saved') {
+              this.saveStatus = 'idle';
+            }
+          }, 3000);
         }
       },
       error: (error) => {
         console.error('Auto-save failed:', error);
         console.error('Error details:', error.error);
+        this.saveStatus = 'idle';
         
         // Extract error message from backend
         let errorMessage = 'Failed to save changes';
@@ -1216,7 +1276,78 @@ export class HdSessionScheduleComponent implements OnInit {
     this.scheduleService.createHDSession(sessionData).subscribe({
       next: (response) => {
         console.log('HD session response:', response);
-        if (response.success) {
+        if (response.success && response.data) {
+          const scheduleId = response.data as number; // response.data is the scheduleID directly
+          
+          // Save medication if provided - only if all required fields are filled
+          const hasValidMedication = formValue.medicationName && 
+                                     formValue.dose && 
+                                     formValue.route && 
+                                     formValue.administeredAt && 
+                                     formValue.administeredAt !== '--:--';
+          
+          if (hasValidMedication) {
+            // Format time as HH:mm:ss for TIME column
+            const sessionDate = formValue.sessionDate || formValue.treatmentDate;
+            const timeString = formValue.administeredAt; // e.g., "14:30"
+            let givenTime = null;
+            
+            if (timeString && timeString !== '--:--') {
+              // Convert to HH:mm:ss format for SQL TIME column
+              givenTime = timeString.includes(':') ? `${timeString}:00` : null;
+            }
+            
+            const medication = {
+              scheduleID: scheduleId,
+              patientID: this.patientId,
+              sessionDate: sessionDate ? new Date(sessionDate).toISOString().split('T')[0] : null,
+              medicationName: formValue.medicationName,
+              dosage: formValue.dose,
+              route: formValue.route,
+              givenTime: givenTime,
+              givenBy: null
+            };
+            console.log('💊 Saving medication:', medication);
+            this.scheduleService.addMedication(scheduleId, medication).subscribe({
+              next: () => console.log('✅ Medication saved'),
+              error: (err) => {
+                console.error('❌ Medication save failed:', err);
+                console.error('❌ Error details:', err.error);
+                this.snackBar.open('Failed to save medication. Please try again.', 'Close', { duration: 3000 });
+              }
+            });
+          } else {
+            console.log('⚠️ Medication fields incomplete, skipping save');
+          }
+
+          // Save alert if provided - only if all required fields are filled
+          const hasValidAlert = formValue.alertType && 
+                                formValue.alertMessage && 
+                                formValue.severity;
+          
+          if (hasValidAlert) {
+            const alert = {
+              scheduleID: scheduleId,
+              patientID: this.patientId,
+              sessionDate: formValue.sessionDate || formValue.treatmentDate,
+              alertType: formValue.alertType,
+              alertMessage: formValue.alertMessage,
+              severity: formValue.severity,
+              resolution: formValue.resolution || null,
+              createdBy: null
+            };
+            console.log('🚨 Saving alert:', alert);
+            this.scheduleService.addAlert(scheduleId, alert).subscribe({
+              next: () => console.log('✅ Alert saved'),
+              error: (err) => {
+                console.error('❌ Alert save failed:', err);
+                this.snackBar.open('Failed to save alert. Please try again.', 'Close', { duration: 3000 });
+              }
+            });
+          } else {
+            console.log('⚠️ Alert fields incomplete, skipping save');
+          }
+          
           // Clear the draft after successful save
           this.clearDraft();
           
@@ -1316,11 +1447,71 @@ export class HdSessionScheduleComponent implements OnInit {
       next: (response) => {
         console.log('Update response:', response);
         if (response.success) {
-          this.snackBar.open('HD session updated successfully!', 'Close', { duration: 3000 });
-          // Stay on the same page instead of navigating away
+          // Save all medications from the medications array
+          this.saveMedicationsToDatabase();
+
+          // Save or update medication if provided
+          const hasValidMedication = formValue.medicationName && formValue.medicationDose && formValue.medicationRoute;
+          
+          if (hasValidMedication) {
+            const sessionDate = formValue.treatmentDate;
+            const timeString = formValue.medicationAdministeredAt;
+            let givenTime = null;
+            
+            if (timeString && timeString !== '--:--') {
+              givenTime = timeString.includes(':') ? `${timeString}:00` : null;
+            }
+            
+            const medication = {
+              scheduleID: this.scheduleId,
+              patientID: this.patientId,
+              sessionDate: sessionDate ? new Date(sessionDate).toISOString().split('T')[0] : null,
+              medicationName: formValue.medicationName,
+              dosage: formValue.medicationDose,
+              route: formValue.medicationRoute,
+              givenTime: givenTime,
+              givenBy: null
+            };
+            console.log('💊 Saving/updating medication:', medication);
+            this.scheduleService.addMedication(this.scheduleId!, medication).subscribe({
+              next: () => console.log('✅ Medication saved'),
+              error: (err) => {
+                console.error('❌ Medication save failed:', err);
+                this.snackBar.open('Failed to save medication. Please try again.', 'Close', { duration: 3000 });
+              }
+            });
+          }
+
+          // Save or update alert if provided
+          const hasValidAlert = formValue.alertType && 
+                                formValue.alertMessage && 
+                                formValue.severity;
+          
+          if (hasValidAlert) {
+            const alert = {
+              scheduleID: this.scheduleId,
+              patientID: this.patientId,
+              sessionDate: formValue.treatmentDate,
+              alertType: formValue.alertType,
+              alertMessage: formValue.alertMessage,
+              severity: formValue.severity,
+              resolution: formValue.resolution || null,
+              createdBy: null
+            };
+            console.log('🚨 Saving/updating alert:', alert);
+            this.scheduleService.addAlert(this.scheduleId!, alert).subscribe({
+              next: () => console.log('✅ Alert saved'),
+              error: (err) => {
+                console.error('❌ Alert save failed:', err);
+                this.snackBar.open('Failed to save alert. Please try again.', 'Close', { duration: 3000 });
+              }
+            });
+          }
+          
+          this.snackBar.open('HD session updated successfully! Data will persist until completion.', 'Close', { duration: 3000 });
+          // Stay on the same page and DO NOT reload - keep form values intact
           this.loading = false;
-          // Reload the session data to show updated values
-          this.loadExistingSession();
+          // DO NOT call loadExistingSession() - this preserves the form values
         } else {
           this.errorMessage = response.message || 'Failed to update HD session';
           this.snackBar.open(this.errorMessage, 'Close', { duration: 5000 });
@@ -1554,11 +1745,13 @@ export class HdSessionScheduleComponent implements OnInit {
       ? formValues.treatmentDate.toISOString().split('T')[0]
       : formValues.treatmentDate;
     
-    // Build comprehensive monitoring record object with ALL fields
+    // Build comprehensive monitoring record object with ALL required fields
     const monitoringRecord = {
-      scheduleID: this.scheduleId,
+      patientID: this.patientId,  // REQUIRED
+      scheduleID: this.scheduleId,  // REQUIRED
+      sessionDate: sessionDate,  // REQUIRED
       timeRecorded: new Date().toTimeString().slice(0, 8), // HH:MM:SS format
-      bloodPressure: formValues.bloodPressure || '',
+      bloodPressure: formValues.bloodPressure || null,
       pulseRate: formValues.heartRate || null,
       temperature: formValues.temperature || null,
       ufVolume: formValues.totalUFAchieved || null,
@@ -1568,10 +1761,11 @@ export class HdSessionScheduleComponent implements OnInit {
       dialysateFlowRate: formValues.dialysateFlowRate || null,
       currentUFR: formValues.currentUFR || null,
       tmpPressure: formValues.tmpPressure || null,
-      interventions: formValues.interventions || '',
-      staffInitials: formValues.staffInitials || '',
+      symptoms: formValues.symptoms || null,  // Fixed: capital S
+      interventions: formValues.interventions || null,
+      staffInitials: formValues.staffInitials || null,
       // recordedBy is automatically set by backend from authenticated user
-      notes: formValues.monitoringNotes || ''
+      notes: formValues.monitoringNotes || null
     };
 
     console.log('Sending monitoring record:', monitoringRecord);
@@ -1634,6 +1828,52 @@ export class HdSessionScheduleComponent implements OnInit {
 
   updateCurrentTime(): void {
     this.currentTime = new Date();
+  }
+
+  // Single medication save to database
+  saveMedicationsToDatabase(): void {
+    if (!this.scheduleId) {
+      console.warn('⚠️ No scheduleId, cannot save medication');
+      return;
+    }
+
+    const formValue = this.sessionForm.getRawValue();
+    
+    // Check if medication fields have data
+    if (!formValue.medicationName || !formValue.medicationDose || !formValue.medicationRoute || !formValue.medicationAdministeredAt) {
+      console.log('ℹ️ No valid medication to save');
+      return;
+    }
+
+    console.log('💾 Saving medication to database...');
+
+    const sessionDate = formValue.treatmentDate;
+    const timeString = formValue.medicationAdministeredAt;
+    const givenTime = timeString && timeString !== '--:--' ? `${timeString}:00` : null;
+
+    const medicationData = {
+      scheduleID: this.scheduleId,
+      patientID: this.patientId,
+      sessionDate: sessionDate ? new Date(sessionDate).toISOString().split('T')[0] : null,
+      medicationName: formValue.medicationName,
+      dosage: formValue.medicationDose,
+      route: formValue.medicationRoute,
+      givenTime: givenTime,
+      givenBy: null
+    };
+
+    console.log('💊 Saving medication:', medicationData);
+    
+    this.scheduleService.addMedication(this.scheduleId!, medicationData).subscribe({
+      next: (response) => {
+        if (response.success) {
+          console.log('✅ Medication saved successfully');
+        }
+      },
+      error: (err) => {
+        console.error('❌ Error saving medication:', err);
+      }
+    });
   }
   
   // AI Autocomplete Methods
@@ -1829,6 +2069,55 @@ export class HdSessionScheduleComponent implements OnInit {
         // For unknown patterns, default to today
         return today;
     }
+  }
+
+  dischargeSession(): void {
+    if (!this.scheduleId) {
+      this.snackBar.open('No session to discharge', 'Close', { duration: 3000 });
+      return;
+    }
+
+    const confirmDischarge = confirm(
+      'Are you sure you want to mark this session as completed?\n\n' +
+      'This will:\n' +
+      '• Mark the session as discharged\n' +
+      '• Move it to Patient History\n' +
+      '• Make the bed available for new sessions\n\n' +
+      'This action cannot be undone!'
+    );
+
+    if (!confirmDischarge) {
+      return;
+    }
+
+    this.loading = true;
+    const token = localStorage.getItem('token');
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
+
+    this.http.put(
+      `${environment.apiUrl}/api/HDSchedule/${this.scheduleId}/discharge`,
+      {},
+      { headers }
+    ).subscribe({
+      next: (response: any) => {
+        this.snackBar.open('✓ Session marked as completed and moved to history', 'Close', { duration: 5000 });
+        this.loading = false;
+        
+        // Navigate to patient history after a short delay
+        setTimeout(() => {
+          if (this.patientId) {
+            this.router.navigate(['/patients', this.patientId, 'history']);
+          }
+        }, 1500);
+      },
+      error: (error: any) => {
+        console.error('Error discharging session:', error);
+        this.snackBar.open(error.error?.message || 'Failed to discharge session', 'Close', { duration: 3000 });
+        this.loading = false;
+      }
+    });
   }
 
   ngOnDestroy(): void {

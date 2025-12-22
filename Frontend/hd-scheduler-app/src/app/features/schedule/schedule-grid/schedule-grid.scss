@@ -1000,41 +1000,63 @@
               // Action buttons for suggested sessions
               .action-buttons {
                 display: flex;
-                gap: 6px;
-                margin-top: 8px;
+                gap: 8px;
+                margin-top: 12px;
+                justify-content: center;
                 
                 .confirm-btn, .edit-btn {
-                  padding: 4px 10px;
+                  width: 44px;
+                  height: 44px;
+                  padding: 0;
                   border: none;
-                  border-radius: 4px;
-                  font-size: 10px;
-                  font-weight: 600;
+                  border-radius: 12px;
                   cursor: pointer;
                   transition: all 0.2s ease;
                   display: flex;
                   align-items: center;
                   justify-content: center;
-                  gap: 4px;
-                  flex: 1;
+                  background: white;
+                  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+                  
+                  mat-icon {
+                    font-size: 22px;
+                    width: 22px;
+                    height: 22px;
+                    transition: transform 0.2s ease;
+                  }
+                  
+                  &:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                    
+                    mat-icon {
+                      transform: scale(1.1);
+                    }
+                  }
+                  
+                  &:active {
+                    transform: translateY(0);
+                    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+                  }
                 }
                 
                 .confirm-btn {
-                  background: #4caf50;
-                  color: white;
+                  mat-icon {
+                    color: #4caf50;
+                  }
                   
                   &:hover {
-                    background: #388e3c;
-                    transform: scale(1.05);
+                    background: #f1f8f4;
                   }
                 }
                 
                 .edit-btn {
-                  background: #ff6f00;
-                  color: white;
+                  mat-icon {
+                    color: #ff9800;
+                  }
                   
                   &:hover {
-                    background: #e65100;
-                    transform: scale(1.05);
+                    background: #fff8f0;
                   }
                 }
               }

@@ -135,4 +135,8 @@ export class SessionDetailsComponent implements OnInit {
       this.router.navigate(['/patients', this.patientId, 'monitoring', this.scheduleId]);
     }
   }
+
+  printSession(): void {
+    window.print();
+  }
 }

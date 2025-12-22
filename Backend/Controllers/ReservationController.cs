@@ -388,7 +388,7 @@ public class ReservationController : ControllerBase
 
                 var futureSchedules = allSchedules.Where(s => 
                     s.PatientID == patient.PatientID && 
-                    s.SessionDate.Date > targetDate && 
+                    s.SessionDate.Date >= targetDate &&  // Include today and future dates
                     s.SessionStatus == "Pre-Scheduled" && // Only pre-scheduled sessions
                     !s.IsDischarged && 
                     !s.IsMovedToHistory)

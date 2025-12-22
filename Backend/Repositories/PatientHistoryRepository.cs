@@ -55,12 +55,17 @@ public class PatientHistoryRepository : IPatientHistoryRepository
                 h.SessionStatus, h.TreatmentStartTime, h.TreatmentCompletionTime, h.DischargeTime,
                 h.IsDischarged, h.IsMovedToHistory, h.CreatedAt, h.UpdatedAt,
                 h.AssignedDoctor, h.AssignedNurse, h.CreatedByStaffName, h.CreatedByStaffRole,
+                h.PreWeight, h.PreTemperature, h.PreBPSitting, h.AccessBleedingTime, h.AccessStatus, h.Complications,
+                h.PostWeight, h.PostSBP, h.PostDBP, h.PostHR, h.TotalFluidRemoved, h.PostAccessStatus,
+                h.MedicationType, h.MedicationName, h.Dose, h.Route, h.AdministeredAt,
+                h.AlertType, h.AlertMessage, h.Severity, h.Resolution,
+                h.StartTime,
                 p.Name as PatientName,
                 s.SlotName,
                 d.Name as AssignedDoctorName,
                 n.Name as AssignedNurseName,
-                l.PreWeight, l.PostWeight, l.PreBP, l.PostBP, l.PrePulse, l.PostPulse,
-                l.StartTime, l.EndTime, l.TotalUF, l.BloodFlowRate, l.DialysateFlow, l.Remarks,
+                l.PreWeight as HDLogsPreWeight, l.PostWeight as HDLogsPostWeight, l.PreBP, l.PostBP, l.PrePulse, l.PostPulse,
+                l.StartTime as HDLogsStartTime, l.EndTime, l.TotalUF, l.BloodFlowRate, l.DialysateFlow, l.Remarks,
                 (SELECT COUNT(*) FROM IntraDialyticRecords WHERE ScheduleID = h.ScheduleID) as IntraDialyticRecordsCount,
                 (SELECT COUNT(*) FROM PostDialysisMedications WHERE ScheduleID = h.ScheduleID) as MedicationsCount
             FROM HDSchedule h
@@ -99,7 +104,7 @@ public class PatientHistoryRepository : IPatientHistoryRepository
     {
         using var connection = _context.CreateConnection();
         
-        // Get session summary with all HDSchedule fields
+        // Get session summary with all HDSchedule fields and comprehensive Patient fields
         var sessionQuery = @"
             SELECT 
                 h.ScheduleID, h.SessionDate, h.PatientID, h.SlotID, h.BedNumber,
@@ -112,12 +117,24 @@ public class PatientHistoryRepository : IPatientHistoryRepository
                 h.SessionStatus, h.TreatmentStartTime, h.TreatmentCompletionTime, h.DischargeTime,
                 h.IsDischarged, h.IsMovedToHistory, h.CreatedAt, h.UpdatedAt,
                 h.AssignedDoctor, h.AssignedNurse, h.CreatedByStaffName, h.CreatedByStaffRole,
-                p.Name as PatientName, p.MRN, p.Age, p.Gender,
+                h.StartTime, h.PreWeight, h.PreBPSitting, h.PreTemperature, 
+                h.AccessBleedingTime, h.AccessStatus, h.Complications,
+                h.PostWeight, h.PostSBP, h.PostDBP, h.PostHR, h.PostAccessStatus, h.TotalFluidRemoved,
+                h.MedicationType, h.MedicationName, h.Dose, h.Route, h.AdministeredAt,
+                h.AlertType, h.AlertMessage, h.Severity, h.Resolution,
+                p.Name as PatientName, p.MRN, p.Age, p.Gender, p.PatientID,
+                p.ContactNumber, p.EmergencyContact, p.GuardianName,
+                p.HDCycle as PatientHDCycle, p.HDFrequency, p.HDStartDate as PatientHDStartDate,
+                p.DryWeight as PatientDryWeight, p.DialyserType as PatientDialyserType, 
+                p.DialyserModel as PatientDialyserModel, p.PrescribedBFR as PatientPrescribedBFR,
+                p.PrescribedDuration as PatientPrescribedDuration, p.DialysatePrescription as PatientDialysatePrescription,
                 s.SlotName,
                 d.Name as AssignedDoctorName,
                 n.Name as AssignedNurseName,
-                l.PreWeight, l.PostWeight, l.PreBP, l.PostBP, l.PrePulse, l.PostPulse,
-                l.StartTime, l.EndTime, l.TotalUF, l.BloodFlowRate, l.DialysateFlow, l.Remarks
+                l.PreWeight as HDLogsPreWeight, l.PostWeight as HDLogsPostWeight, 
+                l.PreBP, l.PostBP, l.PrePulse, l.PostPulse,
+                l.StartTime as HDLogsStartTime, l.EndTime, l.TotalUF, 
+                l.BloodFlowRate, l.DialysateFlow, l.Remarks
             FROM HDSchedule h
             INNER JOIN Patients p ON h.PatientID = p.PatientID
             LEFT JOIN Slots s ON h.SlotID = s.SlotID

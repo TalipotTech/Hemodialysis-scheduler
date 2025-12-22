@@ -11,6 +11,14 @@
               <mat-icon>arrow_back</mat-icon>
             </button>
             <h2>Patient Management</h2>
+            <!-- Global Search Bar for All Registered Patients -->
+            <div class="global-search-container">
+              <input type="text" 
+                     [(ngModel)]="globalSearchTerm" 
+                     (input)="onGlobalSearch()" 
+                     placeholder="Search all patients by name, MRN, or phone"
+                     class="global-search-field">
+            </div>
           </div>
           <div class="header-actions">
             @if (isReadOnly) {
@@ -34,133 +42,112 @@
     </div>
 
     <div class="e-card-content">
-      <!-- Tabs for Active Patients and Discharged History -->
+      <!-- Global Search Results Overlay -->
+      @if (showGlobalSearchResults) {
+        <div class="global-search-results">
+          <div class="search-results-header">
+            <h3>Search Results ({{globalSearchResults.length}} patients)</h3>
+            <button class="e-btn e-icon-btn" (click)="showGlobalSearchResults = false">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          @if (globalSearchResults.length > 0) {
+            <ejs-grid
+              [dataSource]="globalSearchResults"
+              [allowPaging]="true"
+              [allowSorting]="true"
+              [pageSettings]="{ pageSize: 10 }">
+              <e-columns>
+                <e-column field="patientID" headerText="ID" width="70"></e-column>
+                <e-column field="name" headerText="Name" width="150"></e-column>
+                <e-column field="mrn" headerText="MRN" width="100"></e-column>
+                <e-column field="age" headerText="Age" width="60"></e-column>
+                <e-column field="gender" headerText="Gender" width="80"></e-column>
+                <e-column field="contactNumber" headerText="Contact" width="120"></e-column>
+                <e-column headerText="Actions" width="200" [template]="globalActionsTemplate"></e-column>
+              </e-columns>
+            </ejs-grid>
+            
+            <ng-template #globalActionsTemplate let-data>
+              <div class="action-buttons">
+                <button class="e-btn e-small e-info" (click)="onScheduleHD(data)" title="Schedule HD">
+                  <mat-icon>event_available</mat-icon>
+                </button>
+                <button class="e-btn e-small e-primary" (click)="onEditPatient(data)" title="Edit">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button class="e-btn e-small e-info" (click)="onViewHistory(data)" title="History">
+                  <mat-icon>history</mat-icon>
+                </button>
+              </div>
+            </ng-template>
+          } @else {
+            <div class="empty-state">
+              <mat-icon>search_off</mat-icon>
+              <h3>No patients found</h3>
+              <p>Try different search terms</p>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Tabs Reordered: Pre Schedule, Active Patients, Completed Sessions, Discharged History -->
       <ejs-tab [selectedItem]="selectedTabIndex" (selected)="onTabChange($event.selectedIndex)">
         <e-tabitems>
           
-          <!-- Active Patients Tab -->
-          <e-tabitem [header]="{'text': 'Active Patients'}">
-            <ng-template #content>
-              <div class="tab-content">
-                <!-- Search Bar -->
-                <div class="search-container">
-                  <input type="text" 
-                         [(ngModel)]="searchTerm" 
-                         (input)="onSearch()" 
-                         placeholder="Search by name, MRN, or phone"
-                         class="search-field">
-                </div>
-
-                <!-- Loading Spinner -->
-                @if (loading) {
-                  <div class="loading-container">
-                    <div class="e-spinner-pane">
-                      <div class="e-spinner-inner">
-                        <div class="e-spin-material"></div>
-                      </div>
-                    </div>
-                  </div>
-                }
-
-                <!-- Error Message -->
-                @if (errorMessage && !loading) {
-                  <div class="error-message">
-                    <mat-icon>error</mat-icon>
-                    {{ errorMessage }}
-                  </div>
-                }
-
-                <!-- Patient Grid -->
-                @if (!loading && !errorMessage && filteredPatients.length > 0) {
-                  <ejs-grid
-                    [dataSource]="filteredPatients"
-                    [allowPaging]="true"
-                    [allowSorting]="true"
-                    [allowFiltering]="true"
-                    [pageSettings]="{ pageSize: 20, pageSizes: [10, 20, 50, 100] }"
-                    [filterSettings]="{ type: 'Excel' }">
-                    
-                    <e-columns>
-                      <e-column field="patientID" headerText="ID" width="70"></e-column>
-                      <e-column 
-                        field="name" 
-                        headerText="Patient Name" 
-                        width="150"
-                        [template]="nameTemplate">
-                      </e-column>
-                      <e-column field="mrn" headerText="MRN" width="100"></e-column>
-                      <e-column field="age" headerText="Age" width="60"></e-column>
-                      <e-column field="gender" headerText="Gender" width="80"></e-column>
-                      <e-column field="contactNumber" headerText="Contact" width="120"></e-column>
-                      <e-column 
-                        headerText="Actions" 
-                        width="400" 
-                        [template]="actionsTemplate">
-                      </e-column>
-                    </e-columns>
-                  </ejs-grid>
-
-                  <!-- Patient Name Template with Hover Info -->
-                  <ng-template #nameTemplate let-data>
-                    <div class="patient-name-cell" 
-                         [matTooltip]="getPatientTooltip(data)" 
-                         matTooltipClass="patient-info-tooltip"
-                         matTooltipPosition="right">
-                      {{ data.name }}
-                    </div>
-                  </ng-template>
-
-                  <!-- Actions Template -->
-                  <ng-template #actionsTemplate let-data>
-                    <div class="action-buttons">
-                      <button class="e-btn e-small e-info" (click)="onScheduleHD(data)" [disabled]="data.isDischarged" title="Schedule HD">
-                        <mat-icon>event_available</mat-icon>
-                      </button>
-                      <button class="e-btn e-small e-success" (click)="onQuickSchedule(data)" [disabled]="data.isDischarged" title="AI Quick">
-                        <mat-icon>psychology</mat-icon>
-                      </button>
-                      <button class="e-btn e-small e-warning" (click)="onPostSchedule(data)" [disabled]="!data.scheduleID" title="Post">
-                        <mat-icon>assignment_turned_in</mat-icon>
-                      </button>
-                      <button class="e-btn e-small" (click)="onRecordVitals(data)" [disabled]="!data.scheduleID" title="Vitals">
-                        <mat-icon>monitor_heart</mat-icon>
-                      </button>
-                      <button class="e-btn e-small e-info" (click)="onViewHistory(data)" title="History">
-                        <mat-icon>history</mat-icon>
-                      </button>
-                      @if (!isReadOnly) {
-                        <button class="e-btn e-small e-primary" (click)="onEditPatient(data)" title="Edit">
-                          <mat-icon>edit</mat-icon>
-                        </button>
-                        @if (!data.isDischarged) {
-                          <button class="e-btn e-small e-danger" (click)="onDischargePatient(data)" title="Discharge">
-                            <mat-icon>logout</mat-icon>
-                          </button>
-                        }
-                      }
-                    </div>
-                  </ng-template>
-                }
-
-                <!-- Empty State -->
-                @if (!loading && !errorMessage && filteredPatients.length === 0) {
-                  <div class="empty-state">
-                    <mat-icon>people_outline</mat-icon>
-                    <h3>No Patients Found</h3>
-                    <p>{{ searchTerm ? 'Try a different search term' : 'Start by adding a new patient' }}</p>
-                  </div>
-                }
-              </div>
-            </ng-template>
-          </e-tabitem>
-
-          <!-- Pre Schedule Tab -->
+          <!-- Tab 0: Pre Schedule -->
           <e-tabitem [header]="{'text': 'Pre Schedule'}">
             <ng-template #content>
               <div class="tab-content">
                 <div class="section-header">
                   <h3><mat-icon>event</mat-icon> Pre Schedule (Pre-Scheduled & Future Sessions)</h3>
-                  <p class="tab-description">Patients with upcoming dialysis sessions but no active treatment today. Includes both pre-scheduled (auto-generated) and manually scheduled sessions.</p>
+                  <p class="tab-description">Patients with upcoming dialysis sessions but no active treatment today.</p>
+                </div>
+
+                <!-- Date Filter Chips -->
+                <div class="filter-chips-container">
+                  <button mat-stroked-button 
+                          [class.filter-chip-selected]="selectedPreScheduleDateFilter === 'all'"
+                          (click)="onPreScheduleDateFilterChange('all')"
+                          class="filter-chip">
+                    <mat-icon>all_inclusive</mat-icon>
+                    All
+                  </button>
+                  <button mat-stroked-button 
+                          [class.filter-chip-selected]="selectedPreScheduleDateFilter === 'today'"
+                          (click)="onPreScheduleDateFilterChange('today')"
+                          class="filter-chip">
+                    <mat-icon>today</mat-icon>
+                    Today
+                  </button>
+                  <button mat-stroked-button 
+                          [class.filter-chip-selected]="selectedPreScheduleDateFilter === 'tomorrow'"
+                          (click)="onPreScheduleDateFilterChange('tomorrow')"
+                          class="filter-chip">
+                    <mat-icon>event</mat-icon>
+                    Tomorrow
+                  </button>
+                  <button mat-stroked-button 
+                          [class.filter-chip-selected]="selectedPreScheduleDateFilter === 'thisweek'"
+                          (click)="onPreScheduleDateFilterChange('thisweek')"
+                          class="filter-chip">
+                    <mat-icon>date_range</mat-icon>
+                    This Week
+                  </button>
+                  <button mat-stroked-button 
+                          [class.filter-chip-selected]="selectedPreScheduleDateFilter === 'thismonth'"
+                          (click)="onPreScheduleDateFilterChange('thismonth')"
+                          class="filter-chip">
+                    <mat-icon>calendar_today</mat-icon>
+                    This Month
+                  </button>
+                  <button mat-stroked-button 
+                          [class.filter-chip-selected]="selectedPreScheduleDateFilter === 'custom'"
+                          (click)="onPreScheduleDateFilterChange('custom')"
+                          class="filter-chip">
+                    <mat-icon>calendar_month</mat-icon>
+                    Custom Date
+                  </button>
                 </div>
 
                 <!-- Search -->
@@ -244,7 +231,246 @@
             </ng-template>
           </e-tabitem>
 
-          <!-- Discharged Patients History Tab -->
+          <!-- Tab 1: Active Patients (TODAY'S SESSIONS ONLY) -->
+          <e-tabitem [header]="{'text': 'Active Patients'}">
+            <ng-template #content>
+              <div class="tab-content">
+                <div class="section-header">
+                  <h3><mat-icon>person</mat-icon> Active Patients (Today's Sessions)</h3>
+                  <p class="tab-description">Patients with active dialysis sessions scheduled for TODAY only.</p>
+                </div>
+                
+                <!-- Search Bar -->
+                <div class="search-container">
+                  <input type="text" 
+                         [(ngModel)]="searchTerm" 
+                         (input)="onSearch()" 
+                         placeholder="Search by name, MRN, or phone"
+                         class="search-field">
+                </div>
+
+                <!-- Loading -->
+                @if (loading) {
+                  <div class="loading-container">
+                    <div class="e-spinner-pane">
+                      <div class="e-spinner-inner">
+                        <div class="e-spin-material"></div>
+                      </div>
+                    </div>
+                  </div>
+                }
+
+                <!-- Error Message -->
+                @if (errorMessage && !loading) {
+                  <div class="error-message">
+                    <mat-icon>error</mat-icon>
+                    {{ errorMessage }}
+                  </div>
+                }
+
+                <!-- Active Patients Grid (TODAY'S SESSIONS ONLY) -->
+                @if (!loading && !errorMessage && filteredPatients.length > 0) {
+                  <ejs-grid
+                    [dataSource]="filteredPatients"
+                    [allowPaging]="true"
+                    [allowSorting]="true"
+                    [allowFiltering]="true"
+                    [pageSettings]="{ pageSize: 20, pageSizes: [10, 20, 50, 100] }"
+                    [filterSettings]="{ type: 'Excel' }">
+                    
+                    <e-columns>
+                      <e-column field="patientID" headerText="ID" width="70"></e-column>
+                      <e-column 
+                        field="name" 
+                        headerText="Patient Name" 
+                        width="150"
+                        [template]="nameTemplate">
+                      </e-column>
+                      <e-column field="mrn" headerText="MRN" width="100"></e-column>
+                      <e-column field="age" headerText="Age" width="60"></e-column>
+                      <e-column field="gender" headerText="Gender" width="80"></e-column>
+                      <e-column field="contactNumber" headerText="Contact" width="120"></e-column>
+                      <e-column 
+                        headerText="Actions" 
+                        width="400" 
+                        [template]="actionsTemplate">
+                      </e-column>
+                    </e-columns>
+                  </ejs-grid>
+
+                  <!-- Patient Name Template with Hover Info -->
+                  <ng-template #nameTemplate let-data>
+                    <div class="patient-name-cell clickable" 
+                         (click)="openPatientInfoDialog(data)"
+                         [matTooltip]="'Click to view patient details'" 
+                         matTooltipClass="patient-info-tooltip"
+                         matTooltipPosition="right">
+                      <mat-icon class="info-icon">info</mat-icon>
+                      {{ data.name }}
+                    </div>
+                  </ng-template>
+
+                  <!-- Actions Template -->
+                  <ng-template #actionsTemplate let-data>
+                    <div class="action-buttons">
+                      <button class="e-btn e-small e-info" (click)="onScheduleHD(data)" [disabled]="data.isDischarged" title="Schedule HD">
+                        <mat-icon>event_available</mat-icon>
+                      </button>
+                      <button class="e-btn e-small e-success" (click)="onQuickSchedule(data)" [disabled]="data.isDischarged" title="AI Quick">
+                        <mat-icon>psychology</mat-icon>
+                      </button>
+                      <button class="e-btn e-small e-info" (click)="onViewHistory(data)" title="History">
+                        <mat-icon>history</mat-icon>
+                      </button>
+                      @if (!isReadOnly) {
+                        <button class="e-btn e-small e-primary" (click)="onEditPatient(data)" title="Edit">
+                          <mat-icon>edit</mat-icon>
+                        </button>
+                        @if (!data.isDischarged) {
+                          <button class="e-btn e-small e-danger" (click)="onDischargePatient(data)" title="Discharge">
+                            <mat-icon>logout</mat-icon>
+                          </button>
+                        }
+                      }
+                    </div>
+                  </ng-template>
+                }
+
+                <!-- Empty State -->
+                @if (!loading && !errorMessage && filteredPatients.length === 0) {
+                  <div class="empty-state">
+                    <mat-icon>event_busy</mat-icon>
+                    <h3>No Active Patients Today</h3>
+                    <p>No patients have been activated/scheduled for today's dialysis sessions.</p>
+                    <p class="note">Activate patients from the Pre-Schedule tab or schedule new sessions to see them here.</p>
+                  </div>
+                }
+              </div>
+            </ng-template>
+          </e-tabitem>
+
+          <!-- Tab 2: Completed Sessions -->
+          <e-tabitem [header]="{'text': 'Completed Sessions'}">
+            <ng-template #content>
+              <div class="tab-content">
+                <div class="section-header">
+                  <h3><mat-icon>check_circle</mat-icon> Completed Sessions</h3>
+                  <p class="tab-description">View completed dialysis sessions by date range</p>
+                </div>
+
+                <!-- Date Filter Chips -->
+                <div class="filter-chips-container">
+                  <button mat-stroked-button 
+                          [class.filter-chip-selected]="selectedDateFilter === 'today'"
+                          (click)="onDateFilterChange('today')"
+                          class="filter-chip">
+                    <mat-icon>today</mat-icon>
+                    Today
+                  </button>
+                  <button mat-stroked-button 
+                          [class.filter-chip-selected]="selectedDateFilter === 'last24h'"
+                          (click)="onDateFilterChange('last24h')"
+                          class="filter-chip">
+                    <mat-icon>schedule</mat-icon>
+                    Last 24h
+                  </button>
+                  <button mat-stroked-button 
+                          [class.filter-chip-selected]="selectedDateFilter === 'yesterday'"
+                          (click)="onDateFilterChange('yesterday')"
+                          class="filter-chip">
+                    <mat-icon>event</mat-icon>
+                    Yesterday
+                  </button>
+                  <button mat-stroked-button 
+                          [class.filter-chip-selected]="selectedDateFilter === 'last7days'"
+                          (click)="onDateFilterChange('last7days')"
+                          class="filter-chip">
+                    <mat-icon>date_range</mat-icon>
+                    Last 7 Days
+                  </button>
+                  <button mat-stroked-button 
+                          [class.filter-chip-selected]="selectedDateFilter === 'thismonth'"
+                          (click)="onDateFilterChange('thismonth')"
+                          class="filter-chip">
+                    <mat-icon>calendar_today</mat-icon>
+                    This Month
+                  </button>
+                  <button mat-stroked-button 
+                          [class.filter-chip-selected]="selectedDateFilter === 'custom'"
+                          (click)="onDateFilterChange('custom')"
+                          class="filter-chip">
+                    <mat-icon>calendar_month</mat-icon>
+                    Custom Date
+                  </button>
+                </div>
+
+                <!-- Search -->
+                <div class="search-container">
+                  <input type="text" 
+                         [(ngModel)]="completedSearchTerm" 
+                         (input)="onCompletedSearch()" 
+                         placeholder="Search completed sessions"
+                         class="search-field">
+                </div>
+
+                <!-- Loading -->
+                @if (loadingCompleted) {
+                  <div class="loading-container">
+                    <div class="e-spinner-pane">
+                      <div class="e-spinner-inner">
+                        <div class="e-spin-material"></div>
+                      </div>
+                    </div>
+                  </div>
+                }
+
+                <!-- Completed Grid -->
+                @if (!loadingCompleted && filteredCompletedSessions.length > 0) {
+                  <ejs-grid
+                    [dataSource]="filteredCompletedSessions"
+                    [allowPaging]="true"
+                    [allowSorting]="true"
+                    [allowFiltering]="true"
+                    [pageSettings]="{ pageSize: 20, pageSizes: [10, 20, 50] }">
+                    
+                    <e-columns>
+                      <e-column field="patientID" headerText="ID" width="70"></e-column>
+                      <e-column field="name" headerText="Patient Name" width="150"></e-column>
+                      <e-column field="mrn" headerText="MRN" width="100"></e-column>
+                      <e-column field="age" headerText="Age" width="60"></e-column>
+                      <e-column field="gender" headerText="Gender" width="80"></e-column>
+                      <e-column field="contactNumber" headerText="Contact" width="120"></e-column>
+                      <e-column 
+                        headerText="Actions" 
+                        width="100" 
+                        [template]="completedActionsTemplate">
+                      </e-column>
+                    </e-columns>
+                  </ejs-grid>
+
+                  <!-- Completed Actions Template -->
+                  <ng-template #completedActionsTemplate let-data>
+                    <div class="action-buttons">
+                      <button class="e-btn e-small e-info" (click)="onViewHistory(data)" title="View Patient History">
+                        <mat-icon>history</mat-icon>
+                      </button>
+                    </div>
+                  </ng-template>
+                }
+
+                <!-- Empty State -->
+                @if (!loadingCompleted && filteredCompletedSessions.length === 0) {
+                  <div class="empty-state">
+                    <mat-icon>event_available</mat-icon>
+                    <h3>No Completed Sessions</h3>
+                    <p>No patients have completed dialysis sessions for the selected date range</p>
+                  </div>
+                }
+              </div>
+            </ng-template>
+          </e-tabitem>
+
+          <!-- Tab 3: Discharged History -->
           <e-tabitem [header]="{'text': 'Discharged History'}">
             <ng-template #content>
               <div class="tab-content">

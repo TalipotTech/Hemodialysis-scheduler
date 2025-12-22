@@ -30,6 +30,28 @@
         </div>
       }
 
+      <!-- Prominent Auto-Save Status Banner -->
+      @if (saveStatus !== 'idle' && isAuthenticated) {
+        <div class="auto-save-banner" [class.saving]="saveStatus === 'saving'" [class.saved]="saveStatus === 'saved'">
+          <div class="banner-content">
+            @if (saveStatus === 'saving') {
+              <mat-spinner diameter="20"></mat-spinner>
+              <div class="banner-text">
+                <strong>Saving your progress...</strong>
+                <span>Please wait while we save your data</span>
+              </div>
+            }
+            @if (saveStatus === 'saved') {
+              <mat-icon>check_circle</mat-icon>
+              <div class="banner-text">
+                <strong>All changes saved successfully!</strong>
+                <span>Last saved: {{ lastSavedTime | date:'shortTime' }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
       @if (patient) {
         <!-- Combined Patient Info Card with Auto-filled Fields -->
         <div class="patient-info-card-combined">
@@ -857,45 +879,42 @@
                   </mat-form-field>
                 </div>
 
-                <h4 class="section-subtitle">Post-Dialysis Medications</h4>
+                <h4 class="section-subtitle">Post-Dialysis Medication</h4>
                 
                 <div class="form-row">
                   <mat-form-field appearance="outline">
                     <mat-label>Medication Type</mat-label>
                     <mat-select formControlName="medicationType">
-                      <mat-option value="EPO">EPO</mat-option>
-                      <mat-option value="Iron">Iron</mat-option>
-                      <mat-option value="Antibiotic">Antibiotic</mat-option>
-                      <mat-option value="Vitamin">Vitamin</mat-option>
-                      <mat-option value="Other">Other</mat-option>
+                      @for (type of medicationTypes; track type) {
+                        <mat-option [value]="type">{{ type }}</mat-option>
+                      }
                     </mat-select>
                   </mat-form-field>
 
                   <mat-form-field appearance="outline">
                     <mat-label>Medication Name</mat-label>
-                    <input matInput formControlName="medicationName">
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Dose</mat-label>
-                    <input matInput formControlName="dose" placeholder="e.g., 4000 IU">
+                    <input matInput formControlName="medicationName" placeholder="e.g., EPO, Iron Sucrose">
                   </mat-form-field>
                 </div>
 
                 <div class="form-row">
                   <mat-form-field appearance="outline">
+                    <mat-label>Dose</mat-label>
+                    <input matInput formControlName="medicationDose" placeholder="e.g., 4000 IU">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
                     <mat-label>Route</mat-label>
-                    <mat-select formControlName="route">
-                      <mat-option value="IV">IV</mat-option>
-                      <mat-option value="Oral">Oral</mat-option>
-                      <mat-option value="Subcutaneous">Subcutaneous</mat-option>
-                      <mat-option value="Intramuscular">Intramuscular</mat-option>
+                    <mat-select formControlName="medicationRoute">
+                      @for (route of medicationRoutes; track route) {
+                        <mat-option [value]="route">{{ route }}</mat-option>
+                      }
                     </mat-select>
                   </mat-form-field>
 
                   <mat-form-field appearance="outline">
                     <mat-label>Administered At</mat-label>
-                    <input matInput type="time" formControlName="administeredAt">
+                    <input matInput type="time" formControlName="medicationAdministeredAt">
                   </mat-form-field>
                 </div>
               </div>
@@ -994,6 +1013,16 @@
                     Complete & Submit
                   }
                 </button>
+                @if (isEditMode && scheduleId) {
+                  <button mat-raised-button color="warn" (click)="dischargeSession()" type="button" [disabled]="loading">
+                    @if (loading) {
+                      <mat-spinner diameter="20"></mat-spinner>
+                    } @else {
+                      <mat-icon>task_alt</mat-icon>
+                      Mark as Completed
+                    }
+                  </button>
+                }
               </div>
             </mat-step>
 

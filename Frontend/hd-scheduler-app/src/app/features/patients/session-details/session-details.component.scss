@@ -242,3 +242,84 @@ mat-chip {
     }
   }
 }
+
+.print-button {
+  margin-right: 8px;
+}
+
+// Print Styles
+@media print {
+  // Hide buttons and navigation
+  .header-actions,
+  .back-button,
+  .home-button {
+    display: none !important;
+  }
+
+  .header-row {
+    justify-content: center;
+  }
+
+  // Adjust page layout for printing
+  .session-details-container {
+    padding: 10px;
+    max-width: 100%;
+  }
+
+  mat-card {
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .section {
+    background-color: white !important;
+    page-break-inside: avoid;
+    margin-bottom: 16px;
+    border: 1px solid #e0e0e0;
+  }
+
+  // Ensure tables print nicely
+  .data-table {
+    page-break-inside: avoid;
+    
+    tr {
+      page-break-inside: avoid;
+    }
+  }
+
+  // Monitoring records styling for print
+  .monitoring-entry {
+    page-break-inside: avoid;
+    border: 1px solid #e0e0e0;
+    padding: 12px;
+    margin-bottom: 12px;
+    background: white !important;
+  }
+
+  // Chip styling for print
+  mat-chip {
+    border: 1px solid currentColor !important;
+  }
+
+  // Typography adjustments for print
+  h2 {
+    font-size: 24px;
+    color: #000;
+  }
+
+  h3 {
+    font-size: 18px;
+    color: #000;
+    border-bottom: 2px solid #333;
+    padding-bottom: 8px;
+  }
+
+  h4 {
+    font-size: 14px;
+    color: #000;
+  }
+
+  .label {
+    font-weight: 600;
+  }
+}

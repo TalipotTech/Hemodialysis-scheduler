@@ -1,9 +1,16 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Inject } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { FormsModule } from '@angular/forms';
+import { MatDialog, MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { PatientInfoDialogComponent } from '../patient-info-dialog/patient-info-dialog.component';
 // Syncfusion imports
 import { GridModule, PageService, SortService, FilterService, ToolbarService, ExcelExportService, PdfExportService } from '@syncfusion/ej2-angular-grids';
 import { ButtonModule, ChipListModule } from '@syncfusion/ej2-angular-buttons';
@@ -22,8 +29,15 @@ import { Patient } from '../../../core/models/patient.model';
   imports: [
     CommonModule,
     FormsModule,
+    ReactiveFormsModule,
     MatIconModule,
     MatTooltipModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
+    MatFormFieldModule,
+    MatInputModule,
     GridModule,
     ButtonModule,
     ChipListModule,
@@ -51,11 +65,28 @@ export class PatientList implements OnInit {
   dischargedErrorMessage = '';
   dischargedSearchTerm = '';
   
+  // Global search (top-level search for all patients)
+  globalSearchTerm = '';
+  globalSearchResults: Patient[] = [];
+  showGlobalSearchResults = false;
+  
   // Reserved patients tab
   reservedPatients: any[] = [];
   filteredReservedPatients: any[] = [];
   loadingReserved = false;
   reservedSearchTerm = '';
+  selectedPreScheduleDateFilter: string = 'all';
+  preScheduleCustomStartDate: Date | null = null;
+  preScheduleCustomEndDate: Date | null = null;
+  
+  // Completed sessions tab
+  completedSessions: Patient[] = [];
+  filteredCompletedSessions: Patient[] = [];
+  loadingCompleted = false;
+  completedSearchTerm = '';
+  selectedDateFilter: string = 'today';
+  customStartDate: Date | null = null;
+  customEndDate: Date | null = null;
   
   // Role-based access control
   canEdit = false;
@@ -64,6 +95,9 @@ export class PatientList implements OnInit {
   
   // Expanded patient cards tracking
   private expandedPatients: Set<number> = new Set();
+  
+  // Flag to prevent double-loading when switching tabs after activation
+  private skipTabReload = false;
 
   constructor(
     private patientService: PatientService,
@@ -71,7 +105,8 @@ export class PatientList implements OnInit {
     private reservationService: ReservationService,
     private authService: AuthService,
     private router: Router,
-    private location: Location
+    private location: Location,
+    private dialog: MatDialog
   ) {}
 
   private showToast(message: string, title: string = 'Notification'): void {
@@ -122,13 +157,26 @@ export class PatientList implements OnInit {
     this.loading = true;
     this.errorMessage = '';
     
-    // Load only active patients with non-discharged sessions
+    // Backend now returns only patients with TODAY'S MANUALLY ACTIVATED sessions
+    // Excludes auto-generated "Pre-Scheduled" sessions until explicitly activated
+    // To activate a pre-scheduled patient:
+    // 1. Go to Pre-Schedule tab
+    // 2. Click "ACTIVATE" button on the patient
+    // 3. This will move them to Active Patients tab for today's treatment
     this.patientService.getActivePatients().subscribe({
       next: (response) => {
         if (response.success && response.data) {
-          // Filter out patients with discharged sessions
-          this.patients = response.data.filter(p => !p.isDischarged);
+          // Backend filters for today's manually activated sessions only
+          this.patients = response.data;
           this.filteredPatients = this.patients;
+          console.log('Active patients with today\'s sessions:', this.patients.length);
+          console.log('📋 DETAILED ACTIVE PATIENTS:', this.patients.map(p => ({
+            id: p.patientID,
+            name: p.name,
+            scheduleID: p.scheduleID,
+            sessionStatus: p.sessionStatus,
+            sessionDate: p.sessionDate
+          })));
         } else {
           this.errorMessage = response.message || 'Failed to load patients';
         }
@@ -166,8 +214,17 @@ export class PatientList implements OnInit {
     this.router.navigate(['/patients', patientId]);
   }
 
-  onViewHistory(patient: Patient): void {
-    this.router.navigate(['/patients', patient.patientID, 'history']);
+  onViewHistory(patient: any): void {
+    // Handle both patientID and PatientID (case sensitivity from API)
+    const patientId = patient.patientID || patient.PatientID;
+    console.log('Navigating to history for patient:', patientId, patient);
+    
+    if (!patientId) {
+      this.showToast('Patient ID not found', 'Error');
+      return;
+    }
+    
+    this.router.navigate(['/patients', patientId, 'history']);
   }
 
   onScheduleHD(patient: Patient): void {
@@ -222,7 +279,8 @@ export class PatientList implements OnInit {
               setTimeout(() => {
                 // Reload both active and discharged patient lists
                 this.loadPatients();
-                // Always load discharged patients to ensure the tab is updated
+                // Switch to Discharged History tab (tab index 3) and load data
+                this.selectedTabIndex = 3;
                 this.loadDischargedPatients();
               }, 500);
             } else {
@@ -246,7 +304,8 @@ export class PatientList implements OnInit {
               setTimeout(() => {
                 // Reload both active and discharged patient lists
                 this.loadPatients();
-                // Always load discharged patients to ensure the tab is updated
+                // Switch to Discharged History tab (tab index 3) and load data
+                this.selectedTabIndex = 3;
                 this.loadDischargedPatients();
               }, 500);
             } else {
@@ -321,17 +380,34 @@ export class PatientList implements OnInit {
 
   onTabChange(index: number): void {
     this.selectedTabIndex = index;
-    if (index === 1) {
-      // Load reserved patients when switching to Reserved tab
+    // Hide global search results when switching tabs
+    this.showGlobalSearchResults = false;
+    
+    // Skip reload if we just activated a patient (data already refreshed)
+    if (this.skipTabReload) {
+      console.log('⏭️ Skipping tab reload - data already refreshed after activation');
+      this.skipTabReload = false;
+      return;
+    }
+    
+    if (index === 0) {
+      // Pre Schedule tab
       this.loadReservedPatients();
+    } else if (index === 1) {
+      // Active Patients tab (TODAY's sessions only)
+      this.loadPatients();
     } else if (index === 2) {
-      // Load discharged patients when switching to History tab
+      // Completed sessions tab
+      this.loadCompletedSessions();
+    } else if (index === 3) {
+      // Discharged patients tab
       this.loadDischargedPatients();
     }
   }
 
-  loadReservedPatients(): void {
+  loadReservedPatients(dateFilter: string = 'all'): void {
     this.loadingReserved = true;
+    this.selectedPreScheduleDateFilter = dateFilter;
     
     this.reservationService.getPatientsWithReservationStatus().subscribe({
       next: (response) => {
@@ -339,8 +415,19 @@ export class PatientList implements OnInit {
         if (response.success && response.data) {
           // Filter for patients with "Reserved" status (no active session today but have future sessions)
           // This includes both manually scheduled and pre-scheduled (auto-generated) sessions
-          this.reservedPatients = response.data.patients.filter((p: any) => p.status === 'Reserved');
+          let allReserved = response.data.patients.filter((p: any) => p.status === 'Reserved');
+          
+          // Debug: Log the dates to see what we're getting
+          console.log('All reserved patients with dates:', allReserved.map((p: any) => ({
+            name: p.name,
+            nextScheduledDate: p.nextScheduledDate,
+            nextScheduledDay: p.nextScheduledDay
+          })));
+          
+          // Apply date filter
+          this.reservedPatients = this.filterReservedByDate(allReserved, dateFilter);
           this.filteredReservedPatients = this.reservedPatients;
+          console.log(`Pre-scheduled patients (${dateFilter}):`, this.reservedPatients.length);
         }
         this.loadingReserved = false;
       },
@@ -351,14 +438,216 @@ export class PatientList implements OnInit {
     });
   }
 
+  filterReservedByDate(patients: any[], filterType: string): any[] {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    console.log(`Filtering for: ${filterType}, Today's date: ${today.toISOString().split('T')[0]}`);
+    
+    return patients.filter((patient: any) => {
+      // Check for both possible field names: nextScheduledDate and nextScheduledDay
+      const nextSessionField = patient.nextScheduledDate || patient.nextScheduledDay;
+      if (!nextSessionField) return false;
+      
+      const nextDate = new Date(nextSessionField);
+      const nextDateOnly = new Date(nextDate.getFullYear(), nextDate.getMonth(), nextDate.getDate());
+      
+      switch (filterType) {
+        case 'all':
+          // Show all future sessions including today
+          return nextDateOnly >= today;
+        
+        case 'today':
+          return nextDateOnly.getTime() === today.getTime();
+        
+        case 'tomorrow':
+          const tomorrow = new Date(today);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          return nextDateOnly.getTime() === tomorrow.getTime();
+        
+        case 'thisweek':
+          const weekEnd = new Date(today);
+          weekEnd.setDate(weekEnd.getDate() + 7);
+          return nextDateOnly >= today && nextDateOnly <= weekEnd;
+        
+        case 'thismonth':
+          return nextDateOnly.getMonth() === today.getMonth() && 
+                 nextDateOnly.getFullYear() === today.getFullYear() &&
+                 nextDateOnly >= today;
+        
+        case 'custom':
+          if (!this.preScheduleCustomStartDate || !this.preScheduleCustomEndDate) return false;
+          const startDate = new Date(this.preScheduleCustomStartDate);
+          const endDate = new Date(this.preScheduleCustomEndDate);
+          const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+          const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+          return nextDateOnly >= start && nextDateOnly <= end;
+        
+        default:
+          return nextDateOnly >= today;
+      }
+    });
+  }
+
+  onPreScheduleDateFilterChange(filterType: string): void {
+    if (filterType === 'custom') {
+      this.openPreScheduleCustomDatePicker();
+      return;
+    }
+    this.loadReservedPatients(filterType);
+  }
+
+  openPreScheduleCustomDatePicker(): void {
+    const dialogRef = this.dialog.open(CustomDatePickerDialog, {
+      width: '400px',
+      data: {
+        startDate: this.preScheduleCustomStartDate,
+        endDate: this.preScheduleCustomEndDate,
+        title: 'Pre-Schedule Date Range'
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.preScheduleCustomStartDate = result.startDate;
+        this.preScheduleCustomEndDate = result.endDate;
+        this.loadReservedPatients('custom');
+      }
+    });
+  }
+
   onReservedSearch(): void {
     const term = this.reservedSearchTerm.toLowerCase().trim();
     if (!term) {
+      // Re-apply date filter when search is cleared
       this.filteredReservedPatients = this.reservedPatients;
       return;
     }
     
-    this.filteredReservedPatients = this.reservedPatients.filter(patient =>
+    // Search within already date-filtered patients
+    this.filteredReservedPatients = this.reservedPatients.filter((patient: any) => {
+      // Handle both uppercase and lowercase property names
+      const name = (patient.name || patient.Name || '').toString().toLowerCase();
+      const mrn = (patient.mrn || patient.MRN || patient.Mrn || '').toString().toLowerCase();
+      const contact = (patient.contactNumber || patient.ContactNumber || '').toString();
+      
+      return name.includes(term) || 
+             mrn.includes(term) || 
+             contact.includes(term);
+    });
+    
+    console.log(`Pre Schedule search for "${term}": ${this.filteredReservedPatients.length} results`);
+  }
+
+  loadCompletedSessions(filterType: string = 'today'): void {
+    this.loadingCompleted = true;
+    this.selectedDateFilter = filterType;
+    
+    const { startDate, endDate } = this.getDateRange(filterType);
+    
+    console.log(`Loading completed sessions - Filter: ${filterType}, Range: ${startDate} to ${endDate}`);
+    
+    this.patientService.getCompletedSessionsByDateRange(startDate, endDate).subscribe({
+      next: (response) => {
+        console.log('Completed sessions response:', response);
+        if (response.success && response.data) {
+          this.completedSessions = response.data;
+          this.filteredCompletedSessions = this.completedSessions;
+          console.log(`Completed sessions loaded: ${this.completedSessions.length} patients`);
+        } else {
+          this.completedSessions = [];
+          this.filteredCompletedSessions = [];
+        }
+        this.loadingCompleted = false;
+      },
+      error: (error) => {
+        console.error('Error loading completed sessions:', error);
+        this.completedSessions = [];
+        this.filteredCompletedSessions = [];
+        this.loadingCompleted = false;
+      }
+    });
+  }
+
+  getDateRange(filterType: string): { startDate: string, endDate: string } {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let startDate: Date;
+    let endDate: Date;
+
+    switch (filterType) {
+      case 'today':
+        startDate = today;
+        endDate = today;
+        break;
+      case 'last24h':
+        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        endDate = now;
+        break;
+      case 'yesterday':
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        startDate = yesterday;
+        endDate = yesterday;
+        break;
+      case 'last7days':
+        startDate = new Date(today);
+        startDate.setDate(startDate.getDate() - 7);
+        endDate = today;
+        break;
+      case 'thismonth':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = today;
+        break;
+      case 'custom':
+        startDate = this.customStartDate || today;
+        endDate = this.customEndDate || today;
+        break;
+      default:
+        startDate = today;
+        endDate = today;
+    }
+
+    return {
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: endDate.toISOString().split('T')[0]
+    };
+  }
+
+  onDateFilterChange(filterType: string): void {
+    if (filterType === 'custom') {
+      this.openCustomDatePicker();
+      return;
+    }
+    this.loadCompletedSessions(filterType);
+  }
+
+  openCustomDatePicker(): void {
+    const dialogRef = this.dialog.open(CustomDatePickerDialog, {
+      width: '400px',
+      data: {
+        startDate: this.customStartDate,
+        endDate: this.customEndDate
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.customStartDate = result.startDate;
+        this.customEndDate = result.endDate;
+        this.loadCompletedSessions('custom');
+      }
+    });
+  }
+
+  onCompletedSearch(): void {
+    const term = this.completedSearchTerm.toLowerCase().trim();
+    if (!term) {
+      this.filteredCompletedSessions = this.completedSessions;
+      return;
+    }
+    
+    this.filteredCompletedSessions = this.completedSessions.filter(patient =>
       patient.name.toLowerCase().includes(term) ||
       (patient.mrn && patient.mrn.toLowerCase().includes(term)) ||
       patient.contactNumber.includes(term)
@@ -439,29 +728,105 @@ export class PatientList implements OnInit {
     this.router.navigate(['/patients', patientId, 'history']);
   }
 
+  // Global search - searches ALL registered patients
+  onGlobalSearch(): void {
+    const term = this.globalSearchTerm.toLowerCase().trim();
+    
+    if (!term) {
+      this.showGlobalSearchResults = false;
+      this.globalSearchResults = [];
+      return;
+    }
+    
+    // Search all registered patients
+    this.patientService.getAllPatients().subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.globalSearchResults = response.data.filter(p => 
+            p.isActive && (
+              p.name.toLowerCase().includes(term) ||
+              (p.mrn && p.mrn.toLowerCase().includes(term)) ||
+              p.contactNumber.includes(term)
+            )
+          );
+          this.showGlobalSearchResults = true;
+          console.log(`Global search for "${term}": ${this.globalSearchResults.length} results`);
+        }
+      },
+      error: (error) => {
+        console.error('Error in global search:', error);
+        this.showGlobalSearchResults = false;
+      }
+    });
+  }
+
   // Activate a reserved patient - change from Pre-Scheduled to Active
   onActivateReservedPatient(patient: any): void {
-    if (!patient || !patient.patientId) {
-      this.showToast('Invalid patient data', 'Error');
+    console.log('🔵 ACTIVATE BUTTON CLICKED - Patient data received:', patient);
+    console.log('🔵 Patient object keys:', Object.keys(patient));
+    
+    // Handle both patientId and patientID (case variations from API)
+    const patientId = patient.patientId || patient.PatientID || patient.patientID;
+    
+    console.log('🔵 Extracted patient ID:', patientId);
+    
+    if (!patient || !patientId) {
+      console.error('❌ Invalid patient data - missing ID:', patient);
+      this.showToast('Invalid patient data - Patient ID not found', 'Error');
       return;
     }
 
-    this.reservationService.activateReservedPatient(patient.patientId).subscribe({
+    console.log('🔵 Calling activation API for patient:', { id: patientId, name: patient.name });
+    this.loading = true;
+    
+    this.reservationService.activateReservedPatient(patientId).subscribe({
       next: (response) => {
-        console.log('Patient activated:', response);
-        this.showToast(`Patient ${patient.name} activated successfully. Session scheduled for today.`, 'Success');
+        console.log('✅ Patient activated successfully:', response);
+        this.showToast(`${patient.name} activated successfully!`, 'Success');
         
-        // Refresh both reserved and active patients lists
-        this.loadReservedPatients();
-        this.loadPatients(); // Refresh active patients tab
-        
-        // Optionally switch to Active Patients tab to show the activated patient
-        this.selectedTabIndex = 0;
+        // Add small delay to ensure database transaction completes
+        setTimeout(() => {
+          // Refresh the active patients list
+          this.patientService.getActivePatients().subscribe({
+            next: (activeResponse) => {
+              if (activeResponse.success && activeResponse.data) {
+                this.patients = activeResponse.data;
+                this.filteredPatients = this.patients;
+                console.log('✅ Active patients refreshed:', this.patients.length);
+                console.log('📋 Active patients details:', this.patients.map(p => ({ 
+                  id: p.patientID, 
+                  name: p.name, 
+                  sessionStatus: p.sessionStatus,
+                  scheduleID: p.scheduleID,
+                  sessionDate: p.sessionDate
+                })));
+              }
+              
+              // Set flag to skip the tab change reload (data already fresh)
+              this.skipTabReload = true;
+              
+              // Then switch to Active Patients tab (index 1)
+              this.selectedTabIndex = 1;
+              this.loading = false;
+              
+              // Refresh pre-schedule list in background to remove activated patient
+              this.loadReservedPatients();
+            },
+            error: (error) => {
+              console.error('❌ Error refreshing active patients:', error);
+              this.loading = false;
+              // Still switch to active tab even if refresh fails
+              this.skipTabReload = true;
+              this.selectedTabIndex = 1;
+            }
+          });
+        }, 500); // Wait 500ms for database transaction to complete
       },
       error: (error) => {
-        console.error('Error activating patient:', error);
+        console.error('❌ Error activating patient:', error);
         const errorMsg = error.error?.message || error.message || 'Failed to activate patient';
         this.showToast(errorMsg, 'Error');
+        this.loading = false;
       }
     });
   }
@@ -469,6 +834,19 @@ export class PatientList implements OnInit {
   // View history for a reserved patient
   onViewReservedPatientHistory(patient: any): void {
     this.router.navigate(['/patients', patient.patientId, 'history']);
+  }
+
+  openPatientInfoDialog(patient: Patient): void {
+    this.dialog.open(PatientInfoDialogComponent, {
+      width: '450px',
+      data: {
+        name: patient.name,
+        hdStartDate: patient.hdStartDate,
+        hdCycle: patient.hdCycle,
+        bedNumber: patient.bedNumber,
+        totalDialysisCompleted: patient.totalDialysisCompleted || 0
+      }
+    });
   }
 
   togglePatientCard(patientId: number): void {
@@ -481,5 +859,134 @@ export class PatientList implements OnInit {
 
   isPatientExpanded(patientId: number): boolean {
     return this.expandedPatients.has(patientId);
+  }
+}
+
+// Custom Date Picker Dialog Component
+@Component({
+  selector: 'custom-date-picker-dialog',
+  standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatIconModule
+  ],
+  template: `
+    <h2 mat-dialog-title>
+      <mat-icon>calendar_month</mat-icon>
+      Select Custom Date Range
+    </h2>
+    <mat-dialog-content>
+      <div class="date-picker-container">
+        <mat-form-field appearance="outline" class="date-field">
+          <mat-label>Start Date</mat-label>
+          <input matInput [matDatepicker]="startPicker" [(ngModel)]="startDate" [max]="endDate || maxDate">
+          <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
+          <mat-datepicker #startPicker></mat-datepicker>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="date-field">
+          <mat-label>End Date</mat-label>
+          <input matInput [matDatepicker]="endPicker" [(ngModel)]="endDate" [min]="startDate" [max]="maxDate">
+          <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
+          <mat-datepicker #endPicker></mat-datepicker>
+        </mat-form-field>
+      </div>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button (click)="onCancel()">
+        <mat-icon>close</mat-icon>
+        Cancel
+      </button>
+      <button mat-raised-button color="primary" (click)="onApply()" [disabled]="!startDate || !endDate">
+        <mat-icon>check</mat-icon>
+        Apply Filter
+      </button>
+    </mat-dialog-actions>
+  `,
+  styles: [`
+    .date-picker-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 20px 0;
+      min-width: 300px;
+    }
+
+    .date-field {
+      width: 100%;
+    }
+
+    h2 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      padding: 16px 24px;
+      background-color: #667eea;
+      color: white;
+      
+      mat-icon {
+        font-size: 24px;
+        width: 24px;
+        height: 24px;
+      }
+    }
+
+    mat-dialog-content {
+      padding: 0 24px;
+    }
+
+    mat-dialog-actions {
+      padding: 16px 24px;
+      
+      button {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        
+        mat-icon {
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+        }
+      }
+    }
+  `]
+})
+export class CustomDatePickerDialog {
+  startDate: Date | null = null;
+  endDate: Date | null = null;
+  maxDate = new Date();
+
+  constructor(
+    public dialogRef: MatDialogRef<CustomDatePickerDialog>,
+    @Inject(MAT_DIALOG_DATA) public data: any
+  ) {
+    if (data?.startDate) {
+      this.startDate = new Date(data.startDate);
+    }
+    if (data?.endDate) {
+      this.endDate = new Date(data.endDate);
+    }
+  }
+
+  onCancel(): void {
+    this.dialogRef.close();
+  }
+
+  onApply(): void {
+    if (this.startDate && this.endDate) {
+      this.dialogRef.close({
+        startDate: this.startDate,
+        endDate: this.endDate
+      });
+    }
   }
 }

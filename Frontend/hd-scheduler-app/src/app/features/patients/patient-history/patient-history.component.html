@@ -159,19 +159,11 @@
         <!-- Statistics Summary -->
         @if (statistics) {
           <div class="statistics-card">
-            <h3>Treatment Statistics</h3>
+            <h3>Session Summary</h3>
             <div class="stats-grid">
               <div class="stat-item">
                 <div class="stat-value">{{ statistics.totalSessions }}</div>
                 <div class="stat-label">Total Sessions</div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-value">{{ statistics.averageWeightLoss | number:'1.1-1' }} kg</div>
-                <div class="stat-label">Avg Weight Loss</div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-value">{{ statistics.averagePreWeight | number:'1.1-1' }} kg</div>
-                <div class="stat-label">Avg Pre-Weight</div>
               </div>
               <div class="stat-item">
                 <div class="stat-value">{{ statistics.firstSessionDate | date:'MMM d, y' }}</div>
@@ -188,7 +180,7 @@
             <div class="tab-content">
               @if (sessions && sessions.length > 0) {
                 <div class="sessions-timeline">
-                  @for (session of sessions; track session.scheduleID) {
+                  @for (session of sessions; track (session.scheduleID || session.ScheduleID)) {
                     <mat-expansion-panel class="session-panel">
                       <mat-expansion-panel-header>
                         <mat-panel-title>
@@ -205,80 +197,47 @@
 
                       <div class="session-details">
                         <div class="detail-grid">
-                          <!-- Prescription Details -->
+                          <!-- HD Prescription & Treatment Plan -->
                           <div class="detail-section">
-                            <h4><mat-icon>medication</mat-icon> Prescription & Treatment Plan</h4>
-                            <p><strong>Dry Weight:</strong> {{ session.dryWeight || session.DryWeight || 'N/A' }} kg</p>
-                            <p><strong>HD Start Date:</strong> {{ (session.hdStartDate || session.HDStartDate) ? ((session.hdStartDate || session.HDStartDate) | date:'MMM d, y') : 'N/A' }}</p>
-                            <p><strong>HD Cycle:</strong> {{ session.hdCycle || session.HDCycle || 'N/A' }}</p>
-                            <p><strong>Prescribed Duration:</strong> {{ session.prescribedDuration || session.PrescribedDuration || 'N/A' }} hours</p>
-                            <p><strong>Dialyser Type:</strong> {{ session.dialyserType || session.DialyserType || 'N/A' }}</p>
-                            <p><strong>Dialyser Model:</strong> {{ session.dialyserModel || session.DialyserModel || 'N/A' }}</p>
-                            <p><strong>Dialyser Reuse Count:</strong> {{ session.dialyserReuseCount || session.DialyserReuseCount || 'N/A' }}</p>
-                            <p><strong>Blood Tubing Reuse:</strong> {{ session.bloodTubingReuse || session.BloodTubingReuse || 'N/A' }}</p>
-                            <p><strong>UF Goal:</strong> {{ session.ufGoal || session.UFGoal || 'N/A' }} L</p>
-                            <p><strong>Prescribed BFR:</strong> {{ session.prescribedBFR || session.PrescribedBFR || 'N/A' }} mL/min</p>
-                            <p><strong>Dialysate:</strong> {{ session.dialysatePrescription || session.DialysatePrescription || 'N/A' }}</p>
+                            <h4><mat-icon>medical_services</mat-icon> HD Prescription & Treatment Plan</h4>
+                            <p><strong>Treatment Date:</strong> {{ session.sessionDate | date:'MMM d, y' }}</p>
+                            <p><strong>Time Slot:</strong> {{ session.slotName || 'N/A' }}</p>
+                            <p><strong>Bed Number:</strong> {{ session.bedNumber || 'N/A' }}</p>
+                          </div>
+
+                          <!-- Vascular Access -->
+                          <div class="detail-section">
+                            <h4><mat-icon>accessible</mat-icon> Vascular Access</h4>
+                            <p><strong>Access Type:</strong> {{ session.accessType || session.AccessType || 'N/A' }}</p>
+                            <p><strong>Access Location:</strong> {{ session.accessLocation || session.AccessLocation || 'N/A' }}</p>
+                          </div>
+
+                          <!-- Anticoagulation -->
+                          <div class="detail-section">
+                            <h4><mat-icon>water_drop</mat-icon> Anticoagulation</h4>
                             <p><strong>Anticoagulation Type:</strong> {{ session.anticoagulationType || session.AnticoagulationType || 'N/A' }}</p>
-                            <p><strong>Heparin Bolus Dose:</strong> {{ session.bolusDose || session.BolusDose || 'N/A' }} mL</p>
-                            <p><strong>Heparin Infusion Rate:</strong> {{ session.heparinInfusionRate || session.HeparinInfusionRate || 'N/A' }} mL/hr</p>
+                            <p><strong>Syringe Type:</strong> {{ session.syringeType || session.SyringeType || 'N/A' }}</p>
+                            <p><strong>Bolus Dose:</strong> {{ session.bolusDose || session.BolusDose || 'N/A' }} {{ (session.bolusDose || session.BolusDose) ? 'mL' : '' }}</p>
                           </div>
 
-                          <!-- Access & Session Details -->
+                          <!-- Treatment Session Details -->
                           <div class="detail-section">
-                            <h4><mat-icon>accessible</mat-icon> Vascular Access & Session</h4>
-                            <p><strong>Access Type:</strong> {{ session.accessType || session.AccessType || 'Not specified' }}</p>
-                            <p><strong>Access Location:</strong> {{ session.accessLocation || session.AccessLocation || 'Not specified' }}</p>
-                            <p><strong>Start Time:</strong> {{ session.startTime || session.StartTime || 'Not recorded' }}</p>
-                            <p><strong>Access Bleeding Time:</strong> {{ session.accessBleedingTime || session.AccessBleedingTime || 'Not recorded' }} {{ (session.accessBleedingTime || session.AccessBleedingTime) ? 'min' : '' }}</p>
-                            <p><strong>Access Status:</strong> {{ session.accessStatus || session.AccessStatus || 'Not assessed' }}</p>
-                          </div>
-
-                          <!-- Pre-Dialysis Assessment -->
-                          <div class="detail-section">
-                            <h4><mat-icon>fact_check</mat-icon> Pre-Dialysis Assessment</h4>
-                            <p><strong>Pre-Weight:</strong> {{ session.preWeight || session.PreWeight || 'Not recorded' }} {{ (session.preWeight || session.PreWeight) ? 'kg' : '' }}</p>
-                            <p><strong>Pre-BP (Sitting):</strong> {{ session.preBPSitting || session.PreBPSitting || session.bloodPressurePre || session.BloodPressurePre || 'Not recorded' }}</p>
-                            <p><strong>Pre-Temperature:</strong> {{ session.preTemperature || session.PreTemperature || 'Not recorded' }} {{ (session.preTemperature || session.PreTemperature) ? '°C' : '' }}</p>
-                            <p><strong>Complications:</strong> {{ session.complications || session.Complications || 'None reported' }}</p>
+                            <h4><mat-icon>schedule</mat-icon> Treatment Session Details</h4>
+                            <p><strong>Start Time:</strong> {{ session.startTime || session.StartTime || 'N/A' }}</p>
+                            <p><strong>Pre-Weight:</strong> {{ session.preWeight || session.PreWeight || 'N/A' }} {{ (session.preWeight || session.PreWeight) ? 'kg' : '' }}</p>
+                            <p><strong>UF Goal:</strong> {{ session.ufGoal || session.UFGoal || 'N/A' }} {{ (session.ufGoal || session.UFGoal) ? 'L' : '' }}</p>
+                            <p><strong>Blood Pressure:</strong> {{ session.bloodPressure || session.BloodPressure || 'N/A' }}</p>
                           </div>
 
                           <!-- Intra-Dialytic Monitoring -->
                           <div class="detail-section highlight-section">
                             <h4><mat-icon>monitor_heart</mat-icon> Intra-Dialytic Monitoring</h4>
                             @if ((session.intraDialyticRecordsCount || session.IntraDialyticRecordsCount) && (session.intraDialyticRecordsCount || session.IntraDialyticRecordsCount) > 0) {
-                              <div class="info-banner">
-                                <mat-icon>info</mat-icon>
-                                <span>{{ session.intraDialyticRecordsCount || session.IntraDialyticRecordsCount }} monitoring record(s) recorded during treatment. Click "View Full Details" to see all entries with timestamps.</span>
-                              </div>
+                              <p><strong>Monitoring Records:</strong> {{ session.intraDialyticRecordsCount || session.IntraDialyticRecordsCount }} record(s) captured during treatment</p>
+                              <p class="note-text"><em>Click "View Full Details" to see complete monitoring records</em></p>
                             } @else {
-                              <p style="color: #9e9e9e; font-style: italic; margin-bottom: 12px;">
-                                <mat-icon style="font-size: 16px; width: 16px; height: 16px; vertical-align: middle;">info_outline</mat-icon>
-                                No monitoring records. These fields are filled during treatment by adding monitoring entries.
-                              </p>
+                              <p class="note-text"><em>No monitoring records captured during this session</em></p>
                             }
-                            <p><strong>Monitoring Time:</strong> {{ session.monitoringTime || session.MonitoringTime || 'Not recorded' }}</p>
-                            <p><strong>Blood Pressure:</strong> {{ session.bloodPressure || session.BloodPressure || 'Not recorded' }}</p>
-                            <p><strong>Heart Rate:</strong> {{ session.heartRate || session.HeartRate || 'Not recorded' }} {{ (session.heartRate || session.HeartRate) ? 'bpm' : '' }}</p>
-                            <p><strong>Actual BFR:</strong> {{ session.actualBFR || session.ActualBFR || 'Not recorded' }} {{ (session.actualBFR || session.ActualBFR) ? 'mL/min' : '' }}</p>
-                            <p><strong>Venous Pressure:</strong> {{ session.venousPressure || session.VenousPressure || 'Not recorded' }} {{ (session.venousPressure || session.VenousPressure) ? 'mmHg' : '' }}</p>
-                            <p><strong>Arterial Pressure:</strong> {{ session.arterialPressure || session.ArterialPressure || 'Not recorded' }} {{ (session.arterialPressure || session.ArterialPressure) ? 'mmHg' : '' }}</p>
-                            <p><strong>Current UFR:</strong> {{ session.currentUFR || session.CurrentUFR || 'Not recorded' }} {{ (session.currentUFR || session.CurrentUFR) ? 'L/hr' : '' }}</p>
-                            <p><strong>Total UF Achieved:</strong> {{ session.totalUFAchieved || session.TotalUFAchieved || 'Not recorded' }} {{ (session.totalUFAchieved || session.TotalUFAchieved) ? 'L' : '' }}</p>
-                            <p><strong>TMP Pressure:</strong> {{ session.tmpPressure || session.TmpPressure || 'Not recorded' }} {{ (session.tmpPressure || session.TmpPressure) ? 'mmHg' : '' }}</p>
-                            <p><strong>Symptoms:</strong> {{ session.symptoms || session.Symptoms || 'None recorded' }}</p>
-                            <p><strong>Interventions:</strong> {{ session.interventions || session.Interventions || 'None recorded' }}</p>
-                            <p><strong>Staff Initials:</strong> {{ session.staffInitials || session.StaffInitials || 'Not recorded' }}</p>
-                          </div>
-
-                          <!-- Post-Dialysis Vitals -->
-                          <div class="detail-section">
-                            <h4><mat-icon>assignment_turned_in</mat-icon> Post-Dialysis</h4>
-                            <p><strong>Post-Weight:</strong> {{ session.postWeight || session.PostWeight || 'Not recorded' }} {{ (session.postWeight || session.PostWeight) ? 'kg' : '' }}</p>
-                            <p><strong>Weight Loss:</strong> {{ ((session.preWeight || session.PreWeight) && (session.postWeight || session.PostWeight)) ? (((session.preWeight || session.PreWeight) - (session.postWeight || session.PostWeight)) | number:'1.1-1') + ' kg' : 'Not calculated' }}</p>
-                            <p><strong>Post-BP:</strong> {{ ((session.postSBP || session.PostSBP) && (session.postDBP || session.PostDBP)) ? ((session.postSBP || session.PostSBP) + '/' + (session.postDBP || session.PostDBP)) : 'Not recorded' }}</p>
-                            <p><strong>Temperature:</strong> {{ session.preTemperature || session.PreTemperature || 'Not recorded' }} {{ (session.preTemperature || session.PreTemperature) ? '°C' : '' }}</p>
-                            <p><strong>Notes:</strong> {{ session.notes || session.Notes || 'No additional notes' }}</p>
                           </div>
 
                           <!-- Post-Dialysis Medications -->
@@ -287,13 +246,13 @@
                               <h4><mat-icon>local_pharmacy</mat-icon> Post-Dialysis Medications</h4>
                               <p><strong>Medication Type:</strong> {{ session.medicationType || session.MedicationType || 'N/A' }}</p>
                               <p><strong>Medication Name:</strong> {{ session.medicationName || session.MedicationName || 'N/A' }}</p>
-                              <p><strong>Dose:</strong> {{ session.dose || session.Dose || 'N/A' }}</p>
-                              <p><strong>Route:</strong> {{ session.route || session.Route || 'N/A' }}</p>
-                              <p><strong>Administered At:</strong> {{ session.administeredAt || session.AdministeredAt || 'N/A' }}</p>
+                              <p><strong>Dose:</strong> {{ session.medicationDose || session.dose || session.Dose || session.MedicationDose || 'N/A' }}</p>
+                              <p><strong>Route:</strong> {{ session.medicationRoute || session.route || session.Route || session.MedicationRoute || 'N/A' }}</p>
+                              <p><strong>Administered At:</strong> {{ session.medicationAdministeredAt || session.administeredAt || session.AdministeredAt || session.MedicationAdministeredAt || 'N/A' }}</p>
                             </div>
                           }
 
-                          <!-- Alerts -->
+                          <!-- Treatment Alerts -->
                           @if (session.alertType || session.AlertType || session.alertMessage || session.AlertMessage) {
                             <div class="detail-section alert-section">
                               <h4><mat-icon>warning</mat-icon> Treatment Alerts</h4>
@@ -304,7 +263,7 @@
                                 </mat-chip>
                               </p>
                               @if (session.alertMessage || session.AlertMessage) {
-                                <p><strong>Message:</strong> {{ session.alertMessage || session.AlertMessage }}</p>
+                                <p><strong>Alert Message:</strong> {{ session.alertMessage || session.AlertMessage }}</p>
                               }
                               @if (session.resolution || session.Resolution) {
                                 <p><strong>Resolution:</strong> {{ session.resolution || session.Resolution }}</p>
@@ -312,28 +271,34 @@
                             </div>
                           }
 
-                          <!-- Staff -->
+                          <!-- Assigned Staff -->
                           <div class="detail-section">
                             <h4><mat-icon>people</mat-icon> Assigned Staff</h4>
                             <p><strong>Doctor:</strong> {{ session.assignedDoctorName || session.AssignedDoctorName || 'Not Assigned' }}</p>
                             <p><strong>Nurse:</strong> {{ session.assignedNurseName || session.AssignedNurseName || 'Not Assigned' }}</p>
                           </div>
 
-                          <!-- Notes -->
+                          <!-- Post-Dialysis Assessment -->
+                          <div class="detail-section">
+                            <h4><mat-icon>assignment_turned_in</mat-icon> Post-Dialysis Assessment</h4>
+                            <p><strong>Post-Weight:</strong> {{ session.postWeight || session.PostWeight || 'N/A' }} {{ (session.postWeight || session.PostWeight) ? 'kg' : '' }}</p>
+                            <p><strong>Weight Loss:</strong> {{ ((session.preWeight || session.PreWeight) && (session.postWeight || session.PostWeight)) ? (((session.preWeight || session.PreWeight) - (session.postWeight || session.PostWeight)) | number:'1.1-1') + ' kg' : 'N/A' }}</p>
+                            <p><strong>Post-Systolic BP:</strong> {{ session.postSBP || session.PostSBP || 'N/A' }} {{ (session.postSBP || session.PostSBP) ? 'mmHg' : '' }}</p>
+                            <p><strong>Post-Diastolic BP:</strong> {{ session.postDBP || session.PostDBP || 'N/A' }} {{ (session.postDBP || session.PostDBP) ? 'mmHg' : '' }}</p>
+                            <p><strong>Post-Heart Rate:</strong> {{ session.postHR || session.PostHR || 'N/A' }} {{ (session.postHR || session.PostHR) ? 'bpm' : '' }}</p>
+                          </div>
+
+                          <!-- Additional Notes -->
                           @if (session.notes || session.Notes) {
                             <div class="detail-section full-width">
-                              <h4><mat-icon>note</mat-icon> Notes</h4>
+                              <h4><mat-icon>note</mat-icon> Session Notes</h4>
                               <p class="notes-text">{{ session.notes || session.Notes }}</p>
                             </div>
                           }
                         </div>
 
                         <div class="session-actions">
-                          <button mat-raised-button color="primary" (click)="editSession(session.scheduleID)">
-                            <mat-icon>edit</mat-icon>
-                            Edit Session
-                          </button>
-                          <button mat-raised-button color="accent" (click)="viewSessionDetails(session)">
+                          <button mat-raised-button color="primary" (click)="viewSessionDetails(session)">
                             <mat-icon>visibility</mat-icon>
                             View Full Details
                           </button>

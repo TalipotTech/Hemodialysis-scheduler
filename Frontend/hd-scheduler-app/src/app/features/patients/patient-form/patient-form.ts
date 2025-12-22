@@ -177,7 +177,7 @@ export class PatientForm implements OnInit, OnDestroy {
     // Listen to form changes with debounce
     this.patientForm.valueChanges
       .pipe(
-        debounceTime(2000), // Wait 2 seconds after user stops typing
+        debounceTime(600000), // Wait 10 minutes after user stops typing
         takeUntil(this.destroy$)
       )
       .subscribe(() => {

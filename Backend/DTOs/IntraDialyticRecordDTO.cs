@@ -23,7 +23,7 @@ namespace HDScheduler.API.DTOs
         public string? Symptoms { get; set; }
         public string? Interventions { get; set; }
         public string? StaffInitials { get; set; }
-        public string? RecordedBy { get; set; }
+        public int? RecordedBy { get; set; }  // Changed from string to int - this is the staff ID
         public string? Notes { get; set; }
         public string? CreatedAt { get; set; }
     }

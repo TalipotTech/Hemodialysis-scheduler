@@ -86,6 +86,45 @@ public class PatientsController : ControllerBase
         }
     }
 
+    [HttpGet("today-completed")]
+    [AllowAnonymous]
+    // [Authorize(Roles = "Admin,HOD,Doctor,Nurse,Technician")]
+    public async Task<ActionResult<ApiResponse<List<Patient>>>> GetTodayCompletedSessions()
+    {
+        try
+        {
+            var patients = await _patientRepository.GetTodayCompletedSessionsAsync();
+            return Ok(ApiResponse<List<Patient>>.SuccessResponse(patients));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving today's completed sessions");
+            return StatusCode(500, ApiResponse<List<Patient>>.ErrorResponse("An error occurred while retrieving today's completed sessions"));
+        }
+    }
+
+    [HttpGet("completed-sessions")]
+    [AllowAnonymous]
+    // [Authorize(Roles = "Admin,HOD,Doctor,Nurse,Technician")]
+    public async Task<ActionResult<ApiResponse<List<Patient>>>> GetCompletedSessionsByDateRange(
+        [FromQuery] DateTime? startDate, 
+        [FromQuery] DateTime? endDate)
+    {
+        try
+        {
+            var start = startDate ?? DateTime.Today;
+            var end = endDate ?? DateTime.Today;
+            
+            var patients = await _patientRepository.GetCompletedSessionsByDateRangeAsync(start, end);
+            return Ok(ApiResponse<List<Patient>>.SuccessResponse(patients));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving completed sessions by date range");
+            return StatusCode(500, ApiResponse<List<Patient>>.ErrorResponse("An error occurred while retrieving completed sessions"));
+        }
+    }
+
     [HttpGet("search")]
     [Authorize(Roles = "Admin,HOD,Doctor,Nurse,Technician")]
     public async Task<ActionResult<ApiResponse<List<Patient>>>> SearchPatients([FromQuery] string q)

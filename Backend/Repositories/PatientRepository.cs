@@ -89,6 +89,12 @@ public class PatientRepository : IPatientRepository
 
     public async Task<List<Patient>> GetActiveAsync()
     {
+        // Returns patients with TODAY'S active sessions that have been MANUALLY ACTIVATED
+        // Excludes auto-generated "Pre-Scheduled" sessions until they're explicitly activated
+        // A session is considered "manually activated" if:
+        // 1. SessionStatus is 'Active' or 'In Progress' (manually activated), OR
+        // 2. TreatmentStartTime has been set (treatment has begun), OR
+        // 3. SessionStatus is NULL but not Pre-Scheduled/Reserved
         var query = @"
             SELECT 
                 p.PatientID, p.MRN, p.Name, p.Age, p.Gender, 
@@ -98,26 +104,81 @@ public class PatientRepository : IPatientRepository
                 p.DialyserModel, p.PrescribedDuration, p.PrescribedBFR, p.DialysatePrescription,
                 p.DialyserCount, p.BloodTubingCount, p.TotalDialysisCompleted,
                 p.DialysersPurchased, p.BloodTubingPurchased,
-                h.ScheduleID, h.SlotID, h.BedNumber,
-                h.AssignedDoctor, h.AssignedNurse, h.IsDischarged,
+                h.ScheduleID, h.SlotID, h.BedNumber, h.SessionDate, h.SessionStatus,
+                h.AssignedDoctor, h.AssignedNurse, h.IsDischarged, h.TreatmentStartTime,
                 d.Name as AssignedDoctorName,
                 n.Name as AssignedNurseName
             FROM Patients p
-            LEFT JOIN (
-                SELECT h1.* FROM HDSchedule h1
-                INNER JOIN (
-                    SELECT PatientID, MAX(SessionDate) as MaxSessionDate
-                    FROM HDSchedule
-                    GROUP BY PatientID
-                ) h2 ON h1.PatientID = h2.PatientID AND h1.SessionDate = h2.MaxSessionDate
-                WHERE h1.IsDischarged = 0
-            ) h ON p.PatientID = h.PatientID
+            INNER JOIN HDSchedule h ON p.PatientID = h.PatientID
             LEFT JOIN Staff d ON h.AssignedDoctor = d.StaffID
             LEFT JOIN Staff n ON h.AssignedNurse = n.StaffID
             WHERE p.IsActive = 1 
-            ORDER BY p.CreatedAt DESC";
+              AND h.IsDischarged = 0
+              AND CAST(h.SessionDate AS DATE) = CAST(GETDATE() AS DATE)
+              AND (
+                h.SessionStatus IN ('Active', 'In Progress', 'Completed')
+                OR h.TreatmentStartTime IS NOT NULL 
+                OR (h.SessionStatus IS NULL)
+              )
+            ORDER BY h.SlotID, h.BedNumber";
         using var connection = _context.CreateConnection();
         var patients = await connection.QueryAsync<Patient>(query);
+        return patients.ToList();
+    }
+
+    public async Task<List<Patient>> GetTodayCompletedSessionsAsync()
+    {
+        var query = @"
+            SELECT 
+                p.PatientID, p.MRN, p.Name, p.Age, p.Gender, 
+                p.ContactNumber, p.EmergencyContact, p.Address, p.GuardianName,
+                p.IsActive, p.CreatedAt, p.UpdatedAt,
+                p.DryWeight, p.HDCycle, p.HDFrequency, p.PreferredSlotID, p.HDStartDate, p.DialyserType,
+                p.DialyserModel, p.PrescribedDuration, p.PrescribedBFR, p.DialysatePrescription,
+                p.DialyserCount, p.BloodTubingCount, p.TotalDialysisCompleted,
+                p.DialysersPurchased, p.BloodTubingPurchased,
+                h.ScheduleID, h.SlotID, h.BedNumber, h.SessionDate,
+                h.AssignedDoctor, h.AssignedNurse, h.IsDischarged, h.SessionStatus,
+                h.TreatmentStartTime, h.TreatmentCompletionTime,
+                d.Name as AssignedDoctorName,
+                n.Name as AssignedNurseName
+            FROM Patients p
+            INNER JOIN HDSchedule h ON p.PatientID = h.PatientID
+            LEFT JOIN Staff d ON h.AssignedDoctor = d.StaffID
+            LEFT JOIN Staff n ON h.AssignedNurse = n.StaffID
+            WHERE h.IsDischarged = 1 
+              AND CAST(h.SessionDate AS DATE) = CAST(GETDATE() AS DATE)
+            ORDER BY h.SessionDate DESC, h.ScheduleID DESC";
+        using var connection = _context.CreateConnection();
+        var patients = await connection.QueryAsync<Patient>(query);
+        return patients.ToList();
+    }
+
+    public async Task<List<Patient>> GetCompletedSessionsByDateRangeAsync(DateTime startDate, DateTime endDate)
+    {
+        var query = @"
+            SELECT 
+                p.PatientID, p.MRN, p.Name, p.Age, p.Gender, 
+                p.ContactNumber, p.EmergencyContact, p.Address, p.GuardianName,
+                p.IsActive, p.CreatedAt, p.UpdatedAt,
+                p.DryWeight, p.HDCycle, p.HDFrequency, p.PreferredSlotID, p.HDStartDate, p.DialyserType,
+                p.DialyserModel, p.PrescribedDuration, p.PrescribedBFR, p.DialysatePrescription,
+                p.DialyserCount, p.BloodTubingCount, p.TotalDialysisCompleted,
+                p.DialysersPurchased, p.BloodTubingPurchased,
+                h.ScheduleID, h.SlotID, h.BedNumber, h.SessionDate,
+                h.AssignedDoctor, h.AssignedNurse, h.IsDischarged, h.SessionStatus,
+                h.TreatmentStartTime, h.TreatmentCompletionTime,
+                d.Name as AssignedDoctorName,
+                n.Name as AssignedNurseName
+            FROM Patients p
+            INNER JOIN HDSchedule h ON p.PatientID = h.PatientID
+            LEFT JOIN Staff d ON h.AssignedDoctor = d.StaffID
+            LEFT JOIN Staff n ON h.AssignedNurse = n.StaffID
+            WHERE h.SessionStatus = 'Completed' 
+              AND CAST(h.SessionDate AS DATE) BETWEEN @StartDate AND @EndDate
+            ORDER BY h.SessionDate DESC, h.ScheduleID DESC";
+        using var connection = _context.CreateConnection();
+        var patients = await connection.QueryAsync<Patient>(query, new { StartDate = startDate, EndDate = endDate });
         return patients.ToList();
     }
 

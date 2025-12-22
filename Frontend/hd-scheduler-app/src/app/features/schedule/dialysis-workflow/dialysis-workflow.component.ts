@@ -107,11 +107,15 @@ export class DialysisWorkflowComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.route.params.subscribe(params => {
+      console.log('🚀 Dialysis Workflow initialized with params:', params);
+      
       if (params['id']) {
         this.patientId = +params['id'];
+        console.log('👤 Patient ID:', this.patientId);
       }
       if (params['scheduleId']) {
         this.scheduleId = +params['scheduleId'];
+        console.log('📅 Schedule ID:', this.scheduleId);
         this.loadSessionData();
       }
     });
@@ -183,13 +187,18 @@ export class DialysisWorkflowComponent implements OnInit, OnDestroy {
   loadHDLogData(): void {
     if (!this.hdLogId) return;
     
+    console.log('📋 Loading HD Log data for hdLogId:', this.hdLogId);
+    
     this.scheduleService.getHDLogById(this.hdLogId).subscribe({
       next: (response) => {
+        console.log('📋 HD Log response:', response);
+        
         if (response.success && response.data) {
           this.sessionData = response.data;
           
           // Populate pre-dialysis form if data exists
           if (this.sessionData.preWeight) {
+            console.log('✅ Loading pre-dialysis data into form');
             this.preDialysisForm.patchValue({
               preWeight: this.sessionData.preWeight,
               preSBP: this.sessionData.preSBP,
@@ -203,6 +212,7 @@ export class DialysisWorkflowComponent implements OnInit, OnDestroy {
           
           // Populate post-dialysis form if data exists
           if (this.sessionData.postDialysisWeight) {
+            console.log('✅ Loading post-dialysis data into form');
             this.postDialysisForm.patchValue({
               postDialysisWeight: this.sessionData.postDialysisWeight,
               postDialysisSBP: this.sessionData.postDialysisSBP,
@@ -216,11 +226,68 @@ export class DialysisWorkflowComponent implements OnInit, OnDestroy {
             }, { emitEvent: false });
           }
         }
+        
+        // Always load medications from database, regardless of whether other data exists
+        console.log('🔄 Now loading medications...');
+        this.loadExistingMedications();
       },
       error: (error) => {
-        console.error('Error loading HD Log:', error);
+        console.error('❌ Error loading HD Log:', error);
+        // Still try to load medications even if HD Log data fails
+        this.loadExistingMedications();
       }
     });
+  }
+
+  // Load existing medications from database
+  loadExistingMedications(): void {
+    if (!this.scheduleId) {
+      console.warn('⚠️ Cannot load medications: scheduleId is missing');
+      return;
+    }
+    
+    console.log('🔍 Loading medications for scheduleId:', this.scheduleId);
+    
+    this.scheduleService.getMedications(this.scheduleId).subscribe({
+      next: (response) => {
+        console.log('📦 Medication API response:', response);
+        
+        if (response.success && response.data && Array.isArray(response.data)) {
+          console.log('✅ Found', response.data.length, 'medications in database');
+          
+          // Convert database medications to component format
+          this.medications = response.data.map((med: any) => ({
+            medicationType: med.medicationType || '',
+            medicationName: med.medicationName || '',
+            dose: med.dosage || med.dose || '',
+            route: med.route || '',
+            administeredAt: med.givenTime ? this.formatTimeFromDatabase(med.givenTime) : ''
+          }));
+          
+          console.log('✅ Medications loaded into form:', this.medications);
+        } else {
+          console.log('ℹ️ No medications found or invalid response format');
+        }
+      },
+      error: (error) => {
+        console.error('❌ Error loading medications:', error);
+      }
+    });
+  }
+
+  // Convert database time format (HH:mm:ss or TimeSpan) to HH:mm for input[type="time"]
+  formatTimeFromDatabase(timeValue: any): string {
+    if (!timeValue) return '';
+    
+    // If it's already a string in HH:mm:ss format
+    if (typeof timeValue === 'string') {
+      const parts = timeValue.split(':');
+      if (parts.length >= 2) {
+        return `${parts[0]}:${parts[1]}`; // Return HH:mm
+      }
+    }
+    
+    return '';
   }
 
   // Auto-save functionality
@@ -385,6 +452,8 @@ export class DialysisWorkflowComponent implements OnInit, OnDestroy {
           this.snackBar.open('✓ Treatment ended. Starting Post-Dialysis phase...', 'Close', { duration: 3000 });
           this.loadPhaseStatus();
           this.loadHDLogData();
+          // Ensure medications are loaded when entering POST_DIALYSIS phase
+          this.loadExistingMedications();
         } else {
           this.snackBar.open(response.message || 'Failed to start post-dialysis', 'Close', { duration: 3000 });
         }
@@ -418,13 +487,23 @@ export class DialysisWorkflowComponent implements OnInit, OnDestroy {
     this.scheduleService.savePostDialysis(this.hdLogId, postDialysisData).subscribe({
       next: (response) => {
         if (response.success) {
-          this.snackBar.open('✓ Post-Dialysis data saved successfully!', 'Close', { duration: 3000 });
-          this.postLastSaved = new Date();
-          this.loadPhaseStatus();
+          // Save medications to database
+          this.saveMedicationsToDatabase().then(() => {
+            this.snackBar.open('✓ Post-Dialysis data and medications saved successfully!', 'Close', { duration: 3000 });
+            this.postLastSaved = new Date();
+            this.loadPhaseStatus();
+            // DON'T reload medications - keep them visible in the form
+            // this.loadExistingMedications(); // Removed to keep form data
+            this.saving = false;
+          }).catch((error) => {
+            console.error('Error saving medications:', error);
+            this.snackBar.open('Post-dialysis saved, but some medications failed to save', 'Close', { duration: 3000 });
+            this.saving = false;
+          });
         } else {
           this.snackBar.open(response.message || 'Failed to save', 'Close', { duration: 3000 });
+          this.saving = false;
         }
-        this.saving = false;
       },
       error: (error) => {
         console.error('Error saving post-dialysis:', error);
@@ -441,7 +520,7 @@ export class DialysisWorkflowComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (!this.hdLogId) return;
+    if (!this.hdLogId || !this.scheduleId) return;
 
     if (!confirm('Complete Post-Dialysis and discharge patient? This will finalize the session.')) {
       return;
@@ -449,34 +528,41 @@ export class DialysisWorkflowComponent implements OnInit, OnDestroy {
 
     this.saving = true;
 
-    // First save the data, then complete the phase
+    // First save the post-dialysis data
     this.scheduleService.savePostDialysis(this.hdLogId, this.postDialysisForm.value).subscribe({
       next: (saveResponse) => {
         if (saveResponse.success) {
-          // Now complete the phase
-          this.scheduleService.completePostDialysis(this.hdLogId!).subscribe({
-            next: (completeResponse) => {
-              if (completeResponse.success) {
-                this.snackBar.open('✓ Session completed! Patient discharged successfully.', 'Close', { duration: 5000 });
-                
-                // Navigate to patient history or schedule view after 2 seconds
-                setTimeout(() => {
-                  if (this.patientId) {
-                    this.router.navigate(['/patients/history', this.patientId]);
-                  } else {
-                    this.router.navigate(['/schedule']);
-                  }
-                }, 2000);
-              } else {
-                this.snackBar.open(completeResponse.message || 'Failed to complete session', 'Close', { duration: 3000 });
+          // Save each medication individually to the database
+          this.saveMedicationsToDatabase().then(() => {
+            // Now complete the phase
+            this.scheduleService.completePostDialysis(this.hdLogId!).subscribe({
+              next: (completeResponse) => {
+                if (completeResponse.success) {
+                  this.snackBar.open('✓ Session completed! Patient discharged successfully.', 'Close', { duration: 5000 });
+                  
+                  // Navigate to patient history or schedule view after 2 seconds
+                  setTimeout(() => {
+                    if (this.patientId) {
+                      this.router.navigate(['/patients/history', this.patientId]);
+                    } else {
+                      this.router.navigate(['/schedule']);
+                    }
+                  }, 2000);
+                } else {
+                  this.snackBar.open(completeResponse.message || 'Failed to complete session', 'Close', { duration: 3000 });
+                }
+                this.saving = false;
+              },
+              error: (error) => {
+                console.error('Error completing post-dialysis:', error);
+                this.snackBar.open('Failed to complete session', 'Close', { duration: 3000 });
+                this.saving = false;
               }
-              this.saving = false;
-            },
-            error: (error) => {
-              console.error('Error completing post-dialysis:', error);
-              this.snackBar.open('Failed to complete session', 'Close', { duration: 3000 });
-              this.saving = false;
-            }
+            });
+          }).catch((error) => {
+            console.error('Error saving medications:', error);
+            this.snackBar.open('Failed to save medications', 'Close', { duration: 3000 });
+            this.saving = false;
           });
         } else {
           this.snackBar.open('Failed to save data', 'Close', { duration: 3000 });
@@ -565,5 +651,71 @@ export class DialysisWorkflowComponent implements OnInit, OnDestroy {
       .filter(m => m.medicationName && m.dose)
       .map(m => `${m.medicationName} ${m.dose} ${m.route} at ${m.administeredAt}`)
       .join('; ');
+  }
+
+  // Save medications individually to PostDialysisMedications table
+  async saveMedicationsToDatabase(): Promise<void> {
+    if (!this.scheduleId || !this.patientId) {
+      console.warn('Cannot save medications: missing scheduleId or patientId');
+      return;
+    }
+
+    // Filter valid medications (must have name, dose, route, and time)
+    const validMedications = this.medications.filter(
+      med => med.medicationName && 
+             med.dose && 
+             med.route && 
+             med.administeredAt && 
+             med.administeredAt !== ''
+    );
+
+    if (validMedications.length === 0) {
+      console.log('No valid medications to save');
+      return;
+    }
+
+    // Get session date from form or session data
+    const sessionDate = this.sessionData?.sessionDate || new Date().toISOString().split('T')[0];
+
+    // Save each medication
+    const savePromises = validMedications.map(med => {
+      // Format time as HH:mm:ss for SQL TIME column
+      const givenTime = med.administeredAt.includes(':') ? `${med.administeredAt}:00` : null;
+
+      const medicationData = {
+        scheduleID: this.scheduleId,
+        patientID: this.patientId,
+        sessionDate: sessionDate,
+        medicationName: med.medicationName,
+        dosage: med.dose,
+        route: med.route,
+        givenTime: givenTime,
+        givenBy: null
+      };
+
+      console.log('💊 Saving medication:', medicationData);
+
+      return new Promise<void>((resolve, reject) => {
+        this.scheduleService.addMedication(this.scheduleId!, medicationData).subscribe({
+          next: (response) => {
+            if (response.success) {
+              console.log('✅ Medication saved:', med.medicationName);
+              resolve();
+            } else {
+              console.error('❌ Failed to save medication:', response.message);
+              reject(new Error(response.message));
+            }
+          },
+          error: (err) => {
+            console.error('❌ Error saving medication:', err);
+            reject(err);
+          }
+        });
+      });
+    });
+
+    // Wait for all medications to be saved
+    await Promise.all(savePromises);
+    console.log('✅ All medications saved successfully');
   }
 }

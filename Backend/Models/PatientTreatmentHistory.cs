@@ -20,7 +20,26 @@ public class TreatmentSessionSummary
     public string? SlotName { get; set; }
     public int? BedNumber { get; set; }
     
-    // Prescription
+    // Patient Demographics (from Patients table)
+    public string? MRN { get; set; }
+    public int? Age { get; set; }
+    public string? Gender { get; set; }
+    public string? ContactNumber { get; set; }
+    public string? EmergencyContact { get; set; }
+    public string? GuardianName { get; set; }
+    public int? HDFrequency { get; set; }
+    
+    // Patient Prescription Info (from Patients table - aliased to avoid conflicts)
+    public string? PatientHDCycle { get; set; }
+    public DateTime? PatientHDStartDate { get; set; }
+    public string? PatientDryWeight { get; set; }
+    public string? PatientDialyserType { get; set; }
+    public string? PatientDialyserModel { get; set; }
+    public int? PatientPrescribedBFR { get; set; }
+    public decimal? PatientPrescribedDuration { get; set; }
+    public string? PatientDialysatePrescription { get; set; }
+    
+    // Prescription (from HDSchedule table)
     public string? HDCycle { get; set; }
     public string? DialyserType { get; set; }
     public string? DialyserModel { get; set; }
@@ -64,6 +83,13 @@ public class TreatmentSessionSummary
     public int? BloodFlowRate { get; set; }
     public int? DialysateFlow { get; set; }
     public string? Remarks { get; set; }
+    
+    // Post-Dialysis Assessment (from HDSchedule)
+    public int? PostSBP { get; set; }
+    public int? PostDBP { get; set; }
+    public int? PostHR { get; set; }
+    public decimal? TotalFluidRemoved { get; set; }
+    public string? PostAccessStatus { get; set; }
     
     // Legacy fields (kept for compatibility)
     public string? PreBPSitting { get; set; }

@@ -11,6 +11,7 @@ import { ToastModule, ToastUtility } from '@syncfusion/ej2-angular-notifications
 import { TabModule } from '@syncfusion/ej2-angular-navigations';
 import { TooltipModule } from '@syncfusion/ej2-angular-popups';
 import { ScheduleService } from '../../../core/services/schedule.service';
+import { ReservationService } from '../../../core/services/reservation.service';
 import { DailyScheduleResponse, SlotSchedule, BedStatus } from '../../../core/models/schedule.model';
 import { ApiResponse } from '../../../core/models/user.model';
 
@@ -64,6 +65,7 @@ export class ScheduleGrid implements OnInit, OnDestroy {
 
   constructor(
     private scheduleService: ScheduleService,
+    private reservationService: ReservationService,
     private location: Location,
     private router: Router
   ) {}
@@ -517,29 +519,29 @@ export class ScheduleGrid implements OnInit, OnDestroy {
     
     console.log('📋 Activating patient:', { patientName, patientId, scheduleId, slotId, bedNumber });
     
-    // For real scheduleId (not auto-generated 0), activate session and change color to red
+    // For real scheduleId (not auto-generated 0), activate using ReservationService
     if (scheduleId && scheduleId > 0) {
-      // Activate the session (update status to "In Progress" which makes it red)
-      this.scheduleService.activateSession(scheduleId).subscribe({
+      // Use the same activation method as Patient List for consistency
+      this.reservationService.activateReservedPatient(patientId).subscribe({
         next: (response) => {
           if (response.success) {
-            console.log('✅ Session activated successfully:', response);
+            console.log('✅ Patient activated successfully:', response);
             this.showToast(`${patientName} activated - Treatment started`, 'Success');
             
-            // Reload schedule to show red (occupied) status
-            // DO NOT navigate to workflow - just update the color
+            // Reload schedule to show updated status (occupied/red)
             setTimeout(() => {
-              console.log('🔄 Reloading schedule to show red (occupied) status...');
+              console.log('🔄 Reloading schedule to show activated patient...');
               this.loadSchedule();
             }, 300);
           } else {
-            console.error('❌ Failed to activate session:', response);
-            this.showToast('Failed to activate session', 'Error');
+            console.error('❌ Failed to activate patient:', response);
+            this.showToast('Failed to activate patient', 'Error');
           }
         },
         error: (error) => {
-          console.error('❌ Error activating session:', error);
-          this.showToast('Error activating session', 'Error');
+          console.error('❌ Error activating patient:', error);
+          const errorMsg = error.error?.message || error.message || 'Failed to activate patient';
+          this.showToast(errorMsg, 'Error');
         }
       });
     } else {

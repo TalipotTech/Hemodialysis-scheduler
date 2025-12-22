@@ -55,47 +55,21 @@ public class HDSchedule
     public string? CreatedByStaffRole { get; set; }
     
     // HDTreatmentSession fields
-    public string? StartTime { get; set; }
+    public TimeSpan? StartTime { get; set; }
     public decimal? PreWeight { get; set; }
     public string? PreBPSitting { get; set; }
     public decimal? PreTemperature { get; set; }
-    public string? AccessBleedingTime { get; set; }
+    public int? AccessBleedingTime { get; set; }
     public string? AccessStatus { get; set; }
     public string? Complications { get; set; }
     
-    // IntraDialyticMonitoring fields
-    public string? MonitoringTime { get; set; }
-    public int? HeartRate { get; set; }
-    public int? ActualBFR { get; set; }
-    public int? VenousPressure { get; set; }
-    public int? ArterialPressure { get; set; }
-    public decimal? CurrentUFR { get; set; }
-    public decimal? TotalUFAchieved { get; set; }
-    public int? TmpPressure { get; set; }
-    public string? Interventions { get; set; }
-    public string? StaffInitials { get; set; }
-    
-    // PostDialysisMedications fields
-    public string? MedicationType { get; set; }
-    public string? MedicationName { get; set; }
-    public string? Dose { get; set; }
-    public string? Route { get; set; }
-    public string? AdministeredAt { get; set; }
-    
-    // TreatmentAlerts fields
-    public string? AlertType { get; set; }
-    public string? AlertMessage { get; set; }
-    public string? Severity { get; set; }
-    public string? Resolution { get; set; }
-    
-    // Post-Dialysis Assessment fields
+    // Post-Dialysis Assessment fields (vitals only - medications/alerts in separate tables)
     public decimal? PostWeight { get; set; }
     public int? PostSBP { get; set; }
     public int? PostDBP { get; set; }
     public int? PostHR { get; set; }
     public string? PostAccessStatus { get; set; }
     public decimal? TotalFluidRemoved { get; set; }
-    public string? Notes { get; set; }
     
     // Status
     public bool IsDischarged { get; set; }

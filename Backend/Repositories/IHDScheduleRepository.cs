@@ -31,4 +31,7 @@ public interface IHDScheduleRepository
     Task<IEnumerable<object>> GetIntraDialyticRecordsAsync(int scheduleId);
     Task<bool> DeleteIntraDialyticRecordAsync(int recordId);
     Task<int> CreatePostDialysisMedicationAsync(object medication);
+    Task<IEnumerable<object>> GetPostDialysisMedicationsByScheduleIdAsync(int scheduleId);
+    Task<int> CreateTreatmentAlertAsync(object alert);
+    Task<IEnumerable<object>> GetTreatmentAlertsByScheduleIdAsync(int scheduleId);
 }

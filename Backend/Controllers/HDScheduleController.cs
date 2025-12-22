@@ -4,6 +4,7 @@ using HDScheduler.API.Models;
 using HDScheduler.API.Repositories;
 using HDScheduler.API.DTOs;
 using HDScheduler.API.Services;
+using Backend.DTOs;
 
 namespace HDScheduler.API.Controllers;
 
@@ -277,43 +278,20 @@ public class HDScheduleController : ControllerBase
                 AssignedDoctor = request.AssignedDoctor,
                 AssignedNurse = request.AssignedNurse,
                 // HDTreatmentSession fields
-                StartTime = request.StartTime,
+                StartTime = !string.IsNullOrEmpty(request.StartTime) && TimeSpan.TryParse(request.StartTime, out var startTime) ? startTime : null,
                 PreWeight = request.PreWeight,
                 PreBPSitting = request.PreBPSitting,
                 PreTemperature = request.PreTemperature,
-                AccessBleedingTime = request.AccessBleedingTime,
+                AccessBleedingTime = !string.IsNullOrEmpty(request.AccessBleedingTime) && int.TryParse(request.AccessBleedingTime, out var bleedingTime) ? bleedingTime : null,
                 AccessStatus = request.AccessStatus,
                 Complications = request.Complications,
-                // IntraDialyticMonitoring fields
-                MonitoringTime = request.MonitoringTime,
-                HeartRate = request.HeartRate,
-                ActualBFR = request.ActualBFR,
-                VenousPressure = request.VenousPressure,
-                ArterialPressure = request.ArterialPressure,
-                CurrentUFR = request.CurrentUFR,
-                TotalUFAchieved = request.TotalUFAchieved,
-                TmpPressure = request.TmpPressure,
-                Interventions = request.Interventions,
-                StaffInitials = request.StaffInitials,
-                // PostDialysisMedications fields
-                MedicationType = request.MedicationType,
-                MedicationName = request.MedicationName,
-                Dose = request.Dose,
-                Route = request.Route,
-                AdministeredAt = request.AdministeredAt,
-                // TreatmentAlerts fields
-                AlertType = request.AlertType,
-                AlertMessage = request.AlertMessage,
-                Severity = request.Severity,
-                Resolution = request.Resolution,
-                // Post-Dialysis Assessment fields - CRITICAL FOR MEDICAL RECORDS
+                // Post-Dialysis Assessment fields - vitals only (medications/alerts in separate tables)
                 PostWeight = request.PostWeight,
                 PostSBP = request.PostSBP,
                 PostDBP = request.PostDBP,
                 PostHR = request.PostHR,
                 PostAccessStatus = request.PostAccessStatus,
                 TotalFluidRemoved = request.TotalFluidRemoved,
-                Notes = request.Notes,
                 // Status
                 CreatedByStaffName = username,
                 CreatedByStaffRole = role,
@@ -472,7 +450,13 @@ public class HDScheduleController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error auto-saving schedule {ScheduleId}", id);
-            return StatusCode(500, ApiResponse<bool>.ErrorResponse("An error occurred while saving"));
+            // Temporarily return detailed error for debugging
+            var errorDetails = $"{ex.Message}";
+            if (ex.InnerException != null)
+            {
+                errorDetails += $" Inner: {ex.InnerException.Message}";
+            }
+            return StatusCode(500, ApiResponse<string>.ErrorResponse(errorDetails));
         }
     }
 
@@ -517,43 +501,20 @@ public class HDScheduleController : ControllerBase
             existingSchedule.AssignedDoctor = request.AssignedDoctor;
             existingSchedule.AssignedNurse = request.AssignedNurse;
             // HDTreatmentSession fields
-            existingSchedule.StartTime = request.StartTime;
+            existingSchedule.StartTime = !string.IsNullOrEmpty(request.StartTime) && TimeSpan.TryParse(request.StartTime, out var startTime) ? startTime : null;
             existingSchedule.PreWeight = request.PreWeight;
             existingSchedule.PreBPSitting = request.PreBPSitting;
             existingSchedule.PreTemperature = request.PreTemperature;
-            existingSchedule.AccessBleedingTime = request.AccessBleedingTime;
+            existingSchedule.AccessBleedingTime = !string.IsNullOrEmpty(request.AccessBleedingTime) && int.TryParse(request.AccessBleedingTime, out var bleedingTime) ? bleedingTime : null;
             existingSchedule.AccessStatus = request.AccessStatus;
             existingSchedule.Complications = request.Complications;
-            // IntraDialyticMonitoring fields
-            existingSchedule.MonitoringTime = request.MonitoringTime;
-            existingSchedule.HeartRate = request.HeartRate;
-            existingSchedule.ActualBFR = request.ActualBFR;
-            existingSchedule.VenousPressure = request.VenousPressure;
-            existingSchedule.ArterialPressure = request.ArterialPressure;
-            existingSchedule.CurrentUFR = request.CurrentUFR;
-            existingSchedule.TotalUFAchieved = request.TotalUFAchieved;
-            existingSchedule.TmpPressure = request.TmpPressure;
-            existingSchedule.Interventions = request.Interventions;
-            existingSchedule.StaffInitials = request.StaffInitials;
-            // PostDialysisMedications fields
-            existingSchedule.MedicationType = request.MedicationType;
-            existingSchedule.MedicationName = request.MedicationName;
-            existingSchedule.Dose = request.Dose;
-            existingSchedule.Route = request.Route;
-            existingSchedule.AdministeredAt = request.AdministeredAt;
-            // TreatmentAlerts fields
-            existingSchedule.AlertType = request.AlertType;
-            existingSchedule.AlertMessage = request.AlertMessage;
-            existingSchedule.Severity = request.Severity;
-            existingSchedule.Resolution = request.Resolution;
-            // Post-Dialysis Assessment fields
+            // Post-Dialysis Assessment fields (vitals only - medications/alerts in separate tables)
             existingSchedule.PostWeight = request.PostWeight;
             existingSchedule.PostSBP = request.PostSBP;
             existingSchedule.PostDBP = request.PostDBP;
             existingSchedule.PostHR = request.PostHR;
             existingSchedule.PostAccessStatus = request.PostAccessStatus;
             existingSchedule.TotalFluidRemoved = request.TotalFluidRemoved;
-            existingSchedule.Notes = request.Notes;
             // Status
             existingSchedule.IsDischarged = request.IsDischarged;
 
@@ -1005,9 +966,25 @@ public class HDScheduleController : ControllerBase
     {
         try
         {
+            // Get the staff ID from the authenticated user's claims
+            var staffIdClaim = User.FindFirst("StaffID")?.Value;
+            if (int.TryParse(staffIdClaim, out int staffId))
+            {
+                record.RecordedBy = staffId;
+            }
+            else
+            {
+                // Fallback: try to get from NameIdentifier claim
+                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (int.TryParse(userIdClaim, out int userId))
+                {
+                    record.RecordedBy = userId;
+                }
+            }
+            
             var recordId = await _scheduleRepository.CreateIntraDialyticRecordAsync(record);
             
-            _logger.LogInformation("Monitoring record created with ID {RecordId}", recordId);
+            _logger.LogInformation("Monitoring record created with ID {RecordId} by staff {StaffId}", recordId, record.RecordedBy);
             return Ok(ApiResponse<int>.SuccessResponse(recordId, "Monitoring record saved successfully"));
         }
         catch (Exception ex)
@@ -1015,6 +992,88 @@ public class HDScheduleController : ControllerBase
             _logger.LogError(ex, "Error creating monitoring record");
             return StatusCode(500, ApiResponse<int>.ErrorResponse(
                 "An error occurred while saving the monitoring record"));
+        }
+    }
+
+    /// <summary>
+    /// Add post-dialysis medication for a session
+    /// </summary>
+    [HttpPost("{id}/medications")]
+    [Authorize(Roles = "Admin,Doctor,Nurse")]
+    public async Task<ActionResult<ApiResponse<int>>> AddPostDialysisMedication(int id, [FromBody] PostDialysisMedicationDTO medication)
+    {
+        try
+        {
+            medication.ScheduleID = id;
+            var medicationId = await _scheduleRepository.CreatePostDialysisMedicationAsync(medication);
+            
+            _logger.LogInformation("Medication added for schedule {ScheduleId}: {MedicationName}", id, medication.MedicationName);
+            return Ok(ApiResponse<int>.SuccessResponse(medicationId, "Medication saved successfully"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding medication for schedule {ScheduleId}", id);
+            return StatusCode(500, ApiResponse<int>.ErrorResponse("An error occurred while saving the medication"));
+        }
+    }
+
+    /// <summary>
+    /// Get post-dialysis medications for a session
+    /// </summary>
+    [HttpGet("{id}/medications")]
+    [Authorize]
+    public async Task<ActionResult<ApiResponse<IEnumerable<object>>>> GetPostDialysisMedications(int id)
+    {
+        try
+        {
+            var medications = await _scheduleRepository.GetPostDialysisMedicationsByScheduleIdAsync(id);
+            return Ok(ApiResponse<IEnumerable<object>>.SuccessResponse(medications, "Medications retrieved successfully"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving medications for schedule {ScheduleId}", id);
+            return StatusCode(500, ApiResponse<IEnumerable<object>>.ErrorResponse("An error occurred while retrieving medications"));
+        }
+    }
+
+    /// <summary>
+    /// Add treatment alert for a session
+    /// </summary>
+    [HttpPost("{id}/alerts")]
+    [Authorize(Roles = "Admin,Doctor,Nurse")]
+    public async Task<ActionResult<ApiResponse<int>>> AddTreatmentAlert(int id, [FromBody] TreatmentAlertDTO alert)
+    {
+        try
+        {
+            alert.ScheduleID = id;
+            var alertId = await _scheduleRepository.CreateTreatmentAlertAsync(alert);
+            
+            _logger.LogInformation("Alert added for schedule {ScheduleId}: {AlertType}", id, alert.AlertType);
+            return Ok(ApiResponse<int>.SuccessResponse(alertId, "Alert saved successfully"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding alert for schedule {ScheduleId}", id);
+            return StatusCode(500, ApiResponse<int>.ErrorResponse("An error occurred while saving the alert"));
+        }
+    }
+
+    /// <summary>
+    /// Get treatment alerts for a session
+    /// </summary>
+    [HttpGet("{id}/alerts")]
+    [Authorize]
+    public async Task<ActionResult<ApiResponse<IEnumerable<object>>>> GetTreatmentAlerts(int id)
+    {
+        try
+        {
+            var alerts = await _scheduleRepository.GetTreatmentAlertsByScheduleIdAsync(id);
+            return Ok(ApiResponse<IEnumerable<object>>.SuccessResponse(alerts, "Alerts retrieved successfully"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving alerts for schedule {ScheduleId}", id);
+            return StatusCode(500, ApiResponse<IEnumerable<object>>.ErrorResponse("An error occurred while retrieving alerts"));
         }
     }
 

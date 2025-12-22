@@ -34,6 +34,8 @@ export interface Patient {
   scheduleID?: number | null;
   slotID?: number | null;
   bedNumber?: number | null;
+  sessionDate?: Date | string | null; // Date of the session
+  sessionStatus?: string | null; // Session status (Pre-Scheduled, Active, In Progress, Completed)
   assignedDoctor?: number | null;
   assignedNurse?: number | null;
   assignedDoctorName?: string | null;

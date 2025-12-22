@@ -111,8 +111,15 @@ export class PatientHistoryComponent implements OnInit {
             // Set sessions - handle both cases
             const rawSessions = data.sessions || data.Sessions || [];
             
-            // Store sessions directly - template will handle both cases
-            this.sessions = rawSessions;
+            // Filter to only show past sessions (actual history)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
+            
+            this.sessions = rawSessions.filter((session: any) => {
+              const sessionDate = new Date(session.sessionDate || session.SessionDate);
+              sessionDate.setHours(0, 0, 0, 0);
+              return sessionDate <= today; // Only include sessions on or before today
+            });
             
             // Set statistics - handle both cases
             const stats = data.statistics || data.Statistics;
@@ -208,7 +215,12 @@ export class PatientHistoryComponent implements OnInit {
   }
 
   viewSessionDetails(session: any): void {
-    this.router.navigate(['/patients', this.patientId, 'session', session.scheduleID]);
+    const scheduleId = session.scheduleID || session.ScheduleID;
+    console.log('viewSessionDetails called with session:', session);
+    console.log('scheduleId:', scheduleId);
+    console.log('patientId:', this.patientId);
+    console.log('Navigating to:', ['/patients', this.patientId, 'session', scheduleId]);
+    this.router.navigate(['/patients', this.patientId, 'session', scheduleId]);
   }
 
   getStatusClass(isDischarged: boolean): string {

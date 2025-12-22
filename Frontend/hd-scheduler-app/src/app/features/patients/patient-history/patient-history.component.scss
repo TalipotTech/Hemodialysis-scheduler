@@ -267,6 +267,71 @@
   }
 
   .sessions-timeline {
+    .session-card {
+      margin-bottom: 16px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      transition: all 0.3s ease;
+
+      &:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
+      }
+
+      .session-header {
+        margin-bottom: 16px;
+
+        .session-title {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 8px;
+
+          mat-icon {
+            color: #1976d2;
+            font-size: 24px;
+            width: 24px;
+            height: 24px;
+          }
+
+          .session-date {
+            font-size: 18px;
+            font-weight: 600;
+            color: #212121;
+          }
+
+          mat-chip {
+            margin-left: auto;
+          }
+        }
+
+        .session-info {
+          padding-left: 36px;
+          color: #757575;
+          font-size: 14px;
+
+          span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          }
+        }
+      }
+
+      .session-actions {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 16px;
+
+        button {
+          min-width: 200px;
+        }
+      }
+    }
+
     .session-panel {
       margin-bottom: 16px;
       border-radius: 8px;

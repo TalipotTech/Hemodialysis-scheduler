@@ -198,6 +198,7 @@ public class HDScheduleRepository : IHDScheduleRepository
         var query = @"
             UPDATE HDSchedule SET
                 SessionDate = @SessionDate,
+                SessionStatus = @SessionStatus,
                 DryWeight = @DryWeight,
                 HDStartDate = @HDStartDate,
                 HDCycle = @HDCycle,
@@ -232,32 +233,12 @@ public class HDScheduleRepository : IHDScheduleRepository
                 AccessBleedingTime = @AccessBleedingTime,
                 AccessStatus = @AccessStatus,
                 Complications = @Complications,
-                MonitoringTime = @MonitoringTime,
-                HeartRate = @HeartRate,
-                ActualBFR = @ActualBFR,
-                VenousPressure = @VenousPressure,
-                ArterialPressure = @ArterialPressure,
-                CurrentUFR = @CurrentUFR,
-                TotalUFAchieved = @TotalUFAchieved,
-                TmpPressure = @TmpPressure,
-                Interventions = @Interventions,
-                StaffInitials = @StaffInitials,
-                MedicationType = @MedicationType,
-                MedicationName = @MedicationName,
-                Dose = @Dose,
-                Route = @Route,
-                AdministeredAt = @AdministeredAt,
-                AlertType = @AlertType,
-                AlertMessage = @AlertMessage,
-                Severity = @Severity,
-                Resolution = @Resolution,
                 PostWeight = @PostWeight,
                 PostSBP = @PostSBP,
                 PostDBP = @PostDBP,
                 PostHR = @PostHR,
                 PostAccessStatus = @PostAccessStatus,
                 TotalFluidRemoved = @TotalFluidRemoved,
-                Notes = @Notes,
                 IsDischarged = @IsDischarged,
                 UpdatedAt = GETUTCDATE()
             WHERE ScheduleID = @ScheduleID";
@@ -413,17 +394,17 @@ public class HDScheduleRepository : IHDScheduleRepository
     {
         using var connection = _context.CreateConnection();
         
-        // Use all available monitoring columns
+        // Use IntraDialyticMonitoring table with correct columns
         var query = @"
-            INSERT INTO IntraDialyticRecords 
-            (PatientID, ScheduleID, SessionDate, TimeRecorded, BloodPressure, PulseRate,
-             Temperature, UFVolume, VenousPressure, ArterialPressure, BloodFlowRate, 
-             DialysateFlowRate, CurrentUFR, TMPPressure, Symptoms, Interventions, 
+            INSERT INTO IntraDialyticMonitoring 
+            (ScheduleID, TimeRecorded, BloodPressure, PulseRate,
+             Temperature, UFVolume, ArterialPressure, BloodFlowRate, 
+             DialysateFlowRate, CurrentUFR, TMPPressure, Interventions, 
              StaffInitials, RecordedBy, Notes, CreatedAt)
             VALUES 
-            (@PatientID, @ScheduleID, @SessionDate, @TimeRecorded, @BloodPressure, @PulseRate,
-             @Temperature, @UFVolume, @VenousPressure, @ArterialPressure, @BloodFlowRate,
-             @DialysateFlowRate, @CurrentUFR, @TMPPressure, @Symptoms, @Interventions,
+            (@ScheduleID, @TimeRecorded, @BloodPressure, @PulseRate,
+             @Temperature, @UFVolume, @ArterialPressure, @BloodFlowRate,
+             @DialysateFlowRate, @CurrentUFR, @TMPPressure, @Interventions,
              @StaffInitials, @RecordedBy, @Notes, GETUTCDATE());
             SELECT CAST(SCOPE_IDENTITY() AS INT)";
         
@@ -435,10 +416,10 @@ public class HDScheduleRepository : IHDScheduleRepository
         var query = @"
             INSERT INTO PostDialysisMedications 
             (PatientID, ScheduleID, SessionDate, MedicationName, Dosage, Route, 
-             AdministeredBy, AdministeredAt)
+             GivenBy, GivenTime)
             VALUES 
             (@PatientID, @ScheduleID, @SessionDate, @MedicationName, @Dosage, @Route,
-             @AdministeredBy, @AdministeredAt);
+             @GivenBy, @GivenTime);
             SELECT CAST(SCOPE_IDENTITY() AS INT)";
         
         using var connection = _context.CreateConnection();
@@ -571,28 +552,24 @@ public class HDScheduleRepository : IHDScheduleRepository
     {
         var query = @"
             SELECT 
-                RecordID,
-                PatientID,
+                MonitoringID,
                 ScheduleID,
-                SessionDate,
                 TimeRecorded,
                 BloodPressure,
                 PulseRate,
                 Temperature,
                 UFVolume,
-                VenousPressure,
                 ArterialPressure,
                 BloodFlowRate,
                 DialysateFlowRate,
                 CurrentUFR,
                 TMPPressure,
-                Symptoms,
                 Interventions,
                 StaffInitials,
                 RecordedBy,
                 Notes,
                 CreatedAt
-            FROM IntraDialyticRecords 
+            FROM IntraDialyticMonitoring 
             WHERE ScheduleID = @ScheduleID 
             ORDER BY TimeRecorded";
         
@@ -602,10 +579,41 @@ public class HDScheduleRepository : IHDScheduleRepository
 
     public async Task<bool> DeleteIntraDialyticRecordAsync(int recordId)
     {
-        var query = "DELETE FROM IntraDialyticRecords WHERE RecordID = @RecordID";
+        var query = "DELETE FROM IntraDialyticMonitoring WHERE MonitoringID = @RecordID";
         
         using var connection = _context.CreateConnection();
         var rowsAffected = await connection.ExecuteAsync(query, new { RecordID = recordId });
         return rowsAffected > 0;
+    }
+
+    public async Task<IEnumerable<object>> GetPostDialysisMedicationsByScheduleIdAsync(int scheduleId)
+    {
+        var query = "SELECT * FROM PostDialysisMedications WHERE ScheduleID = @ScheduleID";
+        
+        using var connection = _context.CreateConnection();
+        return await connection.QueryAsync<object>(query, new { ScheduleID = scheduleId });
+    }
+
+    public async Task<int> CreateTreatmentAlertAsync(object alert)
+    {
+        var query = @"
+            INSERT INTO TreatmentAlerts 
+            (ScheduleID, PatientID, SessionDate, AlertType, AlertMessage, Severity, 
+             Resolution, CreatedAt, CreatedBy)
+            VALUES 
+            (@ScheduleID, @PatientID, @SessionDate, @AlertType, @AlertMessage, @Severity,
+             @Resolution, GETDATE(), @CreatedBy);
+            SELECT CAST(SCOPE_IDENTITY() AS INT)";
+        
+        using var connection = _context.CreateConnection();
+        return await connection.QuerySingleAsync<int>(query, alert);
+    }
+
+    public async Task<IEnumerable<object>> GetTreatmentAlertsByScheduleIdAsync(int scheduleId)
+    {
+        var query = "SELECT * FROM TreatmentAlerts WHERE ScheduleID = @ScheduleID";
+        
+        using var connection = _context.CreateConnection();
+        return await connection.QueryAsync<object>(query, new { ScheduleID = scheduleId });
     }
 }
