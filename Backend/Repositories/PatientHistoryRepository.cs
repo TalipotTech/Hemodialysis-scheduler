@@ -147,28 +147,29 @@ public class PatientHistoryRepository : IPatientHistoryRepository
         
         if (session == null) return null;
 
-        // Get intra-dialytic records - only query columns that actually exist in the table
+        // Get intra-dialytic records - query from IntraDialyticMonitoring table
         List<object> intraRecords = new List<object>();
         try
         {
             // First check total count in table for debugging
-            var totalCountQuery = "SELECT COUNT(*) FROM IntraDialyticRecords";
+            var totalCountQuery = "SELECT COUNT(*) FROM IntraDialyticMonitoring";
             var totalCount = await connection.ExecuteScalarAsync<int>(totalCountQuery);
             Console.WriteLine($"Total monitoring records in database: {totalCount}");
             
             // Check if any records exist for this schedule
-            var scheduleCountQuery = "SELECT COUNT(*) FROM IntraDialyticRecords WHERE ScheduleID = @ScheduleID";
+            var scheduleCountQuery = "SELECT COUNT(*) FROM IntraDialyticMonitoring WHERE ScheduleID = @ScheduleID";
             var scheduleCount = await connection.ExecuteScalarAsync<int>(scheduleCountQuery, new { ScheduleID = scheduleId });
             Console.WriteLine($"Monitoring records for ScheduleID {scheduleId}: {scheduleCount}");
             
             var intraRecordsQuery = @"
                 SELECT 
-                    RecordID, ScheduleID, PatientID, SessionDate, RecordTime,
-                    BP, Pulse, UFRate, VenousPressure, BloodFlow,
-                    Symptoms, Intervention, CreatedAt
-                FROM IntraDialyticRecords 
+                    MonitoringID, ScheduleID, TimeRecorded, BloodPressure, PulseRate,
+                    Temperature, UFVolume, VenousPressure, ArterialPressure, BloodFlowRate,
+                    DialysateFlowRate, CurrentUFR, TMPPressure, Symptoms, Interventions,
+                    StaffInitials, RecordedBy, Notes, CreatedAt
+                FROM IntraDialyticMonitoring 
                 WHERE ScheduleID = @ScheduleID 
-                ORDER BY RecordTime";
+                ORDER BY TimeRecorded";
             var records = await connection.QueryAsync(intraRecordsQuery, new { ScheduleID = scheduleId });
             intraRecords = records.Cast<object>().ToList();
             Console.WriteLine($"✓ Loaded {intraRecords.Count} intra-dialytic records for ScheduleID: {scheduleId}");

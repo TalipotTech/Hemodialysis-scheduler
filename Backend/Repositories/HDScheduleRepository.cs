@@ -398,13 +398,13 @@ public class HDScheduleRepository : IHDScheduleRepository
         var query = @"
             INSERT INTO IntraDialyticMonitoring 
             (ScheduleID, TimeRecorded, BloodPressure, PulseRate,
-             Temperature, UFVolume, ArterialPressure, BloodFlowRate, 
-             DialysateFlowRate, CurrentUFR, TMPPressure, Interventions, 
+             Temperature, UFVolume, VenousPressure, ArterialPressure, BloodFlowRate, 
+             DialysateFlowRate, CurrentUFR, TMPPressure, Symptoms, Interventions, 
              StaffInitials, RecordedBy, Notes, CreatedAt)
             VALUES 
             (@ScheduleID, @TimeRecorded, @BloodPressure, @PulseRate,
-             @Temperature, @UFVolume, @ArterialPressure, @BloodFlowRate,
-             @DialysateFlowRate, @CurrentUFR, @TMPPressure, @Interventions,
+             @Temperature, @UFVolume, @VenousPressure, @ArterialPressure, @BloodFlowRate,
+             @DialysateFlowRate, @CurrentUFR, @TMPPressure, @Symptoms, @Interventions,
              @StaffInitials, @RecordedBy, @Notes, GETUTCDATE());
             SELECT CAST(SCOPE_IDENTITY() AS INT)";
         
@@ -559,11 +559,13 @@ public class HDScheduleRepository : IHDScheduleRepository
                 PulseRate,
                 Temperature,
                 UFVolume,
+                VenousPressure,
                 ArterialPressure,
                 BloodFlowRate,
                 DialysateFlowRate,
                 CurrentUFR,
                 TMPPressure,
+                Symptoms,
                 Interventions,
                 StaffInitials,
                 RecordedBy,
