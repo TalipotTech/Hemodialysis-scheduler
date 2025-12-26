@@ -27,7 +27,7 @@ Write-Host ""
 
 # Resource names
 $webAppName = "hds-$Environment-api"
-$frontendStorageAccount = "hds$($Environment)frontend"
+$staticWebAppName = "hds-$Environment-frontend"
 
 # Set subscription
 Write-Host "Setting Azure subscription..." -ForegroundColor Yellow
@@ -95,6 +95,22 @@ Write-Host ""
 # ============================================
 if (-not $SkipFrontend) {
     Write-Host "[2/2] Deploying Frontend..." -ForegroundColor Yellow
+    
+    # Get Static Web App deployment token
+    Write-Host "  Getting deployment token..." -ForegroundColor Gray
+    $staticWebAppName = "hds-$Environment-frontend"
+    $deployToken = az staticwebapp secrets list `
+        --name $staticWebAppName `
+        --resource-group $ResourceGroup `
+        --query "properties.apiKey" `
+        --output tsv
+    
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrEmpty($deployToken)) {
+        Write-Host "  [ERROR] Failed to get deployment token!" -ForegroundColor Red
+        Write-Host "  Make sure Static Web App '$staticWebAppName' exists" -ForegroundColor Yellow
+        exit 1
+    }
+    
     Write-Host "  Building Angular application..." -ForegroundColor Gray
     
     Push-Location Frontend/hd-scheduler-app
@@ -105,7 +121,11 @@ if (-not $SkipFrontend) {
         npm install
     }
     
-    # Build for production
+    # Build for production (uses environment.ts via Angular file replacements)
+    Write-Host "    - Configuration: production" -ForegroundColor DarkGray
+    Write-Host "    - Environment: environment.ts" -ForegroundColor DarkGray
+    Write-Host "    - API URL: https://hds-$Environment-api.azurewebsites.net" -ForegroundColor DarkGray
+    
     npm run build -- --configuration production
     
     if ($LASTEXITCODE -ne 0) {
@@ -114,20 +134,21 @@ if (-not $SkipFrontend) {
         exit 1
     }
     
-    Write-Host "  [OK] Build completed" -ForegroundColor Green
+    # Verify build output
+    if (Test-Path "./dist/hd-scheduler-app/browser/index.html") {
+        Write-Host "  [OK] Build completed (production environment)" -ForegroundColor Green
+    } else {
+        Write-Host "  [ERROR] Build output not found!" -ForegroundColor Red
+        Pop-Location
+        exit 1
+    }
     Write-Host "  Deploying to Azure Static Web Apps..." -ForegroundColor Gray
     
-    # Deploy to Azure Static Web Apps (or Storage Account with CDN)
-    # Note: Adjust this based on your frontend hosting solution
-    # Example for Azure Static Web Apps:
-    # swa deploy ./dist/hd-scheduler-app --env production
-    
-    # Example for Azure Storage + CDN:
-    az storage blob upload-batch `
-        --account-name $frontendStorageAccount `
-        --destination '$web' `
-        --source ./dist/hd-scheduler-app/browser `
-        --overwrite
+    # Deploy to Azure Static Web Apps
+    swa deploy ./dist/hd-scheduler-app/browser `
+        --deployment-token $deployToken `
+        --env production `
+        --no-use-keychain
     
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  [ERROR] Deployment failed!" -ForegroundColor Red
@@ -137,8 +158,18 @@ if (-not $SkipFrontend) {
     
     Pop-Location
     
+    # Get Static Web App details
+    $swaDetails = az staticwebapp show `
+        --name $staticWebAppName `
+        --resource-group $ResourceGroup `
+        --query "{defaultHostname:defaultHostname, customDomains:customDomains}" `
+        --output json | ConvertFrom-Json
+    
     Write-Host "  [OK] Frontend deployed successfully" -ForegroundColor Green
-    Write-Host "  URL: https://$frontendStorageAccount.z29.web.core.windows.net" -ForegroundColor White
+    Write-Host "  Default URL: https://$($swaDetails.defaultHostname)" -ForegroundColor White
+    if ($swaDetails.customDomains -and $swaDetails.customDomains.Count -gt 0) {
+        Write-Host "  Custom URL:  https://$($swaDetails.customDomains[0])" -ForegroundColor White
+    }
 } else {
     Write-Host "[2/2] Skipping Frontend deployment" -ForegroundColor Yellow
 }
@@ -153,7 +184,16 @@ if (-not $SkipBackend) {
 }
 
 if (-not $SkipFrontend) {
-    Write-Host "Frontend:     https://$frontendStorageAccount.z29.web.core.windows.net" -ForegroundColor White
+    $swaDetails = az staticwebapp show `
+        --name $staticWebAppName `
+        --resource-group $ResourceGroup `
+        --query "{defaultHostname:defaultHostname, customDomains:customDomains}" `
+        --output json | ConvertFrom-Json
+    
+    Write-Host "Frontend:     https://$($swaDetails.defaultHostname)" -ForegroundColor White
+    if ($swaDetails.customDomains -and $swaDetails.customDomains.Count -gt 0) {
+        Write-Host "Custom:       https://$($swaDetails.customDomains[0])" -ForegroundColor White
+    }
 }
 
 Write-Host ""
