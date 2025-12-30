@@ -1001,16 +1001,20 @@
                   @if (loading) {
                     <mat-spinner diameter="20"></mat-spinner>
                   } @else {
-                    <mat-icon>save</mat-icon>
-                    Save Progress
+                    <ng-container>
+                      <mat-icon>save</mat-icon>
+                      Save Progress
+                    </ng-container>
                   }
                 </button>
                 <button mat-raised-button color="primary" (click)="onSubmit()" type="button" [disabled]="loading">
                   @if (loading) {
                     <mat-spinner diameter="20"></mat-spinner>
                   } @else {
-                    <mat-icon>check_circle</mat-icon>
-                    Complete & Submit
+                    <ng-container>
+                      <mat-icon>check_circle</mat-icon>
+                      Complete & Submit
+                    </ng-container>
                   }
                 </button>
                 @if (isEditMode && scheduleId) {
@@ -1018,8 +1022,10 @@
                     @if (loading) {
                       <mat-spinner diameter="20"></mat-spinner>
                     } @else {
-                      <mat-icon>task_alt</mat-icon>
-                      Mark as Completed
+                      <ng-container>
+                        <mat-icon>task_alt</mat-icon>
+                        Mark as Completed
+                      </ng-container>
                     }
                   </button>
                 }

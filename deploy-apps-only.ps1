@@ -47,9 +47,11 @@ if (-not $SkipBackend) {
     # Clean previous builds
     if (Test-Path "bin") { Remove-Item -Recurse -Force "bin" }
     if (Test-Path "obj") { Remove-Item -Recurse -Force "obj" }
+    if (Test-Path "publish") { Remove-Item -Recurse -Force "publish" }
     
-    # Build and publish
-    dotnet publish -c Release -o ./publish
+    # Build and publish to a clean directory
+    $publishPath = Join-Path $PWD "publish"
+    dotnet publish -c Release -o $publishPath
     
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  [ERROR] Build failed!" -ForegroundColor Red

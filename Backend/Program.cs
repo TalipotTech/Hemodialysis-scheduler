@@ -113,6 +113,7 @@ builder.Services.AddScoped<EquipmentUsageService>();
 builder.Services.AddScoped<IRecurringSessionService, RecurringSessionService>();
 builder.Services.AddScoped<IBedAssignmentService, BedAssignmentService>();
 builder.Services.AddScoped<IHDCycleService, HDCycleService>();
+builder.Services.AddScoped<IBedFormatterService, BedFormatterService>(); // Bed naming formatter
 
 // Register AI services
 builder.Services.AddHttpClient<IGeminiClient, GeminiClient>();

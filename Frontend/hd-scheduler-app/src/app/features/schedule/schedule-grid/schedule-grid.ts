@@ -14,6 +14,7 @@ import { ScheduleService } from '../../../core/services/schedule.service';
 import { ReservationService } from '../../../core/services/reservation.service';
 import { DailyScheduleResponse, SlotSchedule, BedStatus } from '../../../core/models/schedule.model';
 import { ApiResponse } from '../../../core/models/user.model';
+import { BedFormatterService } from '../../../services/bed-formatter.service';
 
 @Component({
   selector: 'app-schedule-grid',
@@ -66,6 +67,7 @@ export class ScheduleGrid implements OnInit, OnDestroy {
   constructor(
     private scheduleService: ScheduleService,
     private reservationService: ReservationService,
+    private bedFormatter: BedFormatterService,
     private location: Location,
     private router: Router
   ) {}
@@ -160,9 +162,10 @@ export class ScheduleGrid implements OnInit, OnDestroy {
           this.schedule = response.data;
           console.log('Schedule data loaded:', this.schedule);
           
-          // Debug: Log all beds with their statuses and HD Cycles
+          // Debug: Log slot capacity and beds
           if (this.schedule && this.schedule.slots) {
             this.schedule.slots.forEach((slot: any) => {
+              console.log(`📊 Slot ${slot.slotName}: maxBeds=${slot.maxBeds}, beds.length=${slot.beds.length}`);
               slot.beds.forEach((bed: any) => {
                 if (bed.status !== 'available' && bed.patient) {
                   console.log(`🛏️ Slot ${slot.slotName}, Bed ${bed.bedNumber}: STATUS="${bed.status}", SessionStatus="${bed.sessionStatus}", Patient: ${bed.patient?.name}, HD Cycle: ${bed.patient?.hdCycle || 'NOT PROVIDED'}, ScheduleID: ${bed.scheduleId}`);
@@ -213,6 +216,7 @@ export class ScheduleGrid implements OnInit, OnDestroy {
 
   getBedsForSlot(slot: SlotSchedule): number[] {
     const maxBeds = slot.maxBeds || 10; // Default to 10 if not provided
+    console.log(`getBedsForSlot: ${slot.slotName}, maxBeds=${maxBeds}, slot.maxBeds=${slot.maxBeds}`);
     return Array.from({ length: maxBeds }, (_, i) => i + 1);
   }
 
@@ -287,6 +291,11 @@ export class ScheduleGrid implements OnInit, OnDestroy {
   onFilterChange(): void {
     // Filters are applied automatically through getBedClass method
     // This method can be used for additional actions if needed
+  }
+
+  // Format bed number using the configured naming pattern
+  formatBedNumber(bedNumber: number): string {
+    return this.bedFormatter.formatBedNumber(bedNumber);
   }
 
   getBedTooltip(slotId: number, bedNumber: number): string {

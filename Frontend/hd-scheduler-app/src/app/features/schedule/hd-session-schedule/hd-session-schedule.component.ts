@@ -25,7 +25,6 @@ import { AuthService } from '../../../core/services/auth.service';
 import { AIService } from '../../../services/ai.service';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatRadioModule } from '@angular/material/radio';
-import { EquipmentUsageAlertComponent } from '../../../shared/components/equipment-usage-alert/equipment-usage-alert.component';
 
 @Component({
   selector: 'app-hd-session-schedule',
@@ -50,8 +49,7 @@ import { EquipmentUsageAlertComponent } from '../../../shared/components/equipme
     MatSnackBarModule,
     MatStepperModule,
     MatTabsModule,
-    MatRadioModule,
-    EquipmentUsageAlertComponent
+    MatRadioModule
   ],
   templateUrl: './hd-session-schedule.component.html',
   styleUrl: './hd-session-schedule.component.scss'
@@ -81,13 +79,15 @@ export class HdSessionScheduleComponent implements OnInit {
   isAuthenticated: boolean = false;
 
   slots = [
-    { id: 1, name: 'Slot 1 - Morning', time: '06:00 AM - 10:00 AM', beds: 10 },
+    { id: 1, name: 'Slot 1 - Morning', time: '06:00 AM - 10:00 AM', beds: 12 },
     { id: 2, name: 'Slot 2 - Afternoon', time: '11:00 AM - 03:00 PM', beds: 10 },
     { id: 3, name: 'Slot 3 - Evening', time: '04:00 PM - 08:00 PM', beds: 10 },
     { id: 4, name: 'Slot 4 - Night', time: '09:00 PM - 01:00 AM', beds: 10 }
   ];
 
-  beds: Array<{ number: number; isOccupied: boolean; patientName: string | null }> = Array.from({ length: 10 }, (_, i) => ({
+  maxBedsForSlot: number = 10; // Dynamic bed capacity
+
+  beds: Array<{ number: number; isOccupied: boolean; patientName: string | null }> = Array.from({ length: this.maxBedsForSlot }, (_, i) => ({
     number: i + 1,
     isOccupied: false,
     patientName: null
@@ -893,10 +893,13 @@ export class HdSessionScheduleComponent implements OnInit {
     this.scheduleService.getSlotSchedule(this.selectedSlot, treatmentDate).subscribe({
       next: (response) => {
         if (response.success && response.data?.beds) {
+          // Get actual bed capacity from API response
+          this.maxBedsForSlot = response.data?.maxBeds || 10;
+          
           // Map the bed status from API to our bed display format
-          this.beds = Array.from({ length: 10 }, (_, i) => {
+          this.beds = Array.from({ length: this.maxBedsForSlot }, (_, i) => {
             const bedNum = i + 1;
-            const bedStatus = response.data?.beds.find(b => b.bedNumber === bedNum);
+            const bedStatus = response.data?.beds.find((b: any) => b.bedNumber === bedNum);
             
             return {
               number: bedNum,
@@ -904,12 +907,16 @@ export class HdSessionScheduleComponent implements OnInit {
               patientName: bedStatus?.patient?.name || null
             };
           });
+          
+          console.log(`✅ Loaded ${this.maxBedsForSlot} beds for slot ${this.selectedSlot}`);
         }
       },
       error: (error) => {
         console.error('Error loading bed availability:', error);
-        // Initialize all beds as available on error
-        this.beds = Array.from({ length: 10 }, (_, i) => ({
+        // Initialize all beds as available on error using current slot capacity
+        const selectedSlotInfo = this.slots.find(s => s.id === this.selectedSlot);
+        this.maxBedsForSlot = selectedSlotInfo?.beds || 10;
+        this.beds = Array.from({ length: this.maxBedsForSlot }, (_, i) => ({
           number: i + 1,
           isOccupied: false,
           patientName: null

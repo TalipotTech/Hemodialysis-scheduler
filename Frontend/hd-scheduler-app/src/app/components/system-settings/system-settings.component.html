@@ -119,6 +119,133 @@
           </div>
         </mat-tab>
 
+        <!-- Bed Naming Configuration Tab -->
+        <mat-tab label="Bed Naming">
+          <div class="tab-content">
+            <h3>🛏️ Bed Naming Configuration</h3>
+            <p class="description">Choose how beds are named and displayed throughout the system</p>
+            
+            <div *ngIf="bedNamingLoading" class="loading-container">
+              <mat-spinner></mat-spinner>
+            </div>
+
+            <div *ngIf="!bedNamingLoading" class="bed-naming-config">
+              <!-- Pattern Selection -->
+              <div class="config-section">
+                <h4><mat-icon>label</mat-icon> Naming Pattern</h4>
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Select Bed Naming Pattern</mat-label>
+                  <mat-select [(ngModel)]="selectedPattern" (selectionChange)="onPatternChange()">
+                    <mat-option *ngFor="let pattern of availablePatterns" [value]="pattern.value">
+                      <div class="pattern-option">
+                        <strong>{{ pattern.label }}</strong>
+                        <small>{{ pattern.description }}</small>
+                      </div>
+                    </mat-option>
+                  </mat-select>
+                  <mat-icon matPrefix>format_list_numbered</mat-icon>
+                  <mat-hint>Choose how bed numbers are displayed</mat-hint>
+                </mat-form-field>
+
+                <!-- Pattern Description -->
+                <div class="pattern-info" *ngIf="selectedPattern">
+                  <mat-icon class="info-icon">info</mat-icon>
+                  <span>{{ getPatternDescription(selectedPattern) }}</span>
+                </div>
+              </div>
+
+              <!-- Prefix Configuration (for PREFIXED_NUMERIC) -->
+              <div class="config-section" *ngIf="selectedPattern === 'PREFIXED_NUMERIC'">
+                <h4><mat-icon>text_fields</mat-icon> Prefix</h4>
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Bed Prefix</mat-label>
+                  <input matInput [(ngModel)]="bedPrefix" (ngModelChange)="onConfigChange()" placeholder="e.g., Bed, Room, Ward">
+                  <mat-icon matPrefix>label</mat-icon>
+                  <mat-hint>Text to appear before the number</mat-hint>
+                </mat-form-field>
+              </div>
+
+              <!-- Beds Per Group (for ALPHA_NUMERIC) -->
+              <div class="config-section" *ngIf="selectedPattern === 'ALPHA_NUMERIC'">
+                <h4><mat-icon>grid_view</mat-icon> Beds Per Group</h4>
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Beds Per Letter Group</mat-label>
+                  <input matInput type="number" [(ngModel)]="bedsPerGroup" (ngModelChange)="onConfigChange()" 
+                         min="1" max="10" placeholder="e.g., 5">
+                  <mat-icon matPrefix>grid_on</mat-icon>
+                  <mat-hint>How many beds per letter (e.g., 5 = A1-A5, B1-B5)</mat-hint>
+                </mat-form-field>
+              </div>
+
+              <!-- Custom Format (for CUSTOM) -->
+              <div class="config-section" *ngIf="selectedPattern === 'CUSTOM'">
+                <h4><mat-icon>code</mat-icon> Custom Format</h4>
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Format String</mat-label>
+                  <input matInput [(ngModel)]="customFormat" (ngModelChange)="onConfigChange()" 
+                         placeholder="e.g., D, Ward-A, ICU-B, or use {{'{n}'}}, {{'{a}'}}">
+                  <mat-icon matPrefix>edit</mat-icon>
+                  <mat-hint>Type a letter (D, W, R, etc.) and bed numbers will auto-append. Or use placeholders.</mat-hint>
+                </mat-form-field>
+                <div class="format-help">
+                  <strong>Easy Mode:</strong>
+                  <ul>
+                    <li>Type <code>D</code> → D1, D2, D3, D4...</li>
+                    <li>Type <code>Ward-A</code> → Ward-A1, Ward-A2, Ward-A3...</li>
+                    <li>Type <code>ICU-B</code> → ICU-B1, ICU-B2, ICU-B3...</li>
+                  </ul>
+                  <strong>Advanced Placeholders:</strong>
+                  <ul>
+                    <li><code>{{ '{n}' }}</code> - Bed number (1, 2, 3...)</li>
+                    <li><code>{{ '{N}' }}</code> - Zero-padded number (01, 02, 03...)</li>
+                    <li><code>{{ '{a}' }}</code> - Letter group (A, B, C...)</li>
+                    <li><code>{{ '{g}' }}</code> - Number within group (1-5)</li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Live Preview -->
+              <div class="preview-section">
+                <h4><mat-icon>visibility</mat-icon> Preview (First 10 Beds)</h4>
+                <div class="preview-container">
+                  <mat-chip-listbox>
+                    <mat-chip *ngFor="let bed of previewBeds" class="preview-chip">
+                      <mat-icon>hotel</mat-icon>
+                      {{ bed }}
+                    </mat-chip>
+                  </mat-chip-listbox>
+                </div>
+                <p class="preview-note">
+                  <mat-icon class="note-icon">info</mat-icon>
+                  This shows how the first 10 beds will be displayed throughout the system
+                </p>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="action-buttons">
+                <button mat-raised-button color="primary" (click)="saveBedNamingConfiguration()" 
+                        [disabled]="bedNamingLoading">
+                  <mat-icon>save</mat-icon>
+                  Save Configuration
+                </button>
+                <button mat-button (click)="resetToDefault()" [disabled]="bedNamingLoading">
+                  <mat-icon>refresh</mat-icon>
+                  Reset to Default
+                </button>
+              </div>
+
+              <!-- Warning Message -->
+              <div class="warning-message">
+                <mat-icon class="warning-icon">warning</mat-icon>
+                <div class="warning-content">
+                  <strong>Important:</strong> Changing the bed naming pattern will affect how beds are displayed 
+                  throughout the system. Existing bed assignments will remain intact, only the display format will change.
+                </div>
+              </div>
+            </div>
+          </div>
+        </mat-tab>
+
         <!-- System Parameters Tab -->
         <mat-tab label="System Parameters">
           <div class="tab-content">

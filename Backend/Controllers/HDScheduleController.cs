@@ -4,7 +4,9 @@ using HDScheduler.API.Models;
 using HDScheduler.API.Repositories;
 using HDScheduler.API.DTOs;
 using HDScheduler.API.Services;
+using HDScheduler.API.Data;
 using Backend.DTOs;
+using Dapper;
 
 namespace HDScheduler.API.Controllers;
 
@@ -18,19 +20,22 @@ public class HDScheduleController : ControllerBase
     private readonly EquipmentUsageService _equipmentUsageService;
     private readonly IRecurringSessionService _recurringSessionService;
     private readonly ILogger<HDScheduleController> _logger;
+    private readonly DapperContext _context;
 
     public HDScheduleController(
         IHDScheduleRepository scheduleRepository,
         IPatientRepository patientRepository,
         EquipmentUsageService equipmentUsageService,
         IRecurringSessionService recurringSessionService,
-        ILogger<HDScheduleController> logger)
+        ILogger<HDScheduleController> logger,
+        DapperContext context)
     {
         _scheduleRepository = scheduleRepository;
         _patientRepository = patientRepository;
         _equipmentUsageService = equipmentUsageService;
         _recurringSessionService = recurringSessionService;
         _logger = logger;
+        _context = context;
     }
 
     [HttpGet]
@@ -105,9 +110,18 @@ public class HDScheduleController : ControllerBase
             var targetDate = date ?? DateTime.Today;
             var schedules = await _scheduleRepository.GetBySlotAndDateAsync(slotId, targetDate);
             
-            // Create bed availability map (assuming 10 beds per slot)
+            // Get actual bed capacity from Slots table
+            using var connection = _context.CreateConnection();
+            var maxBeds = await connection.QueryFirstOrDefaultAsync<int>(
+                "SELECT MaxBeds FROM Slots WHERE SlotID = @SlotID",
+                new { SlotID = slotId });
+            
+            // Default to 10 if not found
+            if (maxBeds == 0) maxBeds = 10;
+            
+            // Create bed availability map using actual capacity
             var beds = new List<object>();
-            for (int bedNum = 1; bedNum <= 10; bedNum++)
+            for (int bedNum = 1; bedNum <= maxBeds; bedNum++)
             {
                 var occupiedSchedule = schedules.FirstOrDefault(s => s.BedNumber == bedNum && !s.IsDischarged);
                 beds.Add(new
@@ -118,7 +132,7 @@ public class HDScheduleController : ControllerBase
                 });
             }
             
-            var result = new { beds };
+            var result = new { beds, maxBeds };
             return Ok(ApiResponse<object>.SuccessResponse(result));
         }
         catch (Exception ex)

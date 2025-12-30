@@ -44,7 +44,8 @@ import { Patient } from '../../../core/models/patient.model';
     ToastModule,
     TabModule,
     TooltipModule,
-    TextBoxModule
+    TextBoxModule,
+    PatientInfoDialogComponent
   ],
   providers: [PageService, SortService, FilterService, ToolbarService, ExcelExportService, PdfExportService],
   templateUrl: './patient-list.html',

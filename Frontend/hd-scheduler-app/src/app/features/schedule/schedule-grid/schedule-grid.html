@@ -244,7 +244,7 @@
                                 
                                 <div class="bed-number">
                                   <mat-icon>hotel</mat-icon>
-                                  <span>{{ bed }}</span>
+                                  <span>{{ formatBedNumber(bed) }}</span>
                                 </div>
 
                                 @if (getBed(slot.slotID, bed)?.patient) {
