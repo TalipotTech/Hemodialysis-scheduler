@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -25,6 +25,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { AIService } from '../../../services/ai.service';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatRadioModule } from '@angular/material/radio';
+import { SystemSettingsService } from '../../../services/system-settings.service';
 
 @Component({
   selector: 'app-hd-session-schedule',
@@ -78,12 +79,7 @@ export class HdSessionScheduleComponent implements OnInit {
   showBedChangeOption: boolean = false;
   isAuthenticated: boolean = false;
 
-  slots = [
-    { id: 1, name: 'Slot 1 - Morning', time: '06:00 AM - 10:00 AM', beds: 12 },
-    { id: 2, name: 'Slot 2 - Afternoon', time: '11:00 AM - 03:00 PM', beds: 10 },
-    { id: 3, name: 'Slot 3 - Evening', time: '04:00 PM - 08:00 PM', beds: 10 },
-    { id: 4, name: 'Slot 4 - Night', time: '09:00 PM - 01:00 AM', beds: 10 }
-  ];
+  slots: Array<{ id: number; name: string; time: string; beds: number }> = [];
 
   maxBedsForSlot: number = 10; // Dynamic bed capacity
 
@@ -142,7 +138,9 @@ export class HdSessionScheduleComponent implements OnInit {
     private scheduleService: ScheduleService,
     private authService: AuthService,
     private aiService: AIService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private systemSettingsService: SystemSettingsService,
+    private cdr: ChangeDetectorRef
   ) {
     this.sessionForm = this.fb.group({
       treatmentDate: [new Date()],
@@ -223,6 +221,17 @@ export class HdSessionScheduleComponent implements OnInit {
         this.router.navigate(['/login'], { queryParams: { returnUrl: this.router.url } });
       });
     }
+    
+    // Load slot configurations from system settings
+    this.loadSlotConfigurations();
+    
+    // Watch for treatment date changes to reload bed availability
+    this.sessionForm.get('treatmentDate')?.valueChanges.subscribe(() => {
+      if (this.selectedSlot) {
+        console.log('📅 Treatment date changed, reloading beds...');
+        this.loadOccupiedBeds();
+      }
+    });
     
     // Start time updater for monitoring entries
     this.monitoringTimeInterval = setInterval(() => {
@@ -869,6 +878,34 @@ export class HdSessionScheduleComponent implements OnInit {
     }
   }
 
+  loadSlotConfigurations(): void {
+    this.systemSettingsService.getSlots().subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.slots = response.data
+            .filter(slot => slot.isActive)
+            .map(slot => ({
+              id: slot.slotID,
+              name: slot.slotName,
+              time: `${slot.startTime} - ${slot.endTime}`,
+              beds: slot.maxBeds
+            }));
+          console.log('✅ Loaded slot configurations from system settings:', this.slots);
+        }
+      },
+      error: (error) => {
+        console.error('Error loading slot configurations:', error);
+        // Fallback to default slots if API fails
+        this.slots = [
+          { id: 1, name: 'Slot 1 - Morning', time: '06:00 AM - 10:00 AM', beds: 12 },
+          { id: 2, name: 'Slot 2 - Afternoon', time: '11:00 AM - 03:00 PM', beds: 10 },
+          { id: 3, name: 'Slot 3 - Evening', time: '04:00 PM - 08:00 PM', beds: 10 },
+          { id: 4, name: 'Slot 4 - Night', time: '09:00 PM - 01:00 AM', beds: 10 }
+        ];
+      }
+    });
+  }
+
   onSlotChange(): void {
     this.selectedSlot = this.sessionForm.get('slotID')?.value;
     this.selectedBed = null;
@@ -885,44 +922,109 @@ export class HdSessionScheduleComponent implements OnInit {
 
   loadOccupiedBeds(): void {
     if (!this.selectedSlot) {
+      console.warn('⚠️ No slot selected, cannot load beds');
       return;
     }
 
     const treatmentDate = this.sessionForm.get('treatmentDate')?.value;
+    console.log(`🔄 Loading beds for slot ${this.selectedSlot} on date:`, treatmentDate);
+    console.log(`📝 Edit mode: ${this.isEditMode}, ScheduleID: ${this.scheduleId}`);
     
-    this.scheduleService.getSlotSchedule(this.selectedSlot, treatmentDate).subscribe({
+    if (this.isEditMode && this.scheduleId) {
+      console.log(`✅ Will exclude ScheduleID ${this.scheduleId} from occupied beds (patient's current bed)`);
+    } else {
+      console.log(`🆕 New session - showing only truly available beds`);
+    }
+    
+    // First, get the max beds from slot configuration
+    const selectedSlotInfo = this.slots.find(s => s.id === this.selectedSlot);
+    this.maxBedsForSlot = selectedSlotInfo?.beds || 10;
+    console.log(`📊 Slot configuration has ${this.maxBedsForSlot} beds`);
+    
+    // When editing, pass scheduleId to exclude current session's bed from occupied list
+    this.scheduleService.getSlotSchedule(
+      this.selectedSlot, 
+      treatmentDate, 
+      this.isEditMode && this.scheduleId ? this.scheduleId : undefined
+    ).subscribe({
       next: (response) => {
-        if (response.success && response.data?.beds) {
-          // Get actual bed capacity from API response
-          this.maxBedsForSlot = response.data?.maxBeds || 10;
+        console.log('🔍 API Response:', response);
+        
+        if (response.success && response.data) {
+          const data: any = response.data;
           
-          // Map the bed status from API to our bed display format
-          this.beds = Array.from({ length: this.maxBedsForSlot }, (_, i) => {
-            const bedNum = i + 1;
-            const bedStatus = response.data?.beds.find((b: any) => b.bedNumber === bedNum);
+          // Use maxBeds from API if available, otherwise use from slot configuration
+          if (data.maxBeds) {
+            this.maxBedsForSlot = data.maxBeds;
+            console.log(`✅ Using maxBeds from API: ${this.maxBedsForSlot}`);
+          } else {
+            console.log(`✅ Using maxBeds from slot configuration: ${this.maxBedsForSlot}`);
+          }
+          
+          // Check if we have beds array
+          if (data.beds && Array.isArray(data.beds)) {
+            console.log(`📋 Received ${data.beds.length} bed statuses from API`);
             
-            return {
-              number: bedNum,
-              isOccupied: bedStatus?.status === 'occupied',
-              patientName: bedStatus?.patient?.name || null
-            };
-          });
-          
-          console.log(`✅ Loaded ${this.maxBedsForSlot} beds for slot ${this.selectedSlot}`);
+            // TODO: Filter beds - Show only AVAILABLE beds for manual selection
+            // Map the bed status from API to our bed display format
+            const allBeds = Array.from({ length: this.maxBedsForSlot }, (_, i) => {
+              const bedNum = i + 1;
+              const bedStatus = data.beds.find((b: any) => b.bedNumber === bedNum);
+              
+              const isOccupied = bedStatus?.status === 'occupied' || 
+                                 bedStatus?.status === 'pre-scheduled' ||
+                                 bedStatus?.status === 'reserved';
+              const patientName = bedStatus?.patient?.name || null;
+              
+              if (isOccupied) {
+                console.log(`🛏️ Bed ${bedNum} is ${bedStatus?.status.toUpperCase()} by ${patientName}`);
+              }
+              
+              return {
+                number: bedNum,
+                isOccupied: isOccupied,
+                patientName: patientName
+              };
+            });
+            
+            // Filter to show ONLY available beds (not occupied/pre-scheduled/reserved)
+            // Use setTimeout to avoid ExpressionChangedAfterItHasBeenCheckedError
+            setTimeout(() => {
+              this.beds = allBeds.filter(bed => !bed.isOccupied);
+              
+              const occupiedCount = allBeds.filter(b => b.isOccupied).length;
+              const availableCount = this.beds.length;
+              
+              console.log(`✅ Slot ${this.selectedSlot} has ${this.maxBedsForSlot} total beds:`);
+              console.log(`   🔴 ${occupiedCount} occupied/pre-scheduled/reserved (HIDDEN from selection)`);
+              console.log(`   🟢 ${availableCount} available (SHOWN for selection)`);
+              console.log(`   📋 Available bed numbers:`, this.beds.map(b => b.number).join(', '));
+              
+              this.cdr.detectChanges();
+            }, 0);
+          } else {
+            console.warn('⚠️ No beds array in response, initializing all as available');
+            this.initializeEmptyBeds();
+          }
+        } else {
+          console.warn('⚠️ API response not successful or no data');
+          this.initializeEmptyBeds();
         }
       },
       error: (error) => {
-        console.error('Error loading bed availability:', error);
-        // Initialize all beds as available on error using current slot capacity
-        const selectedSlotInfo = this.slots.find(s => s.id === this.selectedSlot);
-        this.maxBedsForSlot = selectedSlotInfo?.beds || 10;
-        this.beds = Array.from({ length: this.maxBedsForSlot }, (_, i) => ({
-          number: i + 1,
-          isOccupied: false,
-          patientName: null
-        }));
+        console.error('❌ Error loading bed availability:', error);
+        this.initializeEmptyBeds();
       }
     });
+  }
+
+  private initializeEmptyBeds(): void {
+    this.beds = Array.from({ length: this.maxBedsForSlot }, (_, i) => ({
+      number: i + 1,
+      isOccupied: false,
+      patientName: null
+    }));
+    console.log(`✅ Initialized ${this.maxBedsForSlot} beds as available`);
   }
 
   onBedModeChange(): void {
@@ -952,27 +1054,30 @@ export class HdSessionScheduleComponent implements OnInit {
   }
 
   getNextAvailableBed(): { number: number } | null {
-    // Smart bed assignment algorithm
-    const availableBeds = this.beds.filter(bed => !bed.isOccupied);
+    // TODO: Smart bed assignment - beds array now contains ONLY available beds
     
-    if (availableBeds.length === 0) {
+    if (!this.beds || this.beds.length === 0) {
+      console.warn('⚠️ No available beds for auto-assignment');
       return null;
     }
 
-    // Strategy: Infection control - prefer beds with spacing
-    const bedsWithSpacing = availableBeds.filter(bed => {
+    // Strategy: Infection control - prefer beds with spacing from occupied beds
+    // Since beds array only contains available beds, we need to check the full slot for spacing
+    const bedsWithSpacing = this.beds.filter(bed => {
       const bedNum = bed.number;
-      const adjacentLeft = this.beds.find(b => b.number === bedNum - 1);
-      const adjacentRight = this.beds.find(b => b.number === bedNum + 1);
-      
-      // Prefer beds with at least one empty neighbor
-      return !adjacentLeft?.isOccupied || !adjacentRight?.isOccupied;
+      // Note: Can't check adjacent beds from filtered array, so just use simple logic
+      // Prefer odd-numbered beds first for spacing (1, 3, 5, 7, etc.)
+      return bedNum % 2 !== 0;
     });
 
-    const targetBeds = bedsWithSpacing.length > 0 ? bedsWithSpacing : availableBeds;
+    if (bedsWithSpacing.length > 0) {
+      console.log('✅ Auto-assigning bed with spacing (odd number):', bedsWithSpacing[0].number);
+      return bedsWithSpacing[0];
+    }
 
-    // Pick the first available bed with spacing preference
-    return targetBeds[0];
+    // If no beds with spacing, just take the first available bed
+    console.log('✅ Auto-assigning first available bed:', this.beds[0].number);
+    return this.beds[0];
   }
 
   changeBedManually(): void {

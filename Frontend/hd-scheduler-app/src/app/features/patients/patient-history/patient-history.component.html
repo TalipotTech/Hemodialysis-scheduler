@@ -178,24 +178,198 @@
           <!-- Timeline Tab -->
           <mat-tab label="Session Timeline">
             <div class="tab-content">
+              <!-- Combined Timeline: Sessions + Activities -->
+              @if (timeline && timeline.length > 0) {
+                <div class="unified-timeline">
+                  <div class="timeline-header">
+                    <h3>
+                      <mat-icon>timeline</mat-icon>
+                      Complete Patient History
+                    </h3>
+                    <p class="timeline-subtitle">
+                      Sessions, late arrivals, missed appointments, rescheduling, and discharge records
+                    </p>
+                  </div>
+
+                  @for (event of timeline; track event.date) {
+                    <div class="timeline-event" [class]="'event-' + getEventColor(event.eventType)">
+                      <div class="timeline-marker">
+                        <mat-icon [class]="'icon-' + getEventColor(event.eventType)">
+                          {{ getEventIcon(event.eventType) }}
+                        </mat-icon>
+                      </div>
+                      
+                      <div class="timeline-content">
+                        <div class="timeline-header-row">
+                          <div class="timeline-date">
+                            <mat-icon>calendar_today</mat-icon>
+                            {{ event.date | date:'EEEE, MMMM d, y' }}
+                          </div>
+                          <mat-chip [class]="'chip-' + getEventColor(event.eventType)">
+                            {{ getEventLabel(event.eventType) }}
+                          </mat-chip>
+                        </div>
+
+                        <div class="timeline-details">
+                          <!-- Session Completed -->
+                          @if (event.eventType === 'SESSION_COMPLETED') {
+                            <div class="event-info">
+                              <mat-icon>event_available</mat-icon>
+                              <span>{{ event.slotName }} - Bed {{ event.bedNumber }}</span>
+                            </div>
+                            @if (event.details) {
+                              <p class="event-description">{{ event.details }}</p>
+                            }
+                          }
+
+                          <!-- Missed Appointment -->
+                          @if (event.eventType === 'MISSED') {
+                            <div class="event-info alert-info">
+                              <mat-icon>warning</mat-icon>
+                              <span><strong>Reason:</strong> {{ event.reason || 'No-Show' }}</span>
+                            </div>
+                            @if (event.details) {
+                              <p class="event-description">{{ event.details }}</p>
+                            }
+                            @if (event.recordedBy) {
+                              <p class="recorded-by">
+                                <mat-icon>person</mat-icon>
+                                Recorded by: {{ event.recordedBy }}
+                              </p>
+                            }
+                          }
+
+                          <!-- Late Arrival -->
+                          @if (event.eventType === 'LATE') {
+                            <div class="event-info warning-info">
+                              <mat-icon>access_time</mat-icon>
+                              <span><strong>Reason:</strong> {{ event.reason || 'Running late' }}</span>
+                            </div>
+                            @if (event.details) {
+                              <p class="event-description">{{ event.details }}</p>
+                            }
+                            @if (event.recordedBy) {
+                              <p class="recorded-by">
+                                <mat-icon>person</mat-icon>
+                                Recorded by: {{ event.recordedBy }}
+                              </p>
+                            }
+                          }
+
+                          <!-- Rescheduled -->
+                          @if (event.eventType === 'RESCHEDULED') {
+                            <div class="event-info info-info">
+                              <mat-icon>swap_horiz</mat-icon>
+                              <span><strong>Reason:</strong> {{ event.reason || 'Rescheduled by request' }}</span>
+                            </div>
+                            @if (event.details) {
+                              <p class="event-description">{{ event.details }}</p>
+                            }
+                            @if (event.recordedBy) {
+                              <p class="recorded-by">
+                                <mat-icon>person</mat-icon>
+                                Recorded by: {{ event.recordedBy }}
+                              </p>
+                            }
+                          }
+
+                          <!-- Discharged -->
+                          @if (event.eventType === 'DISCHARGED') {
+                            <div class="event-info discharge-info">
+                              <mat-icon>exit_to_app</mat-icon>
+                              <span><strong>Reason:</strong> {{ event.reason || 'Discharged from program' }}</span>
+                            </div>
+                            @if (event.details) {
+                              <p class="event-description">{{ event.details }}</p>
+                            }
+                            @if (event.recordedBy) {
+                              <p class="recorded-by">
+                                <mat-icon>person</mat-icon>
+                                Recorded by: {{ event.recordedBy }}
+                              </p>
+                            }
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="no-data-message">
+                  <mat-icon>history</mat-icon>
+                  <p>No history records found</p>
+                </div>
+              }
+
+              <!-- Legacy Sessions View (Keep for detailed session data) -->
               @if (sessions && sessions.length > 0) {
                 <div class="sessions-timeline">
+                  <h3 style="margin-top: 40px; color: #666;">
+                    <mat-icon>event_note</mat-icon>
+                    Detailed Session Records
+                  </h3>
                   @for (session of sessions; track (session.scheduleID || session.ScheduleID)) {
                     <mat-expansion-panel class="session-panel">
                       <mat-expansion-panel-header>
                         <mat-panel-title>
                           <mat-icon>event</mat-icon>
                           <span>{{ session.sessionDate | date:'EEEE, MMMM d, y' }}</span>
-                          <mat-chip [class]="getStatusClass(session.isDischarged)">
-                            {{ session.isDischarged ? 'Completed' : 'Active' }}
-                          </mat-chip>
+                          @if (session.isMissed) {
+                            <span class="missed-appointment-indicator">
+                              <mat-icon>event_busy</mat-icon>
+                              MISSED
+                            </span>
+                          } @else {
+                            <mat-chip [class]="getStatusClass(session.isDischarged)">
+                              {{ session.isDischarged ? 'Completed' : 'Active' }}
+                            </mat-chip>
+                          }
                         </mat-panel-title>
                         <mat-panel-description>
-                          {{ session.slotName }} - Bed {{ session.bedNumber }}
+                          @if (session.isMissed) {
+                            <span>Reason: {{ session.missedReason || 'Not specified' }}</span>
+                          } @else {
+                            {{ session.slotName }} - Bed {{ session.bedNumber }}
+                          }
                         </mat-panel-description>
                       </mat-expansion-panel-header>
 
                       <div class="session-details">
+                        @if (session.isMissed) {
+                          <!-- Missed Appointment Details -->
+                          <div class="missed-details-section">
+                            <h4><mat-icon>warning</mat-icon> Missed Appointment Information</h4>
+                            <div class="detail-grid">
+                              <div class="detail-item">
+                                <label>Reason:</label>
+                                <span>{{ session.missedReason || 'Not specified' }}</span>
+                              </div>
+                              <div class="detail-item">
+                                <label>Marked Date:</label>
+                                <span>{{ session.missedDateTime | date:'MMM d, y h:mm a' }}</span>
+                              </div>
+                              @if (session.missedNotes) {
+                                <div class="detail-item full-width">
+                                  <label>Notes:</label>
+                                  <span>{{ session.missedNotes }}</span>
+                                </div>
+                              }
+                              @if (session.missedResolvedDateTime) {
+                                <div class="detail-item">
+                                  <label>Resolved Date:</label>
+                                  <span>{{ session.missedResolvedDateTime | date:'MMM d, y h:mm a' }}</span>
+                                </div>
+                                @if (session.missedResolutionNotes) {
+                                  <div class="detail-item full-width">
+                                    <label>Resolution Notes:</label>
+                                    <span>{{ session.missedResolutionNotes }}</span>
+                                  </div>
+                                }
+                              }
+                            </div>
+                          </div>
+                        } @else {
+                          <!-- Normal Session Details -->
                         <div class="detail-grid">
                           <!-- HD Prescription & Treatment Plan -->
                           <div class="detail-section">
@@ -296,6 +470,7 @@
                             </div>
                           }
                         </div>
+                        }
 
                         <div class="session-actions">
                           <button mat-raised-button color="primary" (click)="viewSessionDetails(session)">

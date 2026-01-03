@@ -13,10 +13,6 @@
       <div class="widget-card">
         <app-on-duty-widget></app-on-duty-widget>
       </div>
-
-      <div class="widget-card">
-        <app-staffing-status-widget></app-staffing-status-widget>
-      </div>
     </div>
 
     <!-- Patient Statistics Widget -->
@@ -25,7 +21,7 @@
         <mat-card-header>
           <mat-card-title>
             <mat-icon>analytics</mat-icon>
-            Patient Statistics
+            Dialysis Patient Statistics
           </mat-card-title>
         </mat-card-header>
         
@@ -72,348 +68,62 @@
 
           <!-- Statistics Display -->
           @if (!loading && statistics) {
-            <div class="stats-grid">
-              <!-- Day Statistics -->
-              @if (filterType === 'day' && statistics.day) {
-                <div class="stat-card day-card">
-                  <div class="stat-header">
-                    <div class="stat-icon-wrapper day-icon">
-                      <mat-icon class="stat-icon">calendar_today</mat-icon>
-                    </div>
-                    <div class="stat-title">
-                      <h3>Today's Statistics</h3>
-                      <p class="stat-subtitle">{{ statistics.day.date }} • {{ statistics.day.dayOfWeek }}</p>
-                    </div>
-                  </div>
-                  <div class="stat-metrics">
-                    <div class="metric metric-active">
-                      <div class="metric-icon">
-                        <mat-icon>schedule</mat-icon>
-                      </div>
-                      <div class="metric-content">
-                        <span class="metric-label">Active Sessions</span>
-                        <span class="metric-value">{{ statistics.day.active }}</span>
-                      </div>
-                    </div>
-                    <div class="metric metric-discharged">
-                      <div class="metric-icon">
-                        <mat-icon>check_circle</mat-icon>
-                      </div>
-                      <div class="metric-content">
-                        <span class="metric-label">Discharged</span>
-                        <span class="metric-value">{{ statistics.day.discharged }}</span>
-                      </div>
-                    </div>
-                    <div class="metric metric-total">
-                      <div class="metric-icon">
-                        <mat-icon>assessment</mat-icon>
-                      </div>
-                      <div class="metric-content">
-                        <span class="metric-label">Total Sessions</span>
-                        <span class="metric-value">{{ statistics.day.total }}</span>
-                      </div>
-                    </div>
-                    <div class="metric metric-patients">
-                      <div class="metric-icon">
-                        <mat-icon>people</mat-icon>
-                      </div>
-                      <div class="metric-content">
-                        <span class="metric-label">Unique Patients</span>
-                        <span class="metric-value">{{ statistics.day.uniquePatients }}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="discharge-rate-section">
-                    <div class="rate-header">
-                      <span class="rate-label">
-                        <mat-icon>trending_up</mat-icon>
-                        Discharge Rate
-                      </span>
-                      <span class="rate-value">{{ statistics.day.dischargeRate }}%</span>
-                    </div>
-                    <div class="rate-bar">
-                      <div class="rate-fill" [style.width.%]="statistics.day.dischargeRate"></div>
-                    </div>
-                  </div>
+            <!-- Key Metrics Cards -->
+            <div class="key-metrics-container">
+              <div class="metric-card total-cases">
+                <div class="metric-icon-wrapper">
+                  <mat-icon>assessment</mat-icon>
                 </div>
-              }
+                <div class="metric-info">
+                  <div class="metric-label">Total Cases</div>
+                  <div class="metric-value">{{ statistics.year?.total || 0 }}</div>
+                  <div class="metric-subtitle">All time</div>
+                </div>
+              </div>
 
-              <!-- Week Statistics -->
-              @if (filterType === 'week' && statistics.week) {
-                <div class="stat-card week-card">
-                  <div class="stat-header">
-                    <div class="stat-icon-wrapper week-icon">
-                      <mat-icon class="stat-icon">view_week</mat-icon>
-                    </div>
-                    <div class="stat-title">
-                      <h3>Weekly Statistics</h3>
-                      <p class="stat-subtitle">Week {{ statistics.week.weekNumber }} • {{ statistics.week.startDate }} to {{ statistics.week.endDate }}</p>
-                    </div>
-                  </div>
-                  <div class="stat-metrics stat-metrics-5">
-                    <div class="metric metric-active">
-                      <div class="metric-icon">
-                        <mat-icon>schedule</mat-icon>
-                      </div>
-                      <div class="metric-content">
-                        <span class="metric-label">Active</span>
-                        <span class="metric-value">{{ statistics.week.active }}</span>
-                      </div>
-                    </div>
-                    <div class="metric metric-discharged">
-                      <div class="metric-icon">
-                        <mat-icon>check_circle</mat-icon>
-                      </div>
-                      <div class="metric-content">
-                        <span class="metric-label">Discharged</span>
-                        <span class="metric-value">{{ statistics.week.discharged }}</span>
-                      </div>
-                    </div>
-                    <div class="metric metric-total">
-                      <div class="metric-icon">
-                        <mat-icon>assessment</mat-icon>
-                      </div>
-                      <div class="metric-content">
-                        <span class="metric-label">Total</span>
-                        <span class="metric-value">{{ statistics.week.total }}</span>
-                      </div>
-                    </div>
-                    <div class="metric metric-patients">
-                      <div class="metric-icon">
-                        <mat-icon>people</mat-icon>
-                      </div>
-                      <div class="metric-content">
-                        <span class="metric-label">Patients</span>
-                        <span class="metric-value">{{ statistics.week.uniquePatients }}</span>
-                      </div>
-                    </div>
-                    <div class="metric metric-average">
-                      <div class="metric-icon">
-                        <mat-icon>bar_chart</mat-icon>
-                      </div>
-                      <div class="metric-content">
-                        <span class="metric-label">Avg/Day</span>
-                        <span class="metric-value">{{ statistics.week.averageSessionsPerDay }}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="discharge-rate-section">
-                    <div class="rate-header">
-                      <span class="rate-label">
-                        <mat-icon>trending_up</mat-icon>
-                        Discharge Rate
-                      </span>
-                      <span class="rate-value">{{ statistics.week.dischargeRate }}%</span>
-                    </div>
-                    <div class="rate-bar">
-                      <div class="rate-fill" [style.width.%]="statistics.week.dischargeRate"></div>
-                    </div>
-                  </div>
+              <div class="metric-card month-cases">
+                <div class="metric-icon-wrapper">
+                  <mat-icon>calendar_month</mat-icon>
                 </div>
-              }
+                <div class="metric-info">
+                  <div class="metric-label">Cases This Month</div>
+                  <div class="metric-value">{{ statistics.month?.total || 0 }}</div>
+                  <div class="metric-subtitle">{{ statistics.month?.uniquePatients || 0 }} patients</div>
+                </div>
+              </div>
 
-              <!-- Month Statistics -->
-              @if (filterType === 'month' && statistics.month) {
-                <div class="stat-card month-card">
-                  <div class="stat-header">
-                    <div class="stat-icon-wrapper month-icon">
-                      <mat-icon class="stat-icon">calendar_month</mat-icon>
-                    </div>
-                    <div class="stat-title">
-                      <h3>Monthly Statistics</h3>
-                      <p class="stat-subtitle">{{ statistics.month.month }}</p>
-                    </div>
-                  </div>
-                  <div class="stat-metrics stat-metrics-5">
-                    <div class="metric metric-active">
-                      <div class="metric-icon">
-                        <mat-icon>schedule</mat-icon>
-                      </div>
-                      <div class="metric-content">
-                        <span class="metric-label">Active</span>
-                        <span class="metric-value">{{ statistics.month.active }}</span>
-                      </div>
-                    </div>
-                    <div class="metric metric-discharged">
-                      <div class="metric-icon">
-                        <mat-icon>check_circle</mat-icon>
-                      </div>
-                      <div class="metric-content">
-                        <span class="metric-label">Discharged</span>
-                        <span class="metric-value">{{ statistics.month.discharged }}</span>
-                      </div>
-                    </div>
-                    <div class="metric metric-total">
-                      <div class="metric-icon">
-                        <mat-icon>assessment</mat-icon>
-                      </div>
-                      <div class="metric-content">
-                        <span class="metric-label">Total</span>
-                        <span class="metric-value">{{ statistics.month.total }}</span>
-                      </div>
-                    </div>
-                    <div class="metric metric-patients">
-                      <div class="metric-icon">
-                        <mat-icon>people</mat-icon>
-                      </div>
-                      <div class="metric-content">
-                        <span class="metric-label">Patients</span>
-                        <span class="metric-value">{{ statistics.month.uniquePatients }}</span>
-                      </div>
-                    </div>
-                    <div class="metric metric-average">
-                      <div class="metric-icon">
-                        <mat-icon>bar_chart</mat-icon>
-                      </div>
-                      <div class="metric-content">
-                        <span class="metric-label">Avg/Day</span>
-                        <span class="metric-value">{{ statistics.month.averageSessionsPerDay }}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="discharge-rate-section">
-                    <div class="rate-header">
-                      <span class="rate-label">
-                        <mat-icon>trending_up</mat-icon>
-                        Discharge Rate
-                      </span>
-                      <span class="rate-value">{{ statistics.month.dischargeRate }}%</span>
-                    </div>
-                    <div class="rate-bar">
-                      <div class="rate-fill" [style.width.%]="statistics.month.dischargeRate"></div>
-                    </div>
-                  </div>
+              <div class="metric-card today-cases">
+                <div class="metric-icon-wrapper">
+                  <mat-icon>today</mat-icon>
                 </div>
-              }
+                <div class="metric-info">
+                  <div class="metric-label">Cases Today</div>
+                  <div class="metric-value">{{ statistics.day?.total || 0 }}</div>
+                  <div class="metric-subtitle">{{ statistics.day?.active || 0 }} active</div>
+                </div>
+              </div>
+            </div>
 
-              <!-- Year Statistics -->
-              @if (filterType === 'year' && statistics.year) {
-                <div class="stat-card year-card">
-                  <div class="stat-header">
-                    <div class="stat-icon-wrapper year-icon">
-                      <mat-icon class="stat-icon">date_range</mat-icon>
-                    </div>
-                    <div class="stat-title">
-                      <h3>Yearly Statistics</h3>
-                      <p class="stat-subtitle">Year {{ statistics.year.year }}</p>
-                    </div>
-                  </div>
-                  <div class="stat-metrics stat-metrics-6">
-                    <div class="metric metric-active">
-                      <div class="metric-icon">
-                        <mat-icon>schedule</mat-icon>
-                      </div>
-                      <div class="metric-content">
-                        <span class="metric-label">Active</span>
-                        <span class="metric-value">{{ statistics.year.active }}</span>
-                      </div>
-                    </div>
-                    <div class="metric metric-discharged">
-                      <div class="metric-icon">
-                        <mat-icon>check_circle</mat-icon>
-                      </div>
-                      <div class="metric-content">
-                        <span class="metric-label">Discharged</span>
-                        <span class="metric-value">{{ statistics.year.discharged }}</span>
-                      </div>
-                    </div>
-                    <div class="metric metric-total">
-                      <div class="metric-icon">
-                        <mat-icon>assessment</mat-icon>
-                      </div>
-                      <div class="metric-content">
-                        <span class="metric-label">Total</span>
-                        <span class="metric-value">{{ statistics.year.total }}</span>
-                      </div>
-                    </div>
-                    <div class="metric metric-patients">
-                      <div class="metric-icon">
-                        <mat-icon>people</mat-icon>
-                      </div>
-                      <div class="metric-content">
-                        <span class="metric-label">Patients</span>
-                        <span class="metric-value">{{ statistics.year.uniquePatients }}</span>
-                      </div>
-                    </div>
-                    <div class="metric metric-average">
-                      <div class="metric-icon">
-                        <mat-icon>show_chart</mat-icon>
-                      </div>
-                      <div class="metric-content">
-                        <span class="metric-label">Avg/Month</span>
-                        <span class="metric-value">{{ statistics.year.averageSessionsPerMonth }}</span>
-                      </div>
-                    </div>
-                    <div class="metric metric-average">
-                      <div class="metric-icon">
-                        <mat-icon>bar_chart</mat-icon>
-                      </div>
-                      <div class="metric-content">
-                        <span class="metric-label">Avg/Day</span>
-                        <span class="metric-value">{{ statistics.year.averageSessionsPerDay }}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="discharge-rate-section">
-                    <div class="rate-header">
-                      <span class="rate-label">
-                        <mat-icon>trending_up</mat-icon>
-                        Discharge Rate
-                      </span>
-                      <span class="rate-value">{{ statistics.year.dischargeRate }}%</span>
-                    </div>
-                    <div class="rate-bar">
-                      <div class="rate-fill" [style.width.%]="statistics.year.dischargeRate"></div>
-                    </div>
-                  </div>
-                </div>
-              }
-
-              <!-- All Periods Summary -->
-              <div class="summary-cards">
-                <div class="summary-card">
-                  <div class="summary-icon">
-                    <mat-icon>calendar_today</mat-icon>
-                  </div>
-                  <div class="summary-content">
-                    <div class="summary-label">Today</div>
-                    <div class="summary-value">{{ statistics.day?.total || 0 }}</div>
-                    <div class="summary-detail">{{ statistics.day?.active || 0 }} active</div>
-                  </div>
-                </div>
-
-                <div class="summary-card">
-                  <div class="summary-icon">
-                    <mat-icon>view_week</mat-icon>
-                  </div>
-                  <div class="summary-content">
-                    <div class="summary-label">This Week</div>
-                    <div class="summary-value">{{ statistics.week?.total || 0 }}</div>
-                    <div class="summary-detail">{{ statistics.week?.dischargeRate || 0 }}% discharged</div>
-                  </div>
-                </div>
-
-                <div class="summary-card">
-                  <div class="summary-icon">
-                    <mat-icon>calendar_month</mat-icon>
-                  </div>
-                  <div class="summary-content">
-                    <div class="summary-label">This Month</div>
-                    <div class="summary-value">{{ statistics.month?.total || 0 }}</div>
-                    <div class="summary-detail">{{ statistics.month?.uniquePatients || 0 }} patients</div>
-                  </div>
-                </div>
-
-                <div class="summary-card">
-                  <div class="summary-icon">
-                    <mat-icon>date_range</mat-icon>
-                  </div>
-                  <div class="summary-content">
-                    <div class="summary-label">This Year</div>
-                    <div class="summary-value">{{ statistics.year?.total || 0 }}</div>
-                    <div class="summary-detail">{{ statistics.year?.uniquePatients || 0 }} patients</div>
-                  </div>
-                </div>
+            <!-- Chart Section -->
+            <div class="chart-container">
+              <div class="chart-header">
+                <h3>
+                  @if (filterType === 'day') {
+                    <span>Daily Cases - Last 7 Days</span>
+                  }
+                  @if (filterType === 'week') {
+                    <span>Weekly Cases - Last 8 Weeks</span>
+                  }
+                  @if (filterType === 'month') {
+                    <span>Monthly Cases - Year {{ selectedDate.getFullYear() }}</span>
+                  }
+                  @if (filterType === 'year') {
+                    <span>Yearly Cases - Last 5 Years</span>
+                  }
+                </h3>
+              </div>
+              <div class="chart-wrapper">
+                <canvas #patientChart></canvas>
               </div>
             </div>
           }

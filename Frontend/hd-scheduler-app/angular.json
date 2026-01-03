@@ -76,6 +76,9 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "liveReload": false
+          },
           "configurations": {
             "production": {
               "buildTarget": "hd-scheduler-app:build:production"

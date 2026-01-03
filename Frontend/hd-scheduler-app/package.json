@@ -45,8 +45,10 @@
     "@syncfusion/ej2-angular-popups": "^31.2.12",
     "@syncfusion/ej2-angular-schedule": "^31.2.15",
     "@syncfusion/ej2-base": "^31.2.18",
+    "chart.js": "^4.5.1",
     "jspdf": "^3.0.4",
     "jspdf-autotable": "^5.0.2",
+    "ng2-charts": "^8.0.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"

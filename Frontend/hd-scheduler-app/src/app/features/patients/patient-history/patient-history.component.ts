@@ -43,6 +43,7 @@ export class PatientHistoryComponent implements OnInit {
   // Patient History Data
   patientInfo: any = null;
   sessions: any[] = [];
+  timeline: any[] = []; // Combined sessions + activities
   statistics: any = null;
   vitalTrends: any = null;
   medications: any[] = [];
@@ -135,6 +136,9 @@ export class PatientHistoryComponent implements OnInit {
             // Load vital trends
             this.loadVitalTrends();
             
+            // Load patient activity timeline (sessions + activities)
+            this.loadPatientTimeline();
+            
             // Extract medications from sessions
             this.extractMedications();
             
@@ -185,6 +189,63 @@ export class PatientHistoryComponent implements OnInit {
       });
   }
 
+  loadPatientTimeline(): void {
+    if (!this.patientId) return;
+    
+    const token = localStorage.getItem('token');
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
+    
+    // Fetch combined timeline (sessions + activities) from new API
+    this.http.get<any>(`${environment.apiUrl}/api/PatientActivity/${this.patientId}/timeline`, { headers })
+      .subscribe({
+        next: (response) => {
+          console.log('📋 Patient Timeline API Response:', response);
+          if (response.success && response.data) {
+            this.timeline = response.data.map((event: any) => ({
+              date: event.date || event.Date,
+              eventType: event.eventType || event.EventType,
+              status: event.status || event.Status,
+              details: event.details || event.Details,
+              reason: event.reason || event.Reason,
+              slotName: event.slotName || event.SlotName,
+              bedNumber: event.bedNumber || event.BedNumber,
+              recordedBy: event.recordedBy || event.RecordedBy
+            }));
+            console.log('📊 Timeline events loaded:', this.timeline.length);
+          } else {
+            console.warn('⚠️ No timeline data, using sessions only');
+            // Fallback to sessions if timeline API fails
+            this.timeline = this.sessions.map(session => ({
+              date: session.sessionDate,
+              eventType: 'SESSION_COMPLETED',
+              status: 'Completed',
+              details: `${session.slotName} - Bed ${session.bedNumber}`,
+              reason: null,
+              slotName: session.slotName,
+              bedNumber: session.bedNumber,
+              recordedBy: null
+            }));
+          }
+        },
+        error: (error) => {
+          console.warn('⚠️ Timeline API error, using sessions only:', error);
+          // Fallback to sessions
+          this.timeline = this.sessions.map(session => ({
+            date: session.sessionDate,
+            eventType: 'SESSION_COMPLETED',
+            status: 'Completed',
+            details: `${session.slotName} - Bed ${session.bedNumber}`,
+            reason: null,
+            slotName: session.slotName,
+            bedNumber: session.bedNumber,
+            recordedBy: null
+          }));
+        }
+      });
+  }
+
   extractMedications(): void {
     // Extract unique medications from sessions
     const medMap = new Map();
@@ -230,5 +291,39 @@ export class PatientHistoryComponent implements OnInit {
   getUsagePercentage(current: number, max: number): number {
     if (!max || max === 0) return 0;
     return (current / max) * 100;
+  }
+
+  // Timeline event styling helpers
+  getEventIcon(eventType: string): string {
+    switch (eventType) {
+      case 'SESSION_COMPLETED': return 'check_circle';
+      case 'MISSED': return 'cancel';
+      case 'LATE': return 'schedule';
+      case 'RESCHEDULED': return 'event_repeat';
+      case 'DISCHARGED': return 'delete_forever';
+      default: return 'info';
+    }
+  }
+
+  getEventColor(eventType: string): string {
+    switch (eventType) {
+      case 'SESSION_COMPLETED': return 'success'; // Green
+      case 'MISSED': return 'danger'; // Red
+      case 'LATE': return 'warning'; // Orange
+      case 'RESCHEDULED': return 'info'; // Blue
+      case 'DISCHARGED': return 'secondary'; // Gray
+      default: return 'default';
+    }
+  }
+
+  getEventLabel(eventType: string): string {
+    switch (eventType) {
+      case 'SESSION_COMPLETED': return 'Completed';
+      case 'MISSED': return 'Missed';
+      case 'LATE': return 'Late Arrival';
+      case 'RESCHEDULED': return 'Rescheduled';
+      case 'DISCHARGED': return 'Discharged';
+      default: return eventType;
+    }
   }
 }

@@ -56,7 +56,8 @@
               [dataSource]="globalSearchResults"
               [allowPaging]="true"
               [allowSorting]="true"
-              [pageSettings]="{ pageSize: 10 }">
+              [pageSettings]="{ pageSize: 10 }"
+              (rowDataBound)="onRowDataBound($event)">
               <e-columns>
                 <e-column field="patientID" headerText="ID" width="70"></e-column>
                 <e-column field="name" headerText="Name" width="150"></e-column>
@@ -102,6 +103,30 @@
                 <div class="section-header">
                   <h3><mat-icon>event</mat-icon> Pre Schedule (Pre-Scheduled & Future Sessions)</h3>
                   <p class="tab-description">Patients with upcoming dialysis sessions but no active treatment today.</p>
+                </div>
+
+                <!-- Status Legend -->
+                <div class="status-legend">
+                  <div class="legend-item">
+                    <div class="legend-color legend-active"></div>
+                    <span>🟢 Active (In Treatment)</span>
+                  </div>
+                  <div class="legend-item">
+                    <div class="legend-color legend-late"></div>
+                    <span>🟡 Late (Running Late)</span>
+                  </div>
+                  <div class="legend-item">
+                    <div class="legend-color legend-missed"></div>
+                    <span>🔴 Missed (No-Show)</span>
+                  </div>
+                  <div class="legend-item">
+                    <div class="legend-color legend-rescheduled"></div>
+                    <span>🔵 Rescheduled</span>
+                  </div>
+                  <div class="legend-item">
+                    <div class="legend-color legend-discharged"></div>
+                    <span>⚫ Discharged</span>
+                  </div>
                 </div>
 
                 <!-- Date Filter Chips -->
@@ -170,53 +195,269 @@
                   </div>
                 }
 
-                <!-- Reserved Grid -->
+                <!-- Reserved Grid - GROUPED VIEW for Today/Tomorrow -->
                 @if (!loadingReserved && filteredReservedPatients.length > 0) {
-                  <ejs-grid
-                    [dataSource]="filteredReservedPatients"
-                    [allowPaging]="true"
-                    [allowSorting]="true"
-                    [allowFiltering]="true"
-                    [pageSettings]="{ pageSize: 20, pageSizes: [10, 20, 50] }">
-                    
-                    <e-columns>
-                      <e-column field="patientId" headerText="ID" width="70"></e-column>
-                      <e-column field="name" headerText="Patient Name" width="150"></e-column>
-                      <e-column field="mrn" headerText="MRN" width="100"></e-column>
-                      <e-column field="age" headerText="Age" width="60"></e-column>
-                      <e-column field="gender" headerText="Gender" width="80"></e-column>
-                      <e-column field="hdCycle" headerText="HD Cycle" width="150"></e-column>
-                      <e-column field="futureSessionsCount" headerText="Future Sessions" width="120"></e-column>
-                      <e-column field="nextScheduledDay" headerText="Next Session" width="150"></e-column>
-                      <e-column 
-                        headerText="Actions" 
-                        width="250" 
-                        [template]="reservedActionsTemplate">
-                      </e-column>
-                    </e-columns>
-                  </ejs-grid>
-
+                  
+                  <!-- Actions Template for TODAY and TOMORROW - Define BEFORE grids -->
                   <ng-template #reservedActionsTemplate let-data>
                     <div class="action-buttons">
-                      <button class="e-btn e-small e-success" 
-                              (click)="onActivateReservedPatient(data)" 
-                              title="Activate Patient - Schedule Today's Session">
-                        <mat-icon>play_arrow</mat-icon>
-                        Active
+                      <!-- Activate Button - Only show if session is Pre-Scheduled -->
+                      @if (data.sessionStatus === 'Pre-Scheduled' || !data.sessionStatus) {
+                        <button class="e-btn e-small e-success" 
+                                (click)="onActivateReservedPatient(data); $event.stopPropagation()" 
+                                type="button"
+                                title="Activate - Start Patient's Dialysis">
+                          <mat-icon>play_arrow</mat-icon>
+                        </button>
+                      } @else {
+                        <span class="status-badge active-status">
+                          <mat-icon>check_circle</mat-icon>
+                          Already Active
+                        </span>
+                      }
+                      
+                      <!-- Orange Warning Buttons for TODAY/TOMORROW -->
+                      <button class="e-btn e-small e-warning" 
+                              (click)="onMarkLate(data); $event.stopPropagation()" 
+                              type="button"
+                              title="Mark Late - Patient Running Late">
+                        <mat-icon>schedule</mat-icon>
                       </button>
+                      <button class="e-btn e-small e-warning" 
+                              (click)="onReschedule(data); $event.stopPropagation()" 
+                              type="button"
+                              title="Reschedule - Change Appointment Time">
+                        <mat-icon>event_repeat</mat-icon>
+                      </button>
+                      <button class="e-btn e-small e-danger" 
+                              (click)="onMarkMissed(data); $event.stopPropagation()" 
+                              type="button"
+                              title="Missed - Mark as No-Show">
+                        <mat-icon>cancel</mat-icon>
+                      </button>
+                      
+                      <!-- Discharge Button - Stop dialysis permanently -->
+                      <button class="e-btn e-small e-danger" 
+                              (click)="onFullDischargePatient(data); $event.stopPropagation()" 
+                              type="button"
+                              title="Discharge - Stop Dialysis Program (Permanent)">
+                        <mat-icon>delete_forever</mat-icon>
+                      </button>
+                      
                       <button class="e-btn e-small e-info" 
-                              (click)="onViewReservedPatientHistory(data)" 
-                              title="View Patient History">
+                              (click)="onViewReservedPatientHistory(data); $event.stopPropagation()" 
+                              type="button"
+                              title="History - View Patient Records">
                         <mat-icon>history</mat-icon>
-                        History
-                      </button>
-                      <button class="e-btn e-small e-primary" 
-                              (click)="onEditPatient(data)" 
-                              title="View Patient Details">
-                        <mat-icon>visibility</mat-icon>
                       </button>
                     </div>
                   </ng-template>
+                  
+                  <!-- Show GROUPED view for TODAY and TOMORROW -->
+                  @if (selectedPreScheduleDateFilter === 'today' || selectedPreScheduleDateFilter === 'tomorrow') {
+                    
+                    <!-- Morning Slot -->
+                    @if (groupedReservedPatients.morning.length > 0) {
+                      <div class="time-slot-group">
+                        <div class="slot-header morning-slot">
+                          <mat-icon>wb_sunny</mat-icon>
+                          <h3>☀️ Morning (06:00 - 10:00) - {{ groupedReservedPatients.morning.length }} patients</h3>
+                          <span class="bed-stats">Beds: {{ slotStatistics.morning.used }}/{{ slotStatistics.morning.total }}</span>
+                        </div>
+                        <ejs-grid
+                          [dataSource]="groupedReservedPatients.morning"
+                          [allowPaging]="false"
+                          [allowSorting]="true"
+                          (rowDataBound)="onRowDataBound($event)">
+                          <e-columns>
+                            <e-column field="patientId" headerText="ID" width="70"></e-column>
+                            <e-column field="name" headerText="Patient Name" width="150"></e-column>
+                            <e-column field="mrn" headerText="MRN" width="100"></e-column>
+                            <e-column field="bedNumber" headerText="Bed" width="80"></e-column>
+                            <e-column field="age" headerText="Age" width="60"></e-column>
+                            <e-column field="gender" headerText="Gender" width="80"></e-column>
+                            <e-column field="hdCycle" headerText="HD Cycle" width="150"></e-column>
+                            <e-column field="futureSessionsCount" headerText="Future Sessions" width="120"></e-column>
+                            <e-column field="nextScheduledDay" headerText="Next Session" width="150"></e-column>
+                            <e-column headerText="Actions" width="280" [template]="reservedActionsTemplate"></e-column>
+                          </e-columns>
+                        </ejs-grid>
+                      </div>
+                    }
+
+                    <!-- Afternoon Slot -->
+                    @if (groupedReservedPatients.afternoon.length > 0) {
+                      <div class="time-slot-group">
+                        <div class="slot-header afternoon-slot">
+                          <mat-icon>wb_sunny</mat-icon>
+                          <h3>🌤️ Afternoon (11:00 - 15:00) - {{ groupedReservedPatients.afternoon.length }} patients</h3>
+                          <span class="bed-stats">Beds: {{ slotStatistics.afternoon.used }}/{{ slotStatistics.afternoon.total }}</span>
+                        </div>
+                        <ejs-grid
+                          [dataSource]="groupedReservedPatients.afternoon"
+                          [allowPaging]="false"
+                          [allowSorting]="true"
+                          (rowDataBound)="onRowDataBound($event)">
+                          <e-columns>
+                            <e-column field="patientId" headerText="ID" width="70"></e-column>
+                            <e-column field="name" headerText="Patient Name" width="150"></e-column>
+                            <e-column field="mrn" headerText="MRN" width="100"></e-column>
+                            <e-column field="bedNumber" headerText="Bed" width="80"></e-column>
+                            <e-column field="age" headerText="Age" width="60"></e-column>
+                            <e-column field="gender" headerText="Gender" width="80"></e-column>
+                            <e-column field="hdCycle" headerText="HD Cycle" width="150"></e-column>
+                            <e-column field="futureSessionsCount" headerText="Future Sessions" width="120"></e-column>
+                            <e-column field="nextScheduledDay" headerText="Next Session" width="150"></e-column>
+                            <e-column headerText="Actions" width="280" [template]="reservedActionsTemplate"></e-column>
+                          </e-columns>
+                        </ejs-grid>
+                      </div>
+                    }
+
+                    <!-- Evening Slot -->
+                    @if (groupedReservedPatients.evening.length > 0) {
+                      <div class="time-slot-group">
+                        <div class="slot-header evening-slot">
+                          <mat-icon>brightness_3</mat-icon>
+                          <h3>🌆 Evening (16:00 - 20:00) - {{ groupedReservedPatients.evening.length }} patients</h3>
+                          <span class="bed-stats">Beds: {{ slotStatistics.evening.used }}/{{ slotStatistics.evening.total }}</span>
+                        </div>
+                        <ejs-grid
+                          [dataSource]="groupedReservedPatients.evening"
+                          [allowPaging]="false"
+                          [allowSorting]="true"
+                          (rowDataBound)="onRowDataBound($event)">
+                          <e-columns>
+                            <e-column field="patientId" headerText="ID" width="70"></e-column>
+                            <e-column field="name" headerText="Patient Name" width="150"></e-column>
+                            <e-column field="mrn" headerText="MRN" width="100"></e-column>
+                            <e-column field="bedNumber" headerText="Bed" width="80"></e-column>
+                            <e-column field="age" headerText="Age" width="60"></e-column>
+                            <e-column field="gender" headerText="Gender" width="80"></e-column>
+                            <e-column field="hdCycle" headerText="HD Cycle" width="150"></e-column>
+                            <e-column field="futureSessionsCount" headerText="Future Sessions" width="120"></e-column>
+                            <e-column field="nextScheduledDay" headerText="Next Session" width="150"></e-column>
+                            <e-column headerText="Actions" width="280" [template]="reservedActionsTemplate"></e-column>
+                          </e-columns>
+                        </ejs-grid>
+                      </div>
+                    }
+
+                    <!-- Night Slot -->
+                    <div class="time-slot-group">
+                      <div class="slot-header night-slot">
+                        <mat-icon>bedtime</mat-icon>
+                        <h3>🌙 Night (21:00 - 01:00) - {{ groupedReservedPatients.night.length }} patients</h3>
+                        <span class="bed-stats">Beds: {{ slotStatistics.night.used }}/{{ slotStatistics.night.total }}</span>
+                      </div>
+                      @if (groupedReservedPatients.night.length > 0) {
+                        <ejs-grid
+                          [dataSource]="groupedReservedPatients.night"
+                          [allowPaging]="false"
+                          [allowSorting]="true"
+                          (rowDataBound)="onRowDataBound($event)">
+                          <e-columns>
+                            <e-column field="patientId" headerText="ID" width="70"></e-column>
+                            <e-column field="name" headerText="Patient Name" width="150"></e-column>
+                            <e-column field="mrn" headerText="MRN" width="100"></e-column>
+                            <e-column field="bedNumber" headerText="Bed" width="80"></e-column>
+                            <e-column field="age" headerText="Age" width="60"></e-column>
+                            <e-column field="gender" headerText="Gender" width="80"></e-column>
+                            <e-column field="hdCycle" headerText="HD Cycle" width="150"></e-column>
+                            <e-column field="futureSessionsCount" headerText="Future Sessions" width="120"></e-column>
+                            <e-column field="nextScheduledDay" headerText="Next Session" width="150"></e-column>
+                            <e-column headerText="Actions" width="280" [template]="reservedActionsTemplate"></e-column>
+                          </e-columns>
+                        </ejs-grid>
+                      } @else {
+                        <div class="empty-slot-message">
+                          <mat-icon>event_available</mat-icon>
+                          <p>No patients scheduled for night shift</p>
+                        </div>
+                      }
+                    </div>
+
+                    <!-- Unassigned Slot -->
+                    <div class="time-slot-group">
+                      <div class="slot-header unassigned-slot">
+                        <mat-icon>help_outline</mat-icon>
+                        <h3>❓ Unassigned Time Slot ({{ groupedReservedPatients.unassigned.length }} patients)</h3>
+                        <span class="bed-stats">No time slot assigned</span>
+                      </div>
+                      @if (groupedReservedPatients.unassigned.length > 0) {
+                        <ejs-grid
+                          [dataSource]="groupedReservedPatients.unassigned"
+                          [allowPaging]="false"
+                          [allowSorting]="true"
+                          (rowDataBound)="onRowDataBound($event)">
+                          <e-columns>
+                            <e-column field="patientId" headerText="ID" width="70"></e-column>
+                            <e-column field="name" headerText="Patient Name" width="150"></e-column>
+                            <e-column field="mrn" headerText="MRN" width="100"></e-column>
+                            <e-column field="bedNumber" headerText="Bed" width="80"></e-column>
+                            <e-column field="age" headerText="Age" width="60"></e-column>
+                            <e-column field="gender" headerText="Gender" width="80"></e-column>
+                            <e-column field="hdCycle" headerText="HD Cycle" width="150"></e-column>
+                            <e-column field="futureSessionsCount" headerText="Future Sessions" width="120"></e-column>
+                            <e-column field="nextScheduledDay" headerText="Next Session" width="150"></e-column>
+                            <e-column headerText="Actions" width="280" [template]="reservedActionsTemplate"></e-column>
+                          </e-columns>
+                        </ejs-grid>
+                      } @else {
+                        <div class="empty-slot-message">
+                          <mat-icon>check_circle</mat-icon>
+                          <p>All patients have time slots assigned</p>
+                        </div>
+                      }
+                    </div>
+                  
+                  } @else {
+                    <!-- Show FLAT view for other filters (All, This Week, This Month, Custom) -->
+                    <ejs-grid
+                      [dataSource]="filteredReservedPatients"
+                      [allowPaging]="true"
+                      [allowSorting]="true"
+                      [allowFiltering]="true"
+                      [pageSettings]="{ pageSize: 20, pageSizes: [10, 20, 50] }"
+                      (rowDataBound)="onRowDataBound($event)">
+                      
+                      <e-columns>
+                        <e-column field="patientId" headerText="ID" width="70"></e-column>
+                        <e-column field="name" headerText="Patient Name" width="150"></e-column>
+                        <e-column field="mrn" headerText="MRN" width="100"></e-column>
+                        <e-column field="age" headerText="Age" width="60"></e-column>
+                        <e-column field="gender" headerText="Gender" width="80"></e-column>
+                        <e-column field="hdCycle" headerText="HD Cycle" width="150"></e-column>
+                        <e-column field="futureSessionsCount" headerText="Future Sessions" width="120"></e-column>
+                        <e-column field="nextScheduledDay" headerText="Next Session" width="150"></e-column>
+                        <e-column 
+                          headerText="Actions" 
+                          width="250" 
+                          [template]="flatActionsTemplate">
+                        </e-column>
+                      </e-columns>
+                    </ejs-grid>
+
+                    <ng-template #flatActionsTemplate let-data>
+                      <div class="action-buttons">
+                        <button class="e-btn e-small e-success" 
+                                (click)="onActivateReservedPatient(data)" 
+                                title="Activate - Start Patient's Dialysis">
+                          <mat-icon>play_arrow</mat-icon>
+                        </button>
+                        <button class="e-btn e-small e-info" 
+                                (click)="onViewReservedPatientHistory(data)" 
+                                title="History - View Patient Records">
+                          <mat-icon>history</mat-icon>
+                        </button>
+                        <button class="e-btn e-small e-primary" 
+                                (click)="onEditPatient(data)" 
+                                title="Edit Patient Details">
+                          <mat-icon>edit</mat-icon>
+                        </button>
+                      </div>
+                    </ng-template>
+                  }
                 }
 
                 <!-- Empty State -->
@@ -276,7 +517,8 @@
                     [allowSorting]="true"
                     [allowFiltering]="true"
                     [pageSettings]="{ pageSize: 20, pageSizes: [10, 20, 50, 100] }"
-                    [filterSettings]="{ type: 'Excel' }">
+                    [filterSettings]="{ type: 'Excel' }"
+                    (rowDataBound)="onRowDataBound($event)">
                     
                     <e-columns>
                       <e-column field="patientID" headerText="ID" width="70"></e-column>
@@ -289,6 +531,11 @@
                       <e-column field="mrn" headerText="MRN" width="100"></e-column>
                       <e-column field="age" headerText="Age" width="60"></e-column>
                       <e-column field="gender" headerText="Gender" width="80"></e-column>
+                      <e-column 
+                        headerText="Session Progress" 
+                        width="150" 
+                        [template]="sessionProgressTemplate">
+                      </e-column>
                       <e-column field="contactNumber" headerText="Contact" width="120"></e-column>
                       <e-column 
                         headerText="Actions" 
@@ -310,6 +557,21 @@
                     </div>
                   </ng-template>
 
+                  <!-- Session Progress Template -->
+                  <ng-template #sessionProgressTemplate let-data>
+                    <div class="session-progress-cell">
+                      <div class="progress-info">
+                        <span class="progress-text">{{ data.totalDialysisCompleted || 0 }} sessions</span>
+                        @if (data.sessionStatus === 'Completed') {
+                          <span class="completed-badge">✅ Completed</span>
+                        }
+                        @if (isLastSession(data) && data.sessionStatus !== 'Completed') {
+                          <span class="last-session-badge">⚠️ LAST</span>
+                        }
+                      </div>
+                    </div>
+                  </ng-template>
+
                   <!-- Actions Template -->
                   <ng-template #actionsTemplate let-data>
                     <div class="action-buttons">
@@ -326,11 +588,13 @@
                         <button class="e-btn e-small e-primary" (click)="onEditPatient(data)" title="Edit">
                           <mat-icon>edit</mat-icon>
                         </button>
-                        @if (!data.isDischarged) {
-                          <button class="e-btn e-small e-danger" (click)="onDischargePatient(data)" title="Discharge">
-                            <mat-icon>logout</mat-icon>
-                          </button>
-                        }
+                        <!-- Complete Session Button - Marks today's dialysis as complete -->
+                        <button class="e-btn e-small e-success" 
+                                (click)="onCompleteSession(data)" 
+                                [title]="getCompleteSessionButtonTitle(data)"
+                                [class.pulse-warning]="isLastSession(data)">
+                          <mat-icon>check_circle</mat-icon>
+                        </button>
                       }
                     </div>
                   </ng-template>
@@ -431,7 +695,8 @@
                     [allowPaging]="true"
                     [allowSorting]="true"
                     [allowFiltering]="true"
-                    [pageSettings]="{ pageSize: 20, pageSizes: [10, 20, 50] }">
+                    [pageSettings]="{ pageSize: 20, pageSizes: [10, 20, 50] }"
+                    (rowDataBound)="onRowDataBound($event)">
                     
                     <e-columns>
                       <e-column field="patientID" headerText="ID" width="70"></e-column>
@@ -439,21 +704,46 @@
                       <e-column field="mrn" headerText="MRN" width="100"></e-column>
                       <e-column field="age" headerText="Age" width="60"></e-column>
                       <e-column field="gender" headerText="Gender" width="80"></e-column>
+                      <e-column 
+                        headerText="Session Progress" 
+                        width="150" 
+                        [template]="completedSessionProgressTemplate">
+                      </e-column>
                       <e-column field="contactNumber" headerText="Contact" width="120"></e-column>
                       <e-column 
                         headerText="Actions" 
-                        width="100" 
+                        width="250" 
                         [template]="completedActionsTemplate">
                       </e-column>
                     </e-columns>
                   </ejs-grid>
 
+                  <!-- Completed Session Progress Template -->
+                  <ng-template #completedSessionProgressTemplate let-data>
+                    <div class="session-progress-cell">
+                      <div class="progress-info">
+                        <span class="progress-text">{{ data.totalDialysisCompleted || 0 }} sessions</span>
+                        <span class="completed-badge">✅ Done</span>
+                      </div>
+                    </div>
+                  </ng-template>
+
                   <!-- Completed Actions Template -->
                   <ng-template #completedActionsTemplate let-data>
                     <div class="action-buttons">
-                      <button class="e-btn e-small e-info" (click)="onViewHistory(data)" title="View Patient History">
+                      <button class="e-btn e-small e-info" 
+                              (click)="onViewHistory(data)" 
+                              title="History - View All Session Details">
                         <mat-icon>history</mat-icon>
                       </button>
+                      @if (!isReadOnly && isLastSession(data)) {
+                        <button class="e-btn e-small e-danger" 
+                                (click)="onFullDischargePatient(data)" 
+                                title="Discharge - Remove Patient from Active Program (Last Session)"
+                                style="background: linear-gradient(135deg, #ff6b6b, #ff8787) !important; font-weight: 600;">
+                          <mat-icon>logout</mat-icon>
+                        </button>
+                      }
                     </div>
                   </ng-template>
                 }
@@ -505,7 +795,8 @@
                     [allowPaging]="true"
                     [allowSorting]="true"
                     [allowFiltering]="true"
-                    [pageSettings]="{ pageSize: 10 }">
+                    [pageSettings]="{ pageSize: 10 }"
+                    (rowDataBound)="onRowDataBound($event)">
                     
                     <e-columns>
                       <e-column field="patientID" headerText="ID" width="70"></e-column>

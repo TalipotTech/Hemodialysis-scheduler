@@ -26,10 +26,13 @@ export class ScheduleService {
     return this.http.get<ApiResponse<DailyScheduleResponse>>(`${this.apiUrl}/daily`, { params });
   }
 
-  getSlotSchedule(slotId: number, date?: Date): Observable<ApiResponse<SlotSchedule>> {
+  getSlotSchedule(slotId: number, date?: Date, excludeScheduleId?: number): Observable<ApiResponse<SlotSchedule>> {
     let params = new HttpParams();
     if (date) {
       params = params.set('date', date.toISOString());
+    }
+    if (excludeScheduleId) {
+      params = params.set('excludeScheduleId', excludeScheduleId.toString());
     }
     return this.http.get<ApiResponse<SlotSchedule>>(`${environment.apiUrl}/api/hdschedule/slot/${slotId}`, { params });
   }
@@ -175,5 +178,69 @@ export class ScheduleService {
 
   getAutoDischargeInfo(): Observable<ApiResponse<any>> {
     return this.http.get<ApiResponse<any>>(`${this.apiUrl}/auto-discharge-info`);
+  }
+
+  // ==================== MISSED APPOINTMENT METHODS ====================
+
+  /**
+   * Check for possible no-shows (auto-detection)
+   */
+  checkPossibleNoShows(minutesThreshold: number = 60): Observable<ApiResponse<any[]>> {
+    let params = new HttpParams();
+    params = params.set('minutesThreshold', minutesThreshold.toString());
+    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/api/hdschedule/possible-no-shows`, { params });
+  }
+
+  /**
+   * Update a session's time slot (for rescheduling late patients)
+   */
+  updateSessionSlot(scheduleId: number, newSlotId: number): Observable<ApiResponse<boolean>> {
+    return this.http.put<ApiResponse<boolean>>(`${environment.apiUrl}/api/hdschedule/${scheduleId}/slot`, {
+      slotId: newSlotId
+    });
+  }
+
+  /**
+   * Mark a session as missed
+   */
+  markSessionAsMissed(scheduleId: number, reason: string, notes: string = ''): Observable<ApiResponse<boolean>> {
+    return this.http.post<ApiResponse<boolean>>(`${environment.apiUrl}/api/hdschedule/mark-missed`, {
+      scheduleID: scheduleId,
+      missedReason: reason,
+      missedNotes: notes
+    });
+  }
+
+  /**
+   * Reschedule a session to a new date
+   */
+  rescheduleSession(scheduleId: number, newDate: string): Observable<ApiResponse<boolean>> {
+    return this.http.put<ApiResponse<boolean>>(`${environment.apiUrl}/api/hdschedule/${scheduleId}/reschedule`, {
+      newDate: newDate
+    });
+  }
+
+  /**
+   * Get missed appointments for a patient
+   */
+  getPatientMissedAppointments(patientId: number): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/api/hdschedule/patient/${patientId}/missed-appointments`);
+  }
+
+  /**
+   * Resolve a missed appointment
+   */
+  resolveMissedAppointment(scheduleId: number, notes: string = ''): Observable<ApiResponse<boolean>> {
+    return this.http.post<ApiResponse<boolean>>(`${environment.apiUrl}/api/hdschedule/resolve-missed`, {
+      scheduleID: scheduleId,
+      resolutionNotes: notes
+    });
+  }
+
+  /**
+   * Check if patient has unresolved missed appointments
+   */
+  getUnresolvedMissedAppointments(patientId: number): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${environment.apiUrl}/api/hdschedule/patient/${patientId}/unresolved-missed`);
   }
 }

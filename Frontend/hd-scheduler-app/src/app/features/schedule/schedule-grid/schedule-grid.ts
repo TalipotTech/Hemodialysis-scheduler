@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { MatIconModule } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
 // Syncfusion imports
@@ -63,6 +64,7 @@ export class ScheduleGrid implements OnInit, OnDestroy {
   futureSessions: any[] = [];
   loadingFuture = false;
   selectedTab = 0;
+  private routerSubscription: any;
 
   constructor(
     private scheduleService: ScheduleService,
@@ -70,7 +72,21 @@ export class ScheduleGrid implements OnInit, OnDestroy {
     private bedFormatter: BedFormatterService,
     private location: Location,
     private router: Router
-  ) {}
+  ) {
+    // Listen for navigation events to refresh when returning from edit page
+    this.routerSubscription = this.router.events
+      .pipe(filter(event => event instanceof NavigationEnd))
+      .subscribe((event: NavigationEnd) => {
+        // If navigating to /schedule (this component), refresh the data
+        if (event.url === '/schedule' || event.url.startsWith('/schedule?')) {
+          console.log('🔄 Navigated back to schedule grid, refreshing data...');
+          setTimeout(() => {
+            this.loadSchedule();
+            this.loadFutureScheduledSessions();
+          }, 100);
+        }
+      });
+  }
 
   goBack(): void {
     this.location.back();
@@ -89,6 +105,9 @@ export class ScheduleGrid implements OnInit, OnDestroy {
     document.removeEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
     this.stopAutoRefresh();
     this.stopTimeUpdate();
+    if (this.routerSubscription) {
+      this.routerSubscription.unsubscribe();
+    }
   }
 
   startTimeUpdate(): void {
@@ -153,28 +172,41 @@ export class ScheduleGrid implements OnInit, OnDestroy {
     this.loading = true;
     this.errorMessage = '';
     
-    console.log('Loading schedule for date:', this.selectedDate);
+    console.log('🔄 Loading schedule for date:', this.selectedDate);
     
     this.scheduleService.getDailySchedule(this.selectedDate).subscribe({
       next: (response: any) => {
-        console.log('Schedule API response:', response);
+        console.log('📦 Schedule API response:', response);
         if (response.success && response.data) {
           this.schedule = response.data;
-          console.log('Schedule data loaded:', this.schedule);
+          console.log('✅ Schedule data loaded successfully');
           
-          // Debug: Log slot capacity and beds
+          // Debug: Log slot capacity and beds with detailed information
           if (this.schedule && this.schedule.slots) {
+            console.log(`📊 Total slots: ${this.schedule.slots.length}`);
             this.schedule.slots.forEach((slot: any) => {
-              console.log(`📊 Slot ${slot.slotName}: maxBeds=${slot.maxBeds}, beds.length=${slot.beds.length}`);
+              const occupiedBeds = slot.beds.filter((b: any) => b.status === 'occupied' || b.status === 'pre-scheduled').length;
+              const availableBeds = (slot.maxBeds || 10) - occupiedBeds;
+              console.log(`\n🏥 Slot ${slot.slotName} (ID: ${slot.slotID}):`);
+              console.log(`   📊 Capacity: ${occupiedBeds} occupied / ${slot.maxBeds || 10} total beds (${availableBeds} available)`);
+              console.log(`   📋 Beds array length: ${slot.beds.length}`);
+              
               slot.beds.forEach((bed: any) => {
-                if (bed.status !== 'available' && bed.patient) {
-                  console.log(`🛏️ Slot ${slot.slotName}, Bed ${bed.bedNumber}: STATUS="${bed.status}", SessionStatus="${bed.sessionStatus}", Patient: ${bed.patient?.name}, HD Cycle: ${bed.patient?.hdCycle || 'NOT PROVIDED'}, ScheduleID: ${bed.scheduleId}`);
+                if (bed.status !== 'available') {
+                  console.log(`   🛏️ Bed ${bed.bedNumber}:`);
+                  console.log(`      Status: "${bed.status}"`);
+                  console.log(`      Session Status: "${bed.sessionStatus || 'N/A'}"`);
+                  console.log(`      Schedule ID: ${bed.scheduleId || 'N/A'}`);
+                  console.log(`      Patient: ${bed.patient?.name || 'N/A'}`);
+                  console.log(`      HD Cycle: ${bed.patient?.hdCycle || 'N/A'}`);
+                  console.log(`      Is Discharged: ${bed.patient?.isDischarged || false}`);
                 }
               });
             });
           }
         } else {
           this.errorMessage = response.message || 'Failed to load schedule';
+          console.error('❌ Schedule load failed:', this.errorMessage);
         }
         this.loading = false;
       },
@@ -380,8 +412,11 @@ export class ScheduleGrid implements OnInit, OnDestroy {
 
   getTotalPreScheduled(): number {
     if (!this.schedule) return 0;
+    // Count ALL pre-scheduled sessions including auto-suggested (scheduleId === 0)
     return this.schedule.slots.reduce((total: number, slot: SlotSchedule) => {
-      return total + slot.beds.filter((b: BedStatus) => b.status === 'pre-scheduled').length;
+      return total + slot.beds.filter((b: BedStatus) => 
+        b.status === 'pre-scheduled'
+      ).length;
     }, 0);
   }
 
