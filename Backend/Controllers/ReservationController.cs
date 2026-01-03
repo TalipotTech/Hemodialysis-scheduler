@@ -410,14 +410,31 @@ public class ReservationController : ControllerBase
                     }
                 }
 
+                // NEW: Check if patient SHOULD be scheduled today based on HD Cycle (same logic as Schedule Grid)
+                bool shouldBeScheduledToday = false;
+                if (!string.IsNullOrEmpty(patient.HDCycle) && patient.HDStartDate.HasValue)
+                {
+                    shouldBeScheduledToday = ShouldPatientBeScheduledOnDate(
+                        patient.HDStartDate.Value,
+                        patient.HDCycle,
+                        targetDate);
+                }
+
                 string status = "Inactive";
                 if (todaySchedule != null && todaySchedule.SessionStatus == "Active")
                 {
                     status = "Active";
+                    // CRITICAL: Don't check future schedules if patient is already active today
+                    // Patient should NOT appear in Pre-Schedule tab if they're already active
                 }
                 else if (todaySchedule != null && todaySchedule.SessionStatus == "Pre-Scheduled")
                 {
                     status = "Reserved"; // Has session today but not yet activated
+                }
+                else if (shouldBeScheduledToday && todaySchedule == null)
+                {
+                    // NEW: Patient should be scheduled today based on HD Cycle but has no session yet
+                    status = "Reserved"; // Show in pre-schedule list (auto-suggested)
                 }
                 else if (futureSchedules.Any())
                 {
@@ -425,6 +442,29 @@ public class ReservationController : ControllerBase
                 }
 
                 var nextSession = futureSchedules.FirstOrDefault();
+
+                // Create todaySession object with consistent types
+                object? todaySessionObj = null;
+                if (todaySchedule != null)
+                {
+                    todaySessionObj = new
+                    {
+                        scheduleId = todaySchedule.ScheduleID,
+                        slotId = (int?)todaySchedule.SlotID,
+                        bedNumber = todaySchedule.BedNumber,
+                        sessionStatus = todaySchedule.SessionStatus
+                    };
+                }
+                else if (shouldBeScheduledToday)
+                {
+                    todaySessionObj = new
+                    {
+                        scheduleId = 0, // Virtual/auto-suggested session
+                        slotId = patient.PreferredSlotID ?? (int?)1, // Use preferred slot or default to Morning
+                        bedNumber = (int?)null,
+                        sessionStatus = "Suggested"
+                    };
+                }
 
                 patientsWithStatus.Add(new
                 {
@@ -435,13 +475,19 @@ public class ReservationController : ControllerBase
                     gender = patient.Gender,
                     hdCycle = patient.HDCycle,
                     hdFrequency = patient.HDFrequency,
+                    preferredSlotID = patient.PreferredSlotID, // Time slot preference
+                    bedNumber = nextSession?.BedNumber ?? patient.BedNumber, // Preferred bed
                     status = status,
-                    todaySession = todaySchedule != null ? new
+                    isAutoSuggested = shouldBeScheduledToday && todaySchedule == null, // NEW: Flag for auto-suggested patients
+                    shouldBeScheduledToday = shouldBeScheduledToday, // NEW: HD Cycle indicates they should come today
+                    todaySession = todaySessionObj,
+                    nextSession = nextSession != null ? new
                     {
-                        scheduleId = todaySchedule.ScheduleID,
-                        slotId = todaySchedule.SlotID,
-                        bedNumber = todaySchedule.BedNumber,
-                        sessionStatus = todaySchedule.SessionStatus
+                        scheduleId = nextSession.ScheduleID,
+                        slotId = nextSession.SlotID,
+                        bedNumber = nextSession.BedNumber,
+                        sessionDate = nextSession.SessionDate.ToString("yyyy-MM-dd"),
+                        sessionStatus = nextSession.SessionStatus
                     } : null,
                     futureSessionsCount = futureSchedules.Count,
                     nextScheduledDate = nextSession?.SessionDate.ToString("yyyy-MM-dd"),
@@ -601,6 +647,136 @@ public class ReservationController : ControllerBase
         {
             _logger.LogError(ex, "Error marking session as missed for patient {PatientId}", patientId);
             return StatusCode(500, ApiResponse<object>.ErrorResponse("An error occurred"));
+        }
+    }
+
+    /// <summary>
+    /// Get time slot statistics with bed usage for grouping display
+    /// </summary>
+    [HttpGet("slot-statistics")]
+    [Authorize(Roles = "Admin,HOD,Doctor,Nurse,Technician")]
+    public async Task<ActionResult<ApiResponse<List<object>>>> GetSlotStatistics([FromQuery] string? date = null)
+    {
+        try
+        {
+            DateTime targetDate = string.IsNullOrEmpty(date) 
+                ? DateTime.Today 
+                : DateTime.Parse(date).Date;
+
+            var allSchedules = await _scheduleRepository.GetAllAsync();
+            
+            // Get schedules for the target date
+            var targetSchedules = allSchedules.Where(s => 
+                s.SessionDate.Date == targetDate && 
+                !s.IsDischarged && 
+                !s.IsMovedToHistory).ToList();
+
+            var slotStats = new List<object>
+            {
+                new {
+                    slotID = 1,
+                    slotName = "Morning",
+                    timeRange = "06:00 - 10:00",
+                    totalBeds = 10,
+                    usedBeds = targetSchedules.Count(s => s.SlotID == 1),
+                    patientCount = targetSchedules.Count(s => s.SlotID == 1)
+                },
+                new {
+                    slotID = 2,
+                    slotName = "Afternoon",
+                    timeRange = "11:00 - 15:00",
+                    totalBeds = 10,
+                    usedBeds = targetSchedules.Count(s => s.SlotID == 2),
+                    patientCount = targetSchedules.Count(s => s.SlotID == 2)
+                },
+                new {
+                    slotID = 3,
+                    slotName = "Evening",
+                    timeRange = "16:00 - 20:00",
+                    totalBeds = 10,
+                    usedBeds = targetSchedules.Count(s => s.SlotID == 3),
+                    patientCount = targetSchedules.Count(s => s.SlotID == 3)
+                },
+                new {
+                    slotID = 4,
+                    slotName = "Night",
+                    timeRange = "21:00 - 01:00",
+                    totalBeds = 10,
+                    usedBeds = targetSchedules.Count(s => s.SlotID == 4),
+                    patientCount = targetSchedules.Count(s => s.SlotID == 4)
+                }
+            };
+
+            return Ok(ApiResponse<List<object>>.SuccessResponse(slotStats));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting slot statistics");
+            return StatusCode(500, ApiResponse<List<object>>.ErrorResponse("An error occurred"));
+        }
+    }
+
+    /// <summary>
+    /// Check if a patient should be scheduled on a specific date based on their HD Cycle
+    /// Same logic as ScheduleController to ensure consistency
+    /// </summary>
+    private bool ShouldPatientBeScheduledOnDate(DateTime hdStartDate, string hdCycle, DateTime targetDate)
+    {
+        // Patient can't be scheduled before their HD start date
+        if (targetDate < hdStartDate.Date)
+            return false;
+        
+        // Parse HD Cycle
+        var dayOfWeek = targetDate.DayOfWeek;
+        
+        switch (hdCycle?.ToLower())
+        {
+            case "everyday":
+            case "every day":
+            case "daily":
+            case "everyday (daily)":
+            case "every day (daily)":
+                return true; // Every day
+            
+            case "mwf":
+            case "mon-wed-fri":
+                return dayOfWeek == DayOfWeek.Monday || 
+                       dayOfWeek == DayOfWeek.Wednesday || 
+                       dayOfWeek == DayOfWeek.Friday;
+            
+            case "tts":
+            case "tue-thu-sat":
+                return dayOfWeek == DayOfWeek.Tuesday || 
+                       dayOfWeek == DayOfWeek.Thursday || 
+                       dayOfWeek == DayOfWeek.Saturday;
+            
+            case "alternate":
+            case "alternate days":
+                // Calculate days since HD start date
+                var daysSinceStart = (targetDate.Date - hdStartDate.Date).Days;
+                return daysSinceStart % 2 == 0; // Every other day
+            
+            case "3x/week":
+            case "3 times per week":
+                // Default to MWF pattern
+                return dayOfWeek == DayOfWeek.Monday || 
+                       dayOfWeek == DayOfWeek.Wednesday || 
+                       dayOfWeek == DayOfWeek.Friday;
+            
+            case "2x/week":
+            case "2 times per week":
+                // Default to Monday and Thursday
+                return dayOfWeek == DayOfWeek.Monday || 
+                       dayOfWeek == DayOfWeek.Thursday;
+            
+            case "weekly":
+            case "1x/week":
+                // Same day of week as HD start date
+                return dayOfWeek == hdStartDate.DayOfWeek;
+            
+            default:
+                // Custom or unknown pattern - don't auto-schedule
+                return false;
         }
     }
 }

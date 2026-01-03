@@ -7,6 +7,7 @@ using HDScheduler.API.Services;
 using HDScheduler.API.Data;
 using Backend.DTOs;
 using Dapper;
+using System.Security.Claims;
 
 namespace HDScheduler.API.Controllers;
 
@@ -17,6 +18,7 @@ public class HDScheduleController : ControllerBase
 {
     private readonly IHDScheduleRepository _scheduleRepository;
     private readonly IPatientRepository _patientRepository;
+    private readonly IPatientActivityRepository _activityRepository;
     private readonly EquipmentUsageService _equipmentUsageService;
     private readonly IRecurringSessionService _recurringSessionService;
     private readonly ILogger<HDScheduleController> _logger;
@@ -25,6 +27,7 @@ public class HDScheduleController : ControllerBase
     public HDScheduleController(
         IHDScheduleRepository scheduleRepository,
         IPatientRepository patientRepository,
+        IPatientActivityRepository activityRepository,
         EquipmentUsageService equipmentUsageService,
         IRecurringSessionService recurringSessionService,
         ILogger<HDScheduleController> logger,
@@ -32,6 +35,7 @@ public class HDScheduleController : ControllerBase
     {
         _scheduleRepository = scheduleRepository;
         _patientRepository = patientRepository;
+        _activityRepository = activityRepository;
         _equipmentUsageService = equipmentUsageService;
         _recurringSessionService = recurringSessionService;
         _logger = logger;
@@ -103,12 +107,14 @@ public class HDScheduleController : ControllerBase
 
     [HttpGet("slot/{slotId}")]
     [Authorize(Roles = "Admin,HOD,Doctor,Nurse,Technician")]
-    public async Task<ActionResult<ApiResponse<object>>> GetSlotSchedule(int slotId, [FromQuery] DateTime? date)
+    public async Task<ActionResult<ApiResponse<object>>> GetSlotSchedule(int slotId, [FromQuery] DateTime? date, [FromQuery] int? excludeScheduleId)
     {
         try
         {
             var targetDate = date ?? DateTime.Today;
             var schedules = await _scheduleRepository.GetBySlotAndDateAsync(slotId, targetDate);
+            
+            _logger.LogInformation($"GetSlotSchedule: Slot={slotId}, Date={targetDate:yyyy-MM-dd}, ExcludeScheduleId={excludeScheduleId}");
             
             // Get actual bed capacity from Slots table
             using var connection = _context.CreateConnection();
@@ -119,18 +125,53 @@ public class HDScheduleController : ControllerBase
             // Default to 10 if not found
             if (maxBeds == 0) maxBeds = 10;
             
+            _logger.LogInformation($"GetSlotSchedule for Slot {slotId}, Date {targetDate:yyyy-MM-dd}: Found {schedules.Count} schedules, MaxBeds={maxBeds}");
+            
             // Create bed availability map using actual capacity
             var beds = new List<object>();
             for (int bedNum = 1; bedNum <= maxBeds; bedNum++)
             {
-                var occupiedSchedule = schedules.FirstOrDefault(s => s.BedNumber == bedNum && !s.IsDischarged);
+                var occupiedSchedule = schedules.FirstOrDefault(s => 
+                    s.BedNumber == bedNum && 
+                    !s.IsDischarged && 
+                    !s.IsMovedToHistory &&
+                    (!excludeScheduleId.HasValue || s.ScheduleID != excludeScheduleId.Value)); // Exclude current session when editing
+                
+                string bedStatus = "available";
+                if (occupiedSchedule != null)
+                {
+                    // Determine status based on session date and discharge status
+                    if (occupiedSchedule.SessionDate.Date < DateTime.Today)
+                    {
+                        bedStatus = "completed"; // Past session
+                    }
+                    else if (occupiedSchedule.SessionDate.Date > DateTime.Today)
+                    {
+                        bedStatus = "pre-scheduled"; // Future session
+                    }
+                    else if (occupiedSchedule.SessionStatus == "Pre-Scheduled")
+                    {
+                        bedStatus = "pre-scheduled"; // Today but not yet activated
+                    }
+                    else
+                    {
+                        bedStatus = "occupied"; // Active session today
+                    }
+                    
+                    _logger.LogInformation($"  Bed {bedNum}: {bedStatus} - Patient: {occupiedSchedule.PatientName} (ScheduleID: {occupiedSchedule.ScheduleID})");
+                }
+                
                 beds.Add(new
                 {
                     bedNumber = bedNum,
-                    status = occupiedSchedule != null ? "occupied" : "available",
+                    status = bedStatus,
                     patient = occupiedSchedule != null ? new { name = occupiedSchedule.PatientName, id = occupiedSchedule.PatientID } : null
                 });
             }
+            
+            var occupiedCount = beds.Count(b => ((dynamic)b).status != "available");
+            var availableCount = beds.Count(b => ((dynamic)b).status == "available");
+            _logger.LogInformation($"GetSlotSchedule result: {occupiedCount} occupied/pre-scheduled, {availableCount} available");
             
             var result = new { beds, maxBeds };
             return Ok(ApiResponse<object>.SuccessResponse(result));
@@ -243,17 +284,24 @@ public class HDScheduleController : ControllerBase
                 return BadRequest(ApiResponse<int>.ErrorResponse($"Validation failed: {string.Join(", ", errors)}"));
             }
 
-            // Check if patient already has a session on this date
+            // TODO: Prevent duplicate patient scheduling - Check if patient already has a session on this date
             var existingSchedules = await _scheduleRepository.GetByPatientIdAsync(request.PatientID);
             var sessionOnSameDate = existingSchedules.FirstOrDefault(s => 
-                s.SessionDate.Date == request.SessionDate.Date && !s.IsDischarged);
+                s.SessionDate.Date == request.SessionDate.Date && 
+                !s.IsDischarged && 
+                !s.IsMovedToHistory);
             
             if (sessionOnSameDate != null)
             {
+                _logger.LogWarning("Duplicate session attempt: Patient {PatientID} already has session {ScheduleID} on {Date}",
+                    request.PatientID, sessionOnSameDate.ScheduleID, request.SessionDate.Date);
                 return BadRequest(ApiResponse<int>.ErrorResponse(
-                    $"Patient already has an HD session scheduled on {request.SessionDate:yyyy-MM-dd}. Each patient can only have ONE session per day."
+                    $"Patient already has an HD session scheduled on {request.SessionDate:yyyy-MM-dd}. Each patient can only have ONE session per day. Existing session ID: {sessionOnSameDate.ScheduleID}"
                 ));
             }
+            
+            _logger.LogInformation("Creating new HD session for Patient {PatientID} on {Date}, Slot {SlotID}, Bed {BedNumber}",
+                request.PatientID, request.SessionDate.Date, request.SlotID, request.BedNumber);
 
             var username = User.Identity?.Name ?? "System";
             var role = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value ?? "Unknown";
@@ -484,6 +532,27 @@ public class HDScheduleController : ControllerBase
             if (existingSchedule == null)
             {
                 return NotFound(ApiResponse<bool>.ErrorResponse("Schedule not found"));
+            }
+
+            // TODO: Prevent duplicate patient scheduling - Check if date is being changed
+            if (existingSchedule.SessionDate.Date != request.SessionDate.Date)
+            {
+                // Validate that patient doesn't already have a session on the new date
+                var patientSchedules = await _scheduleRepository.GetByPatientIdAsync(existingSchedule.PatientID);
+                var conflictingSession = patientSchedules.FirstOrDefault(s => 
+                    s.ScheduleID != id && // Exclude current session being updated
+                    s.SessionDate.Date == request.SessionDate.Date && 
+                    !s.IsDischarged && 
+                    !s.IsMovedToHistory);
+                
+                if (conflictingSession != null)
+                {
+                    _logger.LogWarning("Update failed: Patient {PatientID} already has session {ScheduleID} on {Date}",
+                        existingSchedule.PatientID, conflictingSession.ScheduleID, request.SessionDate.Date);
+                    return BadRequest(ApiResponse<bool>.ErrorResponse(
+                        $"Patient already has an HD session scheduled on {request.SessionDate:yyyy-MM-dd}. Each patient can only have ONE session per day. Existing session ID: {conflictingSession.ScheduleID}"
+                    ));
+                }
             }
 
             existingSchedule.SessionDate = request.SessionDate;
@@ -1194,6 +1263,400 @@ public class HDScheduleController : ControllerBase
         {
             _logger.LogError(ex, "Error changing bed for schedule {ScheduleId}", scheduleId);
             return StatusCode(500, ApiResponse<bool>.ErrorResponse("An error occurred while changing the bed assignment"));
+        }
+    }
+
+    // ==================== MISSED APPOINTMENT MANAGEMENT ====================
+
+    /// <summary>
+    /// Auto-detect possible no-shows (sessions that should have started but haven't been activated)
+    /// </summary>
+    [HttpGet("possible-no-shows")]
+    [Authorize(Roles = "Admin,HOD,Doctor,Nurse,Technician")]
+    public async Task<ActionResult<ApiResponse<List<PossibleNoShowDTO>>>> GetPossibleNoShows([FromQuery] int minutesThreshold = 60)
+    {
+        try
+        {
+            using var connection = _context.CreateConnection();
+            
+            var query = @"
+                SELECT 
+                    s.ScheduleID,
+                    s.PatientID,
+                    p.Name AS PatientName,
+                    s.SessionDate,
+                    s.SlotID,
+                    slot.SlotName,
+                    slot.StartTime AS SlotStartTime,
+                    DATEDIFF(MINUTE, 
+                        DATEADD(SECOND, DATEDIFF(SECOND, '00:00:00', slot.StartTime), 
+                            CAST(s.SessionDate AS DATETIME)), 
+                        GETDATE()) AS MinutesLate
+                FROM HDSchedule s
+                INNER JOIN Patients p ON s.PatientID = p.PatientID
+                LEFT JOIN Slots slot ON s.SlotID = slot.SlotID
+                WHERE CAST(s.SessionDate AS DATE) = CAST(GETDATE() AS DATE)
+                    AND s.SessionStatus = 'Pre-Scheduled'
+                    AND s.IsDischarged = 0
+                    AND s.IsMovedToHistory = 0
+                    AND ISNULL(s.IsMissed, 0) = 0
+                    AND slot.StartTime IS NOT NULL
+                    AND DATEDIFF(MINUTE, 
+                        DATEADD(SECOND, DATEDIFF(SECOND, '00:00:00', slot.StartTime), 
+                            CAST(s.SessionDate AS DATETIME)), 
+                        GETDATE()) > @MinutesThreshold
+                ORDER BY MinutesLate DESC";
+
+            var possibleNoShows = await connection.QueryAsync<PossibleNoShowDTO>(query, new { MinutesThreshold = minutesThreshold });
+            
+            foreach (var noShow in possibleNoShows)
+            {
+                noShow.IsAutoDetected = true;
+            }
+
+            return Ok(ApiResponse<List<PossibleNoShowDTO>>.SuccessResponse(possibleNoShows.ToList()));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error detecting possible no-shows");
+            return StatusCode(500, ApiResponse<List<PossibleNoShowDTO>>.ErrorResponse("An error occurred while detecting no-shows"));
+        }
+    }
+
+    /// <summary>
+    /// Update a session's time slot (for rescheduling late patients)
+    /// </summary>
+    [HttpPut("{scheduleId}/slot")]
+    [Authorize(Roles = "Admin,Doctor,Nurse")]
+    public async Task<ActionResult<ApiResponse<bool>>> UpdateSessionSlot(int scheduleId, [FromBody] UpdateSlotDTO request)
+    {
+        try
+        {
+            using var connection = _context.CreateConnection();
+            
+            // Check if schedule exists and can be rescheduled
+            var schedule = await connection.QueryFirstOrDefaultAsync<HDSchedule>(
+                "SELECT * FROM HDSchedule WHERE ScheduleID = @ScheduleID", 
+                new { ScheduleID = scheduleId });
+
+            if (schedule == null)
+            {
+                return NotFound(ApiResponse<bool>.ErrorResponse("Schedule not found"));
+            }
+
+            if (schedule.SessionStatus == "Completed" || schedule.IsDischarged == true)
+            {
+                return BadRequest(ApiResponse<bool>.ErrorResponse("Cannot reschedule completed or discharged sessions"));
+            }
+
+            // Verify the new slot exists
+            var slotExists = await connection.ExecuteScalarAsync<bool>(
+                "SELECT CASE WHEN EXISTS (SELECT 1 FROM Slots WHERE SlotID = @SlotID) THEN 1 ELSE 0 END",
+                new { SlotID = request.SlotId });
+
+            if (!slotExists)
+            {
+                return BadRequest(ApiResponse<bool>.ErrorResponse("Invalid slot ID"));
+            }
+
+            // Update the slot
+            var updated = await connection.ExecuteAsync(
+                "UPDATE HDSchedule SET SlotID = @SlotID WHERE ScheduleID = @ScheduleID",
+                new { SlotID = request.SlotId, ScheduleID = scheduleId });
+
+            if (updated > 0)
+            {
+                _logger.LogInformation($"Session {scheduleId} rescheduled to slot {request.SlotId}");
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "Session rescheduled successfully"));
+            }
+            else
+            {
+                return StatusCode(500, ApiResponse<bool>.ErrorResponse("Failed to update session slot"));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating session slot");
+            return StatusCode(500, ApiResponse<bool>.ErrorResponse("An error occurred while rescheduling the session"));
+        }
+    }
+
+    /// <summary>
+    /// Reschedule a session to a new date
+    /// </summary>
+    [HttpPut("{scheduleId}/reschedule")]
+    [Authorize(Roles = "Admin,Doctor,Nurse")]
+    public async Task<ActionResult<ApiResponse<bool>>> RescheduleSession(int scheduleId, [FromBody] RescheduleSessionDTO request)
+    {
+        try
+        {
+            using var connection = _context.CreateConnection();
+            
+            // Check if schedule exists and can be rescheduled
+            var schedule = await connection.QueryFirstOrDefaultAsync<HDSchedule>(
+                "SELECT * FROM HDSchedule WHERE ScheduleID = @ScheduleID", 
+                new { ScheduleID = scheduleId });
+
+            if (schedule == null)
+            {
+                return NotFound(ApiResponse<bool>.ErrorResponse("Schedule not found"));
+            }
+
+            if (schedule.SessionStatus == "Completed" || schedule.IsDischarged == true)
+            {
+                return BadRequest(ApiResponse<bool>.ErrorResponse("Cannot reschedule completed or discharged sessions"));
+            }
+
+            // Parse the new date
+            if (!DateTime.TryParse(request.NewDate, out DateTime newDate))
+            {
+                return BadRequest(ApiResponse<bool>.ErrorResponse("Invalid date format. Expected YYYY-MM-DD"));
+            }
+
+            // Update the session date
+            var updated = await connection.ExecuteAsync(
+                "UPDATE HDSchedule SET SessionDate = @NewDate, UpdatedAt = GETDATE() WHERE ScheduleID = @ScheduleID",
+                new { NewDate = newDate.Date, ScheduleID = scheduleId });
+
+            if (updated > 0)
+            {
+                _logger.LogInformation($"Session {scheduleId} rescheduled from {schedule.SessionDate:yyyy-MM-dd} to {newDate:yyyy-MM-dd}");
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "Session rescheduled successfully"));
+            }
+            else
+            {
+                return StatusCode(500, ApiResponse<bool>.ErrorResponse("Failed to update session date"));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error rescheduling session");
+            return StatusCode(500, ApiResponse<bool>.ErrorResponse("An error occurred while rescheduling the session"));
+        }
+    }
+
+    /// <summary>
+    /// Mark a session as missed (no-show)
+    /// </summary>
+    [HttpPost("mark-missed")]
+    [Authorize(Roles = "Admin,Doctor,Nurse")]
+    public async Task<ActionResult<ApiResponse<bool>>> MarkMissedAppointment([FromBody] MarkMissedAppointmentDTO request)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(ApiResponse<bool>.ErrorResponse("User not authenticated"));
+            }
+
+            using var connection = _context.CreateConnection();
+            
+            // Check if schedule exists and is eligible to be marked as missed
+            var schedule = await connection.QueryFirstOrDefaultAsync<HDSchedule>(
+                "SELECT * FROM HDSchedule WHERE ScheduleID = @ScheduleID", 
+                new { request.ScheduleID });
+
+            if (schedule == null)
+            {
+                return NotFound(ApiResponse<bool>.ErrorResponse("Schedule not found"));
+            }
+
+            if (schedule.SessionStatus == "Active" || schedule.SessionStatus == "Completed")
+            {
+                return BadRequest(ApiResponse<bool>.ErrorResponse("Cannot mark an active or completed session as missed"));
+            }
+
+            // Mark as missed
+            var updateQuery = @"
+                UPDATE HDSchedule
+                SET IsMissed = 1,
+                    MissedReason = @MissedReason,
+                    MissedNotes = @MissedNotes,
+                    MissedDateTime = GETDATE(),
+                    MissedMarkedByUserID = @UserId,
+                    SessionStatus = 'Missed',
+                    UpdatedAt = GETDATE()
+                WHERE ScheduleID = @ScheduleID";
+
+            await connection.ExecuteAsync(updateQuery, new
+            {
+                request.ScheduleID,
+                request.MissedReason,
+                request.MissedNotes,
+                UserId = userId
+            });
+
+            // Record the missed appointment in patient activity log
+            var activity = new PatientActivityLog
+            {
+                PatientID = schedule.PatientID,
+                ScheduleID = request.ScheduleID,
+                ActivityDate = schedule.SessionDate,
+                ActivityType = "MISSED",
+                Reason = request.MissedReason ?? "No-Show",
+                Details = request.MissedNotes ?? "Patient did not arrive for scheduled session",
+                RecordedBy = User.Identity?.Name ?? "System",
+                CreatedAt = DateTime.Now
+            };
+
+            try
+            {
+                await _activityRepository.CreateActivityAsync(activity);
+                _logger.LogInformation("Missed appointment recorded in patient activity log for PatientID {PatientID}", schedule.PatientID);
+            }
+            catch (Exception activityEx)
+            {
+                _logger.LogWarning(activityEx, "Failed to record missed appointment in activity log, but session was marked as missed");
+            }
+
+            _logger.LogInformation("Session {ScheduleID} marked as missed by user {UserId}. Reason: {Reason}", 
+                request.ScheduleID, userId, request.MissedReason);
+
+            return Ok(ApiResponse<bool>.SuccessResponse(true, "Appointment marked as missed successfully"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error marking appointment as missed");
+            return StatusCode(500, ApiResponse<bool>.ErrorResponse("An error occurred while marking the appointment as missed"));
+        }
+    }
+
+    /// <summary>
+    /// Get all missed appointments for a patient
+    /// </summary>
+    [HttpGet("patient/{patientId}/missed-appointments")]
+    [Authorize(Roles = "Admin,HOD,Doctor,Nurse,Technician")]
+    public async Task<ActionResult<ApiResponse<List<MissedAppointmentDetailsDTO>>>> GetPatientMissedAppointments(int patientId)
+    {
+        try
+        {
+            using var connection = _context.CreateConnection();
+            
+            var query = @"
+                SELECT 
+                    s.ScheduleID,
+                    s.PatientID,
+                    p.Name AS PatientName,
+                    s.SessionDate,
+                    s.SlotID,
+                    slot.SlotName,
+                    s.IsMissed,
+                    s.MissedReason,
+                    s.MissedNotes,
+                    s.MissedDateTime,
+                    u.Username AS MissedMarkedBy,
+                    CASE WHEN s.MissedResolvedDateTime IS NOT NULL THEN 1 ELSE 0 END AS IsResolved,
+                    s.MissedResolvedDateTime,
+                    s.MissedResolutionNotes
+                FROM HDSchedule s
+                INNER JOIN Patients p ON s.PatientID = p.PatientID
+                LEFT JOIN Slots slot ON s.SlotID = slot.SlotID
+                LEFT JOIN Users u ON s.MissedMarkedByUserID = u.UserID
+                WHERE s.PatientID = @PatientId 
+                    AND s.IsMissed = 1
+                ORDER BY s.SessionDate DESC";
+
+            var missedAppointments = await connection.QueryAsync<MissedAppointmentDetailsDTO>(query, new { PatientId = patientId });
+
+            return Ok(ApiResponse<List<MissedAppointmentDetailsDTO>>.SuccessResponse(missedAppointments.ToList()));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving missed appointments for patient {PatientId}", patientId);
+            return StatusCode(500, ApiResponse<List<MissedAppointmentDetailsDTO>>.ErrorResponse("An error occurred while retrieving missed appointments"));
+        }
+    }
+
+    /// <summary>
+    /// Resolve a missed appointment (allow patient to schedule again)
+    /// </summary>
+    [HttpPost("resolve-missed")]
+    [Authorize(Roles = "Admin,Doctor")]
+    public async Task<ActionResult<ApiResponse<bool>>> ResolveMissedAppointment([FromBody] ResolveMissedAppointmentDTO request)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(ApiResponse<bool>.ErrorResponse("User not authenticated"));
+            }
+
+            using var connection = _context.CreateConnection();
+            
+            var updateQuery = @"
+                UPDATE HDSchedule
+                SET MissedResolvedDateTime = GETDATE(),
+                    MissedResolvedByUserID = @UserId,
+                    MissedResolutionNotes = @ResolutionNotes,
+                    UpdatedAt = GETDATE()
+                WHERE ScheduleID = @ScheduleID AND IsMissed = 1";
+
+            var rowsAffected = await connection.ExecuteAsync(updateQuery, new
+            {
+                request.ScheduleID,
+                request.ResolutionNotes,
+                UserId = userId
+            });
+
+            if (rowsAffected == 0)
+            {
+                return NotFound(ApiResponse<bool>.ErrorResponse("Missed appointment not found or already resolved"));
+            }
+
+            _logger.LogInformation("Missed appointment {ScheduleID} resolved by user {UserId}", request.ScheduleID, userId);
+
+            return Ok(ApiResponse<bool>.SuccessResponse(true, "Missed appointment resolved successfully"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resolving missed appointment");
+            return StatusCode(500, ApiResponse<bool>.ErrorResponse("An error occurred while resolving the missed appointment"));
+        }
+    }
+
+    /// <summary>
+    /// Get all unresolved missed appointments (blocking scheduling)
+    /// </summary>
+    [HttpGet("patient/{patientId}/unresolved-missed")]
+    [Authorize(Roles = "Admin,HOD,Doctor,Nurse")]
+    public async Task<ActionResult<ApiResponse<List<MissedAppointmentDetailsDTO>>>> GetUnresolvedMissedAppointments(int patientId)
+    {
+        try
+        {
+            using var connection = _context.CreateConnection();
+            
+            var query = @"
+                SELECT 
+                    s.ScheduleID,
+                    s.PatientID,
+                    p.Name AS PatientName,
+                    s.SessionDate,
+                    s.SlotID,
+                    slot.SlotName,
+                    s.IsMissed,
+                    s.MissedReason,
+                    s.MissedNotes,
+                    s.MissedDateTime,
+                    u.Username AS MissedMarkedBy
+                FROM HDSchedule s
+                INNER JOIN Patients p ON s.PatientID = p.PatientID
+                LEFT JOIN Slots slot ON s.SlotID = slot.SlotID
+                LEFT JOIN Users u ON s.MissedMarkedByUserID = u.UserID
+                WHERE s.PatientID = @PatientId 
+                    AND s.IsMissed = 1
+                    AND s.MissedResolvedDateTime IS NULL
+                ORDER BY s.SessionDate DESC";
+
+            var unresolvedMissed = await connection.QueryAsync<MissedAppointmentDetailsDTO>(query, new { PatientId = patientId });
+
+            return Ok(ApiResponse<List<MissedAppointmentDetailsDTO>>.SuccessResponse(unresolvedMissed.ToList()));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving unresolved missed appointments for patient {PatientId}", patientId);
+            return StatusCode(500, ApiResponse<List<MissedAppointmentDetailsDTO>>.ErrorResponse("An error occurred while retrieving unresolved missed appointments"));
         }
     }
 }

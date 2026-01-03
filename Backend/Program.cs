@@ -108,6 +108,7 @@ builder.Services.AddScoped<IHDLogRepository, HDLogRepository>();
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 builder.Services.AddScoped<IStaffRepository, StaffRepository>();
 builder.Services.AddScoped<IPatientHistoryRepository, PatientHistoryRepository>();
+builder.Services.AddScoped<IPatientActivityRepository, PatientActivityRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<EquipmentUsageService>();
 builder.Services.AddScoped<IRecurringSessionService, RecurringSessionService>();

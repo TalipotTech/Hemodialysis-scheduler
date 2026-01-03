@@ -605,37 +605,65 @@ public class ScheduleController : ControllerBase
             var startOfYear = new DateTime(referenceDate.Year, 1, 1);
             var endOfYear = startOfYear.AddYears(1);
 
-            // Day Statistics
+            // Day Statistics - Only count patients who actually did/are doing dialysis
             var daySchedules = allSchedules.Where(s => 
                 s.SessionDate >= startOfDay && s.SessionDate < endOfDay).ToList();
-            var dayActive = daySchedules.Count(s => !s.IsDischarged && !s.IsMovedToHistory);
-            var dayDischarged = daySchedules.Count(s => s.IsDischarged || s.IsMovedToHistory);
-            var dayTotal = daySchedules.Count;
-            var dayUniquePatients = daySchedules.Select(s => s.PatientID).Distinct().Count();
+            
+            // Only count Active + Completed (actual dialysis cases, exclude pre-scheduled)
+            var dayActualCases = daySchedules.Where(s => 
+                s.SessionStatus == "Active" || 
+                s.SessionStatus == "Completed").ToList();
+            
+            var dayActive = dayActualCases.Count(s => s.SessionStatus == "Active");
+            var dayCompleted = dayActualCases.Count(s => s.SessionStatus == "Completed");
+            var dayDischarged = daySchedules.Count(s => s.IsMovedToHistory == true); // Final discharge only
+            var dayTotal = dayActive + dayCompleted; // Only actual dialysis cases
+            var dayUniquePatients = dayActualCases.Select(s => s.PatientID).Distinct().Count();
 
-            // Week Statistics
+            // Week Statistics - Only count patients who actually did/are doing dialysis
             var weekSchedules = allSchedules.Where(s => 
                 s.SessionDate >= startOfWeek && s.SessionDate < endOfWeek).ToList();
-            var weekActive = weekSchedules.Count(s => !s.IsDischarged && !s.IsMovedToHistory);
-            var weekDischarged = weekSchedules.Count(s => s.IsDischarged || s.IsMovedToHistory);
-            var weekTotal = weekSchedules.Count;
-            var weekUniquePatients = weekSchedules.Select(s => s.PatientID).Distinct().Count();
+            
+            // Only count Active + Completed (actual dialysis cases, exclude pre-scheduled)
+            var weekActualCases = weekSchedules.Where(s => 
+                s.SessionStatus == "Active" || 
+                s.SessionStatus == "Completed").ToList();
+            
+            var weekActive = weekActualCases.Count(s => s.SessionStatus == "Active");
+            var weekCompleted = weekActualCases.Count(s => s.SessionStatus == "Completed");
+            var weekDischarged = weekSchedules.Count(s => s.IsMovedToHistory == true); // Final discharge only
+            var weekTotal = weekActive + weekCompleted; // Only actual dialysis cases
+            var weekUniquePatients = weekActualCases.Select(s => s.PatientID).Distinct().Count();
 
-            // Month Statistics
+            // Month Statistics - Only count patients who actually did/are doing dialysis
             var monthSchedules = allSchedules.Where(s => 
                 s.SessionDate >= startOfMonth && s.SessionDate < endOfMonth).ToList();
-            var monthActive = monthSchedules.Count(s => !s.IsDischarged && !s.IsMovedToHistory);
-            var monthDischarged = monthSchedules.Count(s => s.IsDischarged || s.IsMovedToHistory);
-            var monthTotal = monthSchedules.Count;
-            var monthUniquePatients = monthSchedules.Select(s => s.PatientID).Distinct().Count();
+            
+            // Only count Active + Completed (actual dialysis cases, exclude pre-scheduled)
+            var monthActualCases = monthSchedules.Where(s => 
+                s.SessionStatus == "Active" || 
+                s.SessionStatus == "Completed").ToList();
+            
+            var monthActive = monthActualCases.Count(s => s.SessionStatus == "Active");
+            var monthCompleted = monthActualCases.Count(s => s.SessionStatus == "Completed");
+            var monthDischarged = monthSchedules.Count(s => s.IsMovedToHistory == true); // Final discharge only
+            var monthTotal = monthActive + monthCompleted; // Only actual dialysis cases
+            var monthUniquePatients = monthActualCases.Select(s => s.PatientID).Distinct().Count();
 
-            // Year Statistics
+            // Year Statistics - Only count patients who actually did/are doing dialysis
             var yearSchedules = allSchedules.Where(s => 
                 s.SessionDate >= startOfYear && s.SessionDate < endOfYear).ToList();
-            var yearActive = yearSchedules.Count(s => !s.IsDischarged && !s.IsMovedToHistory);
-            var yearDischarged = yearSchedules.Count(s => s.IsDischarged || s.IsMovedToHistory);
-            var yearTotal = yearSchedules.Count;
-            var yearUniquePatients = yearSchedules.Select(s => s.PatientID).Distinct().Count();
+            
+            // Only count Active + Completed (actual dialysis cases, exclude pre-scheduled)
+            var yearActualCases = yearSchedules.Where(s => 
+                s.SessionStatus == "Active" || 
+                s.SessionStatus == "Completed").ToList();
+            
+            var yearActive = yearActualCases.Count(s => s.SessionStatus == "Active");
+            var yearCompleted = yearActualCases.Count(s => s.SessionStatus == "Completed");
+            var yearDischarged = yearSchedules.Count(s => s.IsMovedToHistory == true); // Final discharge only
+            var yearTotal = yearActive + yearCompleted; // Only actual dialysis cases
+            var yearUniquePatients = yearActualCases.Select(s => s.PatientID).Distinct().Count();
 
             var statistics = new
             {
@@ -647,6 +675,7 @@ public class ScheduleController : ControllerBase
                     date = referenceDate.ToString("yyyy-MM-dd"),
                     dayOfWeek = referenceDate.DayOfWeek.ToString(),
                     active = dayActive,
+                    completed = dayCompleted,
                     discharged = dayDischarged,
                     total = dayTotal,
                     uniquePatients = dayUniquePatients,
@@ -659,6 +688,7 @@ public class ScheduleController : ControllerBase
                     endDate = endOfWeek.AddDays(-1).ToString("yyyy-MM-dd"),
                     weekNumber = System.Globalization.ISOWeek.GetWeekOfYear(referenceDate),
                     active = weekActive,
+                    completed = weekCompleted,
                     discharged = weekDischarged,
                     total = weekTotal,
                     uniquePatients = weekUniquePatients,
@@ -672,6 +702,7 @@ public class ScheduleController : ControllerBase
                     startDate = startOfMonth.ToString("yyyy-MM-dd"),
                     endDate = endOfMonth.AddDays(-1).ToString("yyyy-MM-dd"),
                     active = monthActive,
+                    completed = monthCompleted,
                     discharged = monthDischarged,
                     total = monthTotal,
                     uniquePatients = monthUniquePatients,
@@ -685,6 +716,7 @@ public class ScheduleController : ControllerBase
                     startDate = startOfYear.ToString("yyyy-MM-dd"),
                     endDate = endOfYear.AddDays(-1).ToString("yyyy-MM-dd"),
                     active = yearActive,
+                    completed = yearCompleted,
                     discharged = yearDischarged,
                     total = yearTotal,
                     uniquePatients = yearUniquePatients,

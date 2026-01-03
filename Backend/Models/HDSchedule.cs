@@ -83,6 +83,16 @@ public class HDSchedule
     public DateTime? TreatmentCompletionTime { get; set; } // When treatment duration elapsed
     public DateTime? DischargeTime { get; set; } // When patient was actually discharged
     
+    // Missed Appointment Tracking
+    public bool IsMissed { get; set; } = false;
+    public string? MissedReason { get; set; } // Sick, Emergency, Transportation, Unknown, Other
+    public string? MissedNotes { get; set; }
+    public DateTime? MissedDateTime { get; set; }
+    public int? MissedMarkedByUserID { get; set; }
+    public DateTime? MissedResolvedDateTime { get; set; }
+    public int? MissedResolvedByUserID { get; set; }
+    public string? MissedResolutionNotes { get; set; }
+    
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     

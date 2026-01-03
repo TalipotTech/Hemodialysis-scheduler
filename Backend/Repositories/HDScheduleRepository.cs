@@ -325,13 +325,16 @@ public class HDScheduleRepository : IHDScheduleRepository
         // Mark schedule as discharged
         var updateScheduleQuery = @"
             UPDATE HDSchedule SET 
-                IsDischarged = 1, 
+                IsDischarged = 1,
+                SessionStatus = 'Completed',
                 UpdatedAt = GETUTCDATE() 
             WHERE ScheduleID = @ScheduleID";
         
         var affected = await connection.ExecuteAsync(updateScheduleQuery, new { ScheduleID = scheduleId });
         
         // AUTO-INCREMENT: Update equipment counters and total dialysis count
+        // NOTE: Patient stays active (IsActive = 1) - they can continue dialysis tomorrow
+        // Only when admin explicitly discharges patient should IsActive = 0
         if (affected > 0 && patientId.HasValue)
         {
             var incrementCountersQuery = @"

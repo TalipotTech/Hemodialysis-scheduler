@@ -39,8 +39,8 @@ public static class DatabaseInitializer
         // Check if ScheduleID column exists in HDLogs
         var columnExists = connection.ExecuteScalar<int>(@"
             SELECT COUNT(*) 
-            FROM pragma_table_info('HDLogs') 
-            WHERE name='ScheduleID'
+            FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_NAME = 'HDLogs' AND COLUMN_NAME = 'ScheduleID'
         ");
         
         if (columnExists == 0)
@@ -50,52 +50,51 @@ public static class DatabaseInitializer
             try
             {
                 // Add ScheduleID to HDLogs
-                connection.Execute("ALTER TABLE HDLogs ADD COLUMN ScheduleID INTEGER");
-                connection.Execute("CREATE INDEX IF NOT EXISTS idx_hdlogs_scheduleid ON HDLogs(ScheduleID)");
+                connection.Execute("ALTER TABLE HDLogs ADD ScheduleID INT NULL");
+                connection.Execute("IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_hdlogs_scheduleid') CREATE INDEX idx_hdlogs_scheduleid ON HDLogs(ScheduleID)");
                 
                 // Update existing records
                 connection.Execute(@"
-                    UPDATE HDLogs
-                    SET ScheduleID = (
-                        SELECT h.ScheduleID 
-                        FROM HDSchedule h 
-                        WHERE h.PatientID = HDLogs.PatientID 
-                        AND DATE(h.SessionDate) = DATE(HDLogs.SessionDate)
-                        LIMIT 1
-                    )
-                    WHERE ScheduleID IS NULL
+                    UPDATE l
+                    SET l.ScheduleID = h.ScheduleID
+                    FROM HDLogs l
+                    INNER JOIN (
+                        SELECT DISTINCT ScheduleID, PatientID, CAST(SessionDate AS DATE) AS SessionDate
+                        FROM HDSchedule
+                    ) h ON h.PatientID = l.PatientID AND CAST(h.SessionDate AS DATE) = CAST(l.SessionDate AS DATE)
+                    WHERE l.ScheduleID IS NULL
                 ");
                 
                 // Add ScheduleID to IntraDialyticRecords
-                connection.Execute("ALTER TABLE IntraDialyticRecords ADD COLUMN ScheduleID INTEGER");
-                connection.Execute("CREATE INDEX IF NOT EXISTS idx_intradialytic_scheduleid ON IntraDialyticRecords(ScheduleID)");
+                connection.Execute("ALTER TABLE IntraDialyticRecords ADD ScheduleID INT NULL");
+                connection.Execute("IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_intradialytic_scheduleid') CREATE INDEX idx_intradialytic_scheduleid ON IntraDialyticRecords(ScheduleID)");
                 
                 connection.Execute(@"
-                    UPDATE IntraDialyticRecords
-                    SET ScheduleID = (
-                        SELECT h.ScheduleID 
-                        FROM HDSchedule h 
-                        WHERE h.PatientID = IntraDialyticRecords.PatientID 
-                        AND DATE(h.SessionDate) = DATE(IntraDialyticRecords.SessionDate)
-                        LIMIT 1
+                    UPDATE i
+                    SET i.ScheduleID = h.ScheduleID
+                    FROM IntraDialyticRecords i
+                    INNER JOIN (
+                        SELECT DISTINCT ScheduleID, PatientID, CAST(SessionDate AS DATE) AS SessionDate
+                        FROM HDSchedule
+                    ) h ON h.PatientID = i.PatientID AND CAST(h.SessionDate AS DATE) = CAST(i.SessionDate AS DATE)
+                    WHERE i.ScheduleID IS NULL
                     )
-                    WHERE ScheduleID IS NULL
+                    WHERE m.ScheduleID IS NULL
                 ");
                 
                 // Add ScheduleID to PostDialysisMedications
-                connection.Execute("ALTER TABLE PostDialysisMedications ADD COLUMN ScheduleID INTEGER");
-                connection.Execute("CREATE INDEX IF NOT EXISTS idx_medications_scheduleid ON PostDialysisMedications(ScheduleID)");
+                connection.Execute("ALTER TABLE PostDialysisMedications ADD ScheduleID INT NULL");
+                connection.Execute("IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'idx_medications_scheduleid') CREATE INDEX idx_medications_scheduleid ON PostDialysisMedications(ScheduleID)");
                 
                 connection.Execute(@"
-                    UPDATE PostDialysisMedications
-                    SET ScheduleID = (
-                        SELECT h.ScheduleID 
-                        FROM HDSchedule h 
-                        WHERE h.PatientID = PostDialysisMedications.PatientID 
-                        AND DATE(h.SessionDate) = DATE(PostDialysisMedications.SessionDate)
-                        LIMIT 1
-                    )
-                    WHERE ScheduleID IS NULL
+                    UPDATE m
+                    SET m.ScheduleID = h.ScheduleID
+                    FROM PostDialysisMedications m
+                    INNER JOIN (
+                        SELECT DISTINCT ScheduleID, PatientID, CAST(SessionDate AS DATE) AS SessionDate
+                        FROM HDSchedule
+                    ) h ON h.PatientID = m.PatientID AND CAST(h.SessionDate AS DATE) = CAST(m.SessionDate AS DATE)
+                    WHERE m.ScheduleID IS NULL
                 ");
                 
                 Console.WriteLine("✓ Migration completed successfully!");
@@ -109,8 +108,8 @@ public static class DatabaseInitializer
         // Check if DialyserModel column exists in HDSchedule (indicates new monitoring fields migration)
         var dialyserModelExists = connection.ExecuteScalar<int>(@"
             SELECT COUNT(*) 
-            FROM pragma_table_info('HDSchedule') 
-            WHERE name='DialyserModel'
+            FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_NAME = 'HDSchedule' AND COLUMN_NAME = 'DialyserModel'
         ");
         
         if (dialyserModelExists == 0)
@@ -122,34 +121,34 @@ public static class DatabaseInitializer
                 // Add all new monitoring columns
                 var alterStatements = new[]
                 {
-                    "ALTER TABLE HDSchedule ADD COLUMN DialyserModel TEXT",
-                    "ALTER TABLE HDSchedule ADD COLUMN AccessLocation TEXT",
-                    "ALTER TABLE HDSchedule ADD COLUMN StartTime TEXT",
-                    "ALTER TABLE HDSchedule ADD COLUMN PreWeight REAL",
-                    "ALTER TABLE HDSchedule ADD COLUMN PreBPSitting TEXT",
-                    "ALTER TABLE HDSchedule ADD COLUMN PreTemperature REAL",
-                    "ALTER TABLE HDSchedule ADD COLUMN AccessBleedingTime TEXT",
-                    "ALTER TABLE HDSchedule ADD COLUMN AccessStatus TEXT",
-                    "ALTER TABLE HDSchedule ADD COLUMN Complications TEXT",
-                    "ALTER TABLE HDSchedule ADD COLUMN MonitoringTime TEXT",
-                    "ALTER TABLE HDSchedule ADD COLUMN HeartRate INTEGER",
-                    "ALTER TABLE HDSchedule ADD COLUMN ActualBFR INTEGER",
-                    "ALTER TABLE HDSchedule ADD COLUMN VenousPressure INTEGER",
-                    "ALTER TABLE HDSchedule ADD COLUMN ArterialPressure INTEGER",
-                    "ALTER TABLE HDSchedule ADD COLUMN CurrentUFR REAL",
-                    "ALTER TABLE HDSchedule ADD COLUMN TotalUFAchieved REAL",
-                    "ALTER TABLE HDSchedule ADD COLUMN TmpPressure INTEGER",
-                    "ALTER TABLE HDSchedule ADD COLUMN Interventions TEXT",
-                    "ALTER TABLE HDSchedule ADD COLUMN StaffInitials TEXT",
-                    "ALTER TABLE HDSchedule ADD COLUMN MedicationType TEXT",
-                    "ALTER TABLE HDSchedule ADD COLUMN MedicationName TEXT",
-                    "ALTER TABLE HDSchedule ADD COLUMN Dose TEXT",
-                    "ALTER TABLE HDSchedule ADD COLUMN Route TEXT",
-                    "ALTER TABLE HDSchedule ADD COLUMN AdministeredAt TEXT",
-                    "ALTER TABLE HDSchedule ADD COLUMN AlertType TEXT",
-                    "ALTER TABLE HDSchedule ADD COLUMN AlertMessage TEXT",
-                    "ALTER TABLE HDSchedule ADD COLUMN Severity TEXT",
-                    "ALTER TABLE HDSchedule ADD COLUMN Resolution TEXT"
+                    "ALTER TABLE HDSchedule ADD DialyserModel NVARCHAR(100)",
+                    "ALTER TABLE HDSchedule ADD AccessLocation NVARCHAR(100)",
+                    "ALTER TABLE HDSchedule ADD StartTime NVARCHAR(20)",
+                    "ALTER TABLE HDSchedule ADD PreWeight FLOAT",
+                    "ALTER TABLE HDSchedule ADD PreBPSitting NVARCHAR(20)",
+                    "ALTER TABLE HDSchedule ADD PreTemperature FLOAT",
+                    "ALTER TABLE HDSchedule ADD AccessBleedingTime NVARCHAR(20)",
+                    "ALTER TABLE HDSchedule ADD AccessStatus NVARCHAR(100)",
+                    "ALTER TABLE HDSchedule ADD Complications NVARCHAR(MAX)",
+                    "ALTER TABLE HDSchedule ADD MonitoringTime NVARCHAR(20)",
+                    "ALTER TABLE HDSchedule ADD HeartRate INT",
+                    "ALTER TABLE HDSchedule ADD ActualBFR INT",
+                    "ALTER TABLE HDSchedule ADD VenousPressure INT",
+                    "ALTER TABLE HDSchedule ADD ArterialPressure INT",
+                    "ALTER TABLE HDSchedule ADD CurrentUFR FLOAT",
+                    "ALTER TABLE HDSchedule ADD TotalUFAchieved FLOAT",
+                    "ALTER TABLE HDSchedule ADD TmpPressure INT",
+                    "ALTER TABLE HDSchedule ADD Interventions NVARCHAR(MAX)",
+                    "ALTER TABLE HDSchedule ADD StaffInitials NVARCHAR(50)",
+                    "ALTER TABLE HDSchedule ADD MedicationType NVARCHAR(100)",
+                    "ALTER TABLE HDSchedule ADD MedicationName NVARCHAR(100)",
+                    "ALTER TABLE HDSchedule ADD Dose NVARCHAR(50)",
+                    "ALTER TABLE HDSchedule ADD Route NVARCHAR(50)",
+                    "ALTER TABLE HDSchedule ADD AdministeredAt NVARCHAR(50)",
+                    "ALTER TABLE HDSchedule ADD AlertType NVARCHAR(100)",
+                    "ALTER TABLE HDSchedule ADD AlertMessage NVARCHAR(MAX)",
+                    "ALTER TABLE HDSchedule ADD Severity NVARCHAR(50)",
+                    "ALTER TABLE HDSchedule ADD Resolution NVARCHAR(MAX)"
                 };
                 
                 foreach (var sql in alterStatements)
@@ -184,15 +183,15 @@ public static class DatabaseInitializer
             
             var extendedMonitoringColumns = new[]
             {
-                "ALTER TABLE IntraDialyticRecords ADD COLUMN ArterialPressure INTEGER;",
-                "ALTER TABLE IntraDialyticRecords ADD COLUMN BloodFlowRate INTEGER;",
-                "ALTER TABLE IntraDialyticRecords ADD COLUMN DialysateFlowRate INTEGER;",
-                "ALTER TABLE IntraDialyticRecords ADD COLUMN CurrentUFR REAL;",
-                "ALTER TABLE IntraDialyticRecords ADD COLUMN TMPPressure INTEGER;",
-                "ALTER TABLE IntraDialyticRecords ADD COLUMN Symptoms TEXT;",
-                "ALTER TABLE IntraDialyticRecords ADD COLUMN Interventions TEXT;",
-                "ALTER TABLE IntraDialyticRecords ADD COLUMN StaffInitials TEXT;",
-                "ALTER TABLE IntraDialyticRecords ADD COLUMN RecordedBy INTEGER;"
+                "ALTER TABLE IntraDialyticRecords ADD ArterialPressure INT;",
+                "ALTER TABLE IntraDialyticRecords ADD BloodFlowRate INT;",
+                "ALTER TABLE IntraDialyticRecords ADD DialysateFlowRate INT;",
+                "ALTER TABLE IntraDialyticRecords ADD CurrentUFR FLOAT;",
+                "ALTER TABLE IntraDialyticRecords ADD TMPPressure INT;",
+                "ALTER TABLE IntraDialyticRecords ADD Symptoms NVARCHAR(MAX);",
+                "ALTER TABLE IntraDialyticRecords ADD Interventions NVARCHAR(MAX);",
+                "ALTER TABLE IntraDialyticRecords ADD StaffInitials NVARCHAR(50);",
+                "ALTER TABLE IntraDialyticRecords ADD RecordedBy INT;"
             };
             
             foreach (var sql in extendedMonitoringColumns)
@@ -222,8 +221,8 @@ public static class DatabaseInitializer
         // Check if EquipmentUsageAlerts table exists
         var equipmentAlertsTableExists = connection.ExecuteScalar<int>(@"
             SELECT COUNT(*) 
-            FROM sqlite_master 
-            WHERE type='table' AND name='EquipmentUsageAlerts'
+            FROM INFORMATION_SCHEMA.TABLES 
+            WHERE TABLE_NAME = 'EquipmentUsageAlerts'
         ");
         
         if (equipmentAlertsTableExists == 0)
@@ -269,8 +268,8 @@ public static class DatabaseInitializer
         // Check if PostWeight column exists in HDSchedule (Post-Dialysis Vital Signs)
         var postWeightExists = connection.ExecuteScalar<int>(@"
             SELECT COUNT(*) 
-            FROM pragma_table_info('HDSchedule') 
-            WHERE name='PostWeight'
+            FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_NAME = 'HDSchedule' AND COLUMN_NAME = 'PostWeight'
         ");
         
         if (postWeightExists == 0)
@@ -281,13 +280,13 @@ public static class DatabaseInitializer
             {
                 var alterStatements = new[]
                 {
-                    "ALTER TABLE HDSchedule ADD COLUMN PostWeight REAL",
-                    "ALTER TABLE HDSchedule ADD COLUMN PostSBP INTEGER",
-                    "ALTER TABLE HDSchedule ADD COLUMN PostDBP INTEGER",
-                    "ALTER TABLE HDSchedule ADD COLUMN PostHR INTEGER",
-                    "ALTER TABLE HDSchedule ADD COLUMN PostAccessStatus TEXT",
-                    "ALTER TABLE HDSchedule ADD COLUMN TotalFluidRemoved REAL",
-                    "ALTER TABLE HDSchedule ADD COLUMN Notes TEXT"
+                    "ALTER TABLE HDSchedule ADD PostWeight FLOAT",
+                    "ALTER TABLE HDSchedule ADD PostSBP INT",
+                    "ALTER TABLE HDSchedule ADD PostDBP INT",
+                    "ALTER TABLE HDSchedule ADD PostHR INT",
+                    "ALTER TABLE HDSchedule ADD PostAccessStatus NVARCHAR(100)",
+                    "ALTER TABLE HDSchedule ADD TotalFluidRemoved FLOAT",
+                    "ALTER TABLE HDSchedule ADD Notes NVARCHAR(MAX)"
                 };
                 
                 foreach (var sql in alterStatements)
@@ -318,8 +317,8 @@ public static class DatabaseInitializer
         // Check if TreatmentStartTime column exists in HDSchedule (Treatment Timing for Hybrid Discharge)
         var treatmentStartTimeExists = connection.ExecuteScalar<int>(@"
             SELECT COUNT(*) 
-            FROM pragma_table_info('HDSchedule') 
-            WHERE name='TreatmentStartTime'
+            FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_NAME = 'HDSchedule' AND COLUMN_NAME = 'TreatmentStartTime'
         ");
         
         if (treatmentStartTimeExists == 0)
@@ -330,9 +329,9 @@ public static class DatabaseInitializer
             {
                 var alterStatements = new[]
                 {
-                    "ALTER TABLE HDSchedule ADD COLUMN TreatmentStartTime TEXT",
-                    "ALTER TABLE HDSchedule ADD COLUMN TreatmentCompletionTime TEXT",
-                    "ALTER TABLE HDSchedule ADD COLUMN DischargeTime TEXT"
+                    "ALTER TABLE HDSchedule ADD TreatmentStartTime NVARCHAR(50)",
+                    "ALTER TABLE HDSchedule ADD TreatmentCompletionTime NVARCHAR(50)",
+                    "ALTER TABLE HDSchedule ADD DischargeTime NVARCHAR(50)"
                 };
                 
                 foreach (var sql in alterStatements)
@@ -354,7 +353,7 @@ public static class DatabaseInitializer
                 // Update existing active sessions to set TreatmentStartTime if they have a StartTime
                 connection.Execute(@"
                     UPDATE HDSchedule 
-                    SET TreatmentStartTime = datetime('now')
+                    SET TreatmentStartTime = GETDATE()
                     WHERE SessionStatus = 'Active' 
                       AND TreatmentStartTime IS NULL
                       AND StartTime IS NOT NULL");
@@ -372,8 +371,8 @@ public static class DatabaseInitializer
         // Check if ArterialPressure column exists in IntraDialyticRecords (Detailed Monitoring)
         var arterialPressureExists = connection.ExecuteScalar<int>(@"
             SELECT COUNT(*) 
-            FROM pragma_table_info('IntraDialyticRecords') 
-            WHERE name='ArterialPressure'
+            FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_NAME = 'IntraDialyticRecords' AND COLUMN_NAME = 'ArterialPressure'
         ");
         
         if (arterialPressureExists == 0)
@@ -384,15 +383,15 @@ public static class DatabaseInitializer
             {
                 var alterStatements = new[]
                 {
-                    "ALTER TABLE IntraDialyticRecords ADD COLUMN ArterialPressure INTEGER",
-                    "ALTER TABLE IntraDialyticRecords ADD COLUMN BloodFlowRate INTEGER",
-                    "ALTER TABLE IntraDialyticRecords ADD COLUMN DialysateFlowRate INTEGER",
-                    "ALTER TABLE IntraDialyticRecords ADD COLUMN CurrentUFR REAL",
-                    "ALTER TABLE IntraDialyticRecords ADD COLUMN TMPPressure INTEGER",
-                    "ALTER TABLE IntraDialyticRecords ADD COLUMN Symptoms TEXT",
-                    "ALTER TABLE IntraDialyticRecords ADD COLUMN Interventions TEXT",
-                    "ALTER TABLE IntraDialyticRecords ADD COLUMN StaffInitials TEXT",
-                    "ALTER TABLE IntraDialyticRecords ADD COLUMN RecordedBy TEXT"
+                    "ALTER TABLE IntraDialyticRecords ADD ArterialPressure INT",
+                    "ALTER TABLE IntraDialyticRecords ADD BloodFlowRate INT",
+                    "ALTER TABLE IntraDialyticRecords ADD DialysateFlowRate INT",
+                    "ALTER TABLE IntraDialyticRecords ADD CurrentUFR FLOAT",
+                    "ALTER TABLE IntraDialyticRecords ADD TMPPressure INT",
+                    "ALTER TABLE IntraDialyticRecords ADD Symptoms NVARCHAR(MAX)",
+                    "ALTER TABLE IntraDialyticRecords ADD Interventions NVARCHAR(MAX)",
+                    "ALTER TABLE IntraDialyticRecords ADD StaffInitials NVARCHAR(50)",
+                    "ALTER TABLE IntraDialyticRecords ADD RecordedBy NVARCHAR(50)"
                 };
                 
                 foreach (var sql in alterStatements)
@@ -423,8 +422,8 @@ public static class DatabaseInitializer
         // Check if SessionStatus column exists in HDSchedule (Recurring Sessions Support)
         var sessionStatusExists = connection.ExecuteScalar<int>(@"
             SELECT COUNT(*) 
-            FROM pragma_table_info('HDSchedule') 
-            WHERE name='SessionStatus'
+            FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_NAME = 'HDSchedule' AND COLUMN_NAME = 'SessionStatus'
         ");
         
         if (sessionStatusExists == 0)
@@ -435,11 +434,11 @@ public static class DatabaseInitializer
             {
                 var alterStatements = new[]
                 {
-                    "ALTER TABLE HDSchedule ADD COLUMN SessionStatus TEXT DEFAULT 'Active'",
-                    "ALTER TABLE HDSchedule ADD COLUMN IsAutoGenerated INTEGER DEFAULT 0",
-                    "ALTER TABLE HDSchedule ADD COLUMN ParentScheduleID INTEGER",
-                    "ALTER TABLE HDSchedule ADD COLUMN DialyserModel TEXT",
-                    "ALTER TABLE HDSchedule ADD COLUMN AccessLocation TEXT"
+                    "ALTER TABLE HDSchedule ADD SessionStatus NVARCHAR(50) DEFAULT 'Active'",
+                    "ALTER TABLE HDSchedule ADD IsAutoGenerated BIT DEFAULT 0",
+                    "ALTER TABLE HDSchedule ADD ParentScheduleID INT",
+                    "ALTER TABLE HDSchedule ADD DialyserModel NVARCHAR(100)",
+                    "ALTER TABLE HDSchedule ADD AccessLocation NVARCHAR(100)"
                 };
                 
                 foreach (var sql in alterStatements)
@@ -715,6 +714,23 @@ public static class DatabaseInitializer
                 FOREIGN KEY (ScheduleID) REFERENCES HDSchedule(ScheduleID)
             );
 
+            -- PatientActivityLog Table for tracking patient events
+            CREATE TABLE IF NOT EXISTS PatientActivityLog (
+                ActivityID INTEGER PRIMARY KEY AUTOINCREMENT,
+                PatientID INTEGER NOT NULL,
+                ScheduleID INTEGER NULL,
+                ActivityDate TEXT NOT NULL,
+                ActivityType TEXT NOT NULL, -- LATE, MISSED, RESCHEDULED, DISCHARGED, NOTE
+                Reason TEXT,
+                Details TEXT,
+                RecordedBy TEXT,
+                OldDateTime TEXT, -- For rescheduling
+                NewDateTime TEXT, -- For rescheduling
+                CreatedAt TEXT DEFAULT (datetime('now')),
+                FOREIGN KEY (PatientID) REFERENCES Patients(PatientID),
+                FOREIGN KEY (ScheduleID) REFERENCES HDSchedule(ScheduleID)
+            );
+
             -- IntraDialyticRecords Table (Extended with all monitoring fields)
             CREATE TABLE IF NOT EXISTS IntraDialyticRecords (
                 RecordID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -811,6 +827,9 @@ public static class DatabaseInitializer
             CREATE INDEX IF NOT EXISTS idx_hdlogs_patientid ON HDLogs(PatientID);
             CREATE INDEX IF NOT EXISTS idx_hdlogs_scheduleid ON HDLogs(ScheduleID);
             CREATE INDEX IF NOT EXISTS idx_intradialytic_scheduleid ON IntraDialyticRecords(ScheduleID);
+            CREATE INDEX IF NOT EXISTS idx_patient_activity_patientid ON PatientActivityLog(PatientID);
+            CREATE INDEX IF NOT EXISTS idx_patient_activity_date ON PatientActivityLog(ActivityDate);
+            CREATE INDEX IF NOT EXISTS idx_patient_activity_type ON PatientActivityLog(ActivityType);
             CREATE INDEX IF NOT EXISTS idx_medications_scheduleid ON PostDialysisMedications(ScheduleID);
             CREATE INDEX IF NOT EXISTS idx_equipment_alerts_patient ON EquipmentUsageAlerts(PatientID);
             CREATE INDEX IF NOT EXISTS idx_equipment_alerts_schedule ON EquipmentUsageAlerts(ScheduleID);
