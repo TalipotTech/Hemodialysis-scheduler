@@ -17,6 +17,7 @@ public class ScheduleController : ControllerBase
     private readonly IHDScheduleRepository _scheduleRepository;
     private readonly IPatientRepository _patientRepository;
     private readonly IHDCycleService _hdCycleService;
+    private readonly IBedAssignmentService _bedAssignmentService;
     private readonly ILogger<ScheduleController> _logger;
     private readonly DapperContext _context;
 
@@ -24,12 +25,14 @@ public class ScheduleController : ControllerBase
         IHDScheduleRepository scheduleRepository,
         IPatientRepository patientRepository,
         IHDCycleService hdCycleService,
+        IBedAssignmentService bedAssignmentService,
         ILogger<ScheduleController> logger,
         DapperContext context)
     {
         _scheduleRepository = scheduleRepository;
         _patientRepository = patientRepository;
         _hdCycleService = hdCycleService;
+        _bedAssignmentService = bedAssignmentService;
         _logger = logger;
         _context = context;
     }
@@ -268,72 +271,24 @@ public class ScheduleController : ControllerBase
                     }
                 }
                 
-                // Handle schedules without bed assignments (BedNumber is null or 0)
-                // Assign them to available beds
+                // ⚠️ IMPORTANT: Do NOT dynamically reassign beds here!
+                // Schedules without bed assignments should remain unassigned.
+                // This prevents bed number inconsistency across views.
+                // Instead, mark them with needsBedAssignment flag for UI to handle.
+                
                 var unassignedSchedules = slotSchedulesForSlot.Where(s => 
                     (s.BedNumber == null || s.BedNumber == 0) && 
                     !assignedScheduleIds.Contains(s.ScheduleID)).ToList();
                 
+                // Log warning about unassigned schedules (these need manual bed assignment)
                 foreach (var schedule in unassignedSchedules)
                 {
-                    // Find first available bed
-                    for (int bedNum = 1; bedNum <= slot.MaxBeds; bedNum++)
-                    {
-                        var bedIndex = bedNum - 1;
-                        if (bedIndex < beds.Count)
-                        {
-                            var bedObj = beds[bedIndex] as dynamic;
-                            if (bedObj != null && bedObj.status == "available")
-                            {
-                                // Fetch patient data
-                                var patient = await _patientRepository.GetByIdAsync(schedule.PatientID);
-                                
-                                // Calculate weekly session info
-                                var patientWeekSessions = allSchedules
-                                    .Where(s => s.PatientID == schedule.PatientID && 
-                                               s.SessionDate >= startOfWeek && 
-                                               s.SessionDate < endOfWeek &&
-                                               !s.IsDischarged)
-                                    .OrderBy(s => s.SessionDate)
-                                    .ToList();
-                                
-                                var sessionNumber = patientWeekSessions.FindIndex(s => s.ScheduleID == schedule.ScheduleID) + 1;
-                                var totalSessions = patientWeekSessions.Count;
-                                
-                                // Determine bed status based on discharge status
-                                string bedStatus = "pre-scheduled";
-                                if (schedule.IsDischarged)
-                                {
-                                    bedStatus = "completed";
-                                }
-                                
-                                // Update this bed with the pre-scheduled patient
-                                beds[bedIndex] = new
-                                {
-                                    bedNumber = bedNum,
-                                    status = bedStatus,
-                                    scheduleId = schedule.ScheduleID,
-                                    sessionStatus = schedule.SessionStatus ?? "Pre-Scheduled",
-                                    sessionDate = schedule.SessionDate.ToString("yyyy-MM-dd"),
-                                    sessionNumber = sessionNumber,
-                                    totalWeeklySessions = totalSessions,
-                                    needsBedAssignment = true,
-                                    patient = new
-                                    {
-                                        id = schedule.PatientID,
-                                        patientId = schedule.PatientID,
-                                        name = schedule.PatientName ?? patient?.Name ?? "Unknown",
-                                        age = patient?.Age ?? 0,
-                                        bloodPressure = schedule.BloodPressure,
-                                        hdCycle = patient?.HDCycle,
-                                        isDischarged = schedule.IsDischarged
-                                    }
-                                };
-                                break; // Move to next schedule
-                            }
-                        }
-                    }
+                    _logger.LogWarning($"⚠️ Schedule {schedule.ScheduleID} for patient {schedule.PatientName} " +
+                                      $"in Slot {slot.SlotID} on {schedule.SessionDate:yyyy-MM-dd} has no bed assignment. " +
+                                      $"User must assign a bed manually.");
                 }
+                
+                // NOTE: Unassigned schedules will be shown in unassignedPreScheduled list below
 
                 slotSchedules.Add(new
                 {
@@ -345,10 +300,10 @@ public class ScheduleController : ControllerBase
                 });
             }
 
-            // Get pre-scheduled sessions without slot/bed assignments
+            // Get pre-scheduled sessions without slot/bed assignments (including those with slot but no bed)
             var unassignedPreScheduled = daySchedules.Where(s => 
-                (s.SlotID == null || s.SlotID == 0) && 
-                s.SessionStatus == "Pre-Scheduled").ToList();
+                (s.BedNumber == null || s.BedNumber == 0) &&
+                !s.IsMovedToHistory).ToList();
             
             var unassignedSessions = new List<object>();
             foreach (var schedule in unassignedPreScheduled)
@@ -803,6 +758,78 @@ public class ScheduleController : ControllerBase
                 return false;
         }
     }
+
+    /// <summary>
+    /// Validates bed assignments and reports conflicts
+    /// </summary>
+    [HttpGet("bed-conflicts")]
+    [Authorize(Roles = "Admin,HOD,Doctor,Nurse")]
+    public async Task<ActionResult<ApiResponse<List<BedConflict>>>> GetBedConflicts(
+        [FromQuery] string? startDate = null, 
+        [FromQuery] string? endDate = null)
+    {
+        try
+        {
+            DateTime? start = string.IsNullOrEmpty(startDate) ? null : DateTime.Parse(startDate);
+            DateTime? end = string.IsNullOrEmpty(endDate) ? null : DateTime.Parse(endDate);
+
+            var conflicts = await _bedAssignmentService.GetBedConflictsAsync(start, end);
+
+            if (conflicts.Any())
+            {
+                _logger.LogWarning($"⚠️ Found {conflicts.Count} bed assignment conflicts");
+            }
+            else
+            {
+                _logger.LogInformation("✅ No bed assignment conflicts found");
+            }
+
+            return Ok(ApiResponse<List<BedConflict>>.SuccessResponse(conflicts));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking bed conflicts");
+            return StatusCode(500, ApiResponse<List<BedConflict>>.ErrorResponse("Error checking bed conflicts"));
+        }
+    }
+
+    /// <summary>
+    /// Validates a specific bed assignment
+    /// </summary>
+    [HttpPost("validate-bed-assignment")]
+    [Authorize(Roles = "Admin,HOD,Doctor,Nurse")]
+    public async Task<ActionResult<ApiResponse<BedAssignmentValidationResult>>> ValidateBedAssignment(
+        [FromBody] BedAssignmentValidationRequest request)
+    {
+        try
+        {
+            var result = await _bedAssignmentService.ValidateBedAssignmentAsync(
+                request.ScheduleId,
+                request.SlotId,
+                request.BedNumber,
+                request.SessionDate);
+
+            if (!result.IsValid)
+            {
+                _logger.LogWarning($"❌ Invalid bed assignment: {result.Message}");
+            }
+
+            return Ok(ApiResponse<BedAssignmentValidationResult>.SuccessResponse(result));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error validating bed assignment");
+            return StatusCode(500, ApiResponse<BedAssignmentValidationResult>.ErrorResponse("Error validating bed assignment"));
+        }
+    }
+}
+
+public class BedAssignmentValidationRequest
+{
+    public int ScheduleId { get; set; }
+    public int SlotId { get; set; }
+    public int BedNumber { get; set; }
+    public DateTime SessionDate { get; set; }
 }
 
 public class SlotInfo

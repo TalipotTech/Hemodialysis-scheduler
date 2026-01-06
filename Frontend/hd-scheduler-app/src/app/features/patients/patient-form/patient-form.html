@@ -304,13 +304,20 @@
           @if (patientForm.invalid && patientForm.touched) {
             <div class="validation-warning">
               <mat-icon>info</mat-icon>
-              <span>Please fill in all required fields (marked with **) to save</span>
+              <span>Please fill in all required fields (marked with *) to save</span>
+              @if (hasContactNumberError) {
+                <br><span style="color: #f44336;">Contact numbers cannot be the same</span>
+              }
+              @if (getInvalidFields().length > 0) {
+                <br><span style="color: #ff9800;">Invalid fields: {{ getInvalidFields().join(', ') }}</span>
+              }
             </div>
           }
           <div class="action-buttons">
             <button mat-button type="button" (click)="onCancel()">{{ isReadOnly ? 'Back' : 'Cancel' }}</button>
             @if (!isReadOnly) {
-              <button mat-raised-button color="primary" type="submit" [disabled]="loading || patientForm.invalid">
+              <button mat-raised-button color="primary" type="submit" 
+                      [disabled]="loading || patientForm.invalid || hasContactNumberError">
                 @if (loading) {
                   <mat-spinner diameter="20"></mat-spinner>
                 } @else {

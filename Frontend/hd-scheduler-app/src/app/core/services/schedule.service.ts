@@ -98,6 +98,32 @@ export class ScheduleService {
     return this.http.get<ApiResponse<any>>(`${environment.apiUrl}/api/hdschedule/patient/${patientId}/suggested-equipment-counts`);
   }
 
+  /**
+   * Get bed assignment conflicts for a date range
+   */
+  getBedConflicts(startDate?: Date, endDate?: Date): Observable<ApiResponse<any[]>> {
+    let params = new HttpParams();
+    if (startDate) {
+      params = params.set('startDate', startDate.toISOString());
+    }
+    if (endDate) {
+      params = params.set('endDate', endDate.toISOString());
+    }
+    return this.http.get<ApiResponse<any[]>>(`${this.apiUrl}/bed-conflicts`, { params });
+  }
+
+  /**
+   * Validate a bed assignment before saving
+   */
+  validateBedAssignment(scheduleId: number, slotId: number, bedNumber: number, sessionDate: Date): Observable<ApiResponse<any>> {
+    return this.http.post<ApiResponse<any>>(`${this.apiUrl}/validate-bed-assignment`, {
+      scheduleId,
+      slotId,
+      bedNumber,
+      sessionDate: sessionDate.toISOString()
+    });
+  }
+
   // ==================== SESSION PHASE MANAGEMENT ====================
 
   getPhaseStatus(hdLogId: number): Observable<ApiResponse<any>> {

@@ -380,11 +380,15 @@ public class ReservationController : ControllerBase
 
             foreach (var patient in allPatients.Where(p => p.IsActive))
             {
-                var todaySchedule = allSchedules.FirstOrDefault(s => 
-                    s.PatientID == patient.PatientID && 
-                    s.SessionDate.Date == targetDate && 
-                    !s.IsDischarged && 
-                    !s.IsMovedToHistory);
+                // Get ANY session for today (including completed/discharged) to check patient status
+                var todaySchedule = allSchedules
+                    .Where(s => 
+                        s.PatientID == patient.PatientID && 
+                        s.SessionDate.Date == targetDate &&
+                        !s.IsMovedToHistory)
+                    .OrderByDescending(s => s.SessionStatus == "Completed" ? 1 : 0) // Prioritize completed sessions
+                    .ThenByDescending(s => s.SessionStatus == "Active" ? 1 : 0)     // Then active
+                    .FirstOrDefault();
 
                 var futureSchedules = allSchedules.Where(s => 
                     s.PatientID == patient.PatientID && 
@@ -398,6 +402,19 @@ public class ReservationController : ControllerBase
                 var lastSession = allSchedules.Where(s => s.PatientID == patient.PatientID)
                     .OrderByDescending(s => s.SessionDate)
                     .FirstOrDefault();
+
+                // NEW: Calculate future sessions count based on HD Cycle for next 90 days
+                int calculatedFutureSessionsCount = 0;
+                if (!string.IsNullOrEmpty(patient.HDCycle) && patient.HDStartDate.HasValue)
+                {
+                    // Calculate from TODAY (not last session) to get accurate 90-day count
+                    var startDate = targetDate.Date;
+                    var upcomingDates = _hdCycleService.GetUpcomingDialysisDates(patient.HDCycle, startDate, 90);
+                    // Filter to only future dates (>= today)
+                    calculatedFutureSessionsCount = upcomingDates.Where(d => d.Date >= targetDate.Date).Count();
+                    
+                    _logger.LogInformation($"Patient {patient.Name} (ID: {patient.PatientID}): HD Cycle '{patient.HDCycle}' → {calculatedFutureSessionsCount} sessions in next 90 days");
+                }
 
                 DateTime? nextExpectedDate = null;
                 string nextExpectedDay = null;
@@ -426,6 +443,14 @@ public class ReservationController : ControllerBase
                     status = "Active";
                     // CRITICAL: Don't check future schedules if patient is already active today
                     // Patient should NOT appear in Pre-Schedule tab if they're already active
+                }
+                else if (todaySchedule != null && todaySchedule.SessionStatus == "Completed")
+                {
+                    status = "Completed"; // Session finished - don't show in Pre-Schedule
+                }
+                else if (todaySchedule != null && todaySchedule.IsDischarged)
+                {
+                    status = "Completed"; // Session discharged - don't show in Pre-Schedule
                 }
                 else if (todaySchedule != null && todaySchedule.SessionStatus == "Pre-Scheduled")
                 {
@@ -489,7 +514,7 @@ public class ReservationController : ControllerBase
                         sessionDate = nextSession.SessionDate.ToString("yyyy-MM-dd"),
                         sessionStatus = nextSession.SessionStatus
                     } : null,
-                    futureSessionsCount = futureSchedules.Count,
+                    futureSessionsCount = calculatedFutureSessionsCount, // Use calculated count based on HD Cycle (90 days)
                     nextScheduledDate = nextSession?.SessionDate.ToString("yyyy-MM-dd"),
                     nextScheduledDay = nextSession?.SessionDate.ToString("dddd, MMM dd"), // "Monday, Dec 13"
                     nextExpectedDate = nextExpectedDate?.ToString("yyyy-MM-dd"),

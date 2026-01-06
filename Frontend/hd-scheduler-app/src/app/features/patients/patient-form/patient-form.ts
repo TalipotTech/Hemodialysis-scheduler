@@ -115,10 +115,10 @@ export class PatientForm implements OnInit, OnDestroy {
       dialysatePrescription: [''], // Dialysate type
       
       // Equipment Usage & Session History (Start at 0 for new patients)
-      dialyserCount: [0, [Validators.required, Validators.min(0), Validators.max(7)]], // Current dialyser usage count (Max: 7)
-      bloodTubingCount: [0, [Validators.required, Validators.min(0), Validators.max(12)]], // Current blood tubing usage count (Max: 12)
+      dialyserCount: [0, [Validators.min(0), Validators.max(7)]], // Current dialyser usage count (Max: 7) - NOT required, 0 is valid
+      bloodTubingCount: [0, [Validators.min(0), Validators.max(12)]], // Current blood tubing usage count (Max: 12) - NOT required, 0 is valid
       totalDialysisCompleted: [0, [Validators.min(0)]] // Total dialysis sessions completed (auto-calculated)
-    }, { validators: this.contactNumberValidator() });
+    }, { validators: this.contactNumberValidator() }); // Validate that contact numbers are different
   }
 
   // Custom validator to ensure Contact Number and Emergency Contact are different
@@ -127,8 +127,14 @@ export class PatientForm implements OnInit, OnDestroy {
       const contactNumber = control.get('contactNumber')?.value;
       const emergencyContact = control.get('emergencyContact')?.value;
       
-      // Only validate if both fields have values
+      // Skip validation if emergency contact is empty or null
+      if (!emergencyContact || emergencyContact.trim() === '') {
+        return null;
+      }
+      
+      // Only validate if BOTH fields have values AND they are the same
       if (contactNumber && emergencyContact && contactNumber === emergencyContact) {
+        console.warn('⚠️ Contact numbers are the same:', contactNumber, emergencyContact);
         return { contactsSame: true };
       }
       
@@ -298,6 +304,22 @@ export class PatientForm implements OnInit, OnDestroy {
             bloodTubingCount: patient.bloodTubingCount || 0,
             totalDialysisCompleted: patient.totalDialysisCompleted || 0
           });
+          
+          console.log('✅ Patient data loaded successfully');
+          console.log('📝 Form valid after load:', this.patientForm.valid);
+          console.log('📝 Form value:', this.patientForm.value);
+          console.log('📝 Form errors:', this.patientForm.errors);
+          
+          // Debug: Check which fields are invalid
+          if (this.patientForm.invalid) {
+            console.warn('⚠️ Form is INVALID after loading. Invalid fields:');
+            Object.keys(this.patientForm.controls).forEach(key => {
+              const control = this.patientForm.get(key);
+              if (control && control.invalid) {
+                console.warn(`  - ${key}:`, control.errors);
+              }
+            });
+          }
         }
         this.loading = false;
       },
@@ -310,9 +332,24 @@ export class PatientForm implements OnInit, OnDestroy {
   }
 
   onSubmit(): void {
+    console.log('📝 Form submitted');
+    console.log('📝 Form valid:', this.patientForm.valid);
+    console.log('📝 Form invalid:', this.patientForm.invalid);
+    console.log('📝 Form errors:', this.patientForm.errors);
+    
     if (this.patientForm.invalid) {
+      // Log which fields are invalid
+      const invalidFields: string[] = [];
+      Object.keys(this.patientForm.controls).forEach(key => {
+        const control = this.patientForm.get(key);
+        if (control && control.invalid) {
+          invalidFields.push(`${key}: ${JSON.stringify(control.errors)}`);
+        }
+      });
+      console.error('❌ Invalid fields:', invalidFields);
+      
       this.patientForm.markAllAsTouched();
-      this.snackBar.open('Please fill in all required fields', 'OK', { duration: 3000 });
+      this.snackBar.open(`Please fix validation errors: ${invalidFields.join(', ')}`, 'OK', { duration: 5000 });
       return;
     }
 
@@ -502,6 +539,18 @@ export class PatientForm implements OnInit, OnDestroy {
   get hasContactNumberError(): boolean {
     return (this.patientForm.hasError('contactsSame') ?? false) && 
            ((this.patientForm.get('contactNumber')?.touched ?? false) || (this.patientForm.get('emergencyContact')?.touched ?? false));
+  }
+
+  // Helper method to get invalid field names for debugging
+  getInvalidFields(): string[] {
+    const invalidFields: string[] = [];
+    Object.keys(this.patientForm.controls).forEach(key => {
+      const control = this.patientForm.get(key);
+      if (control && control.invalid) {
+        invalidFields.push(key);
+      }
+    });
+    return invalidFields;
   }
 }
 

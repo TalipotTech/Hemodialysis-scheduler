@@ -21,6 +21,7 @@ public class HDScheduleController : ControllerBase
     private readonly IPatientActivityRepository _activityRepository;
     private readonly EquipmentUsageService _equipmentUsageService;
     private readonly IRecurringSessionService _recurringSessionService;
+    private readonly IBedAssignmentService _bedAssignmentService;
     private readonly ILogger<HDScheduleController> _logger;
     private readonly DapperContext _context;
 
@@ -30,6 +31,7 @@ public class HDScheduleController : ControllerBase
         IPatientActivityRepository activityRepository,
         EquipmentUsageService equipmentUsageService,
         IRecurringSessionService recurringSessionService,
+        IBedAssignmentService bedAssignmentService,
         ILogger<HDScheduleController> logger,
         DapperContext context)
     {
@@ -38,6 +40,7 @@ public class HDScheduleController : ControllerBase
         _activityRepository = activityRepository;
         _equipmentUsageService = equipmentUsageService;
         _recurringSessionService = recurringSessionService;
+        _bedAssignmentService = bedAssignmentService;
         _logger = logger;
         _context = context;
     }
@@ -303,6 +306,23 @@ public class HDScheduleController : ControllerBase
             _logger.LogInformation("Creating new HD session for Patient {PatientID} on {Date}, Slot {SlotID}, Bed {BedNumber}",
                 request.PatientID, request.SessionDate.Date, request.SlotID, request.BedNumber);
 
+            // Validate bed assignment if bed number is provided
+            if (request.BedNumber.HasValue && request.BedNumber.Value > 0 && request.SlotID.HasValue)
+            {
+                var bedValidation = await _bedAssignmentService.ValidateBedAssignmentAsync(
+                    0, // New schedule (no ID yet)
+                    request.SlotID.Value,
+                    request.BedNumber.Value,
+                    request.SessionDate);
+
+                if (!bedValidation.IsValid)
+                {
+                    _logger.LogWarning("❌ Bed assignment validation failed: {Message}", bedValidation.Message);
+                    return BadRequest(ApiResponse<int>.ErrorResponse(
+                        $"Bed assignment conflict: {bedValidation.Message}"));
+                }
+            }
+
             var username = User.Identity?.Name ?? "System";
             var role = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value ?? "Unknown";
 
@@ -552,6 +572,25 @@ public class HDScheduleController : ControllerBase
                     return BadRequest(ApiResponse<bool>.ErrorResponse(
                         $"Patient already has an HD session scheduled on {request.SessionDate:yyyy-MM-dd}. Each patient can only have ONE session per day. Existing session ID: {conflictingSession.ScheduleID}"
                     ));
+                }
+            }
+
+            // Validate bed assignment if bed number changed
+            if (request.BedNumber.HasValue && request.BedNumber.Value > 0 && 
+                request.SlotID.HasValue &&
+                (existingSchedule.BedNumber != request.BedNumber || existingSchedule.SlotID != request.SlotID))
+            {
+                var bedValidation = await _bedAssignmentService.ValidateBedAssignmentAsync(
+                    id,
+                    request.SlotID.Value,
+                    request.BedNumber.Value,
+                    request.SessionDate);
+
+                if (!bedValidation.IsValid)
+                {
+                    _logger.LogWarning("❌ Bed assignment validation failed: {Message}", bedValidation.Message);
+                    return BadRequest(ApiResponse<bool>.ErrorResponse(
+                        $"Bed assignment conflict: {bedValidation.Message}"));
                 }
             }
 

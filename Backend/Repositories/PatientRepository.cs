@@ -146,9 +146,10 @@ public class PatientRepository : IPatientRepository
             INNER JOIN HDSchedule h ON p.PatientID = h.PatientID
             LEFT JOIN Staff d ON h.AssignedDoctor = d.StaffID
             LEFT JOIN Staff n ON h.AssignedNurse = n.StaffID
-            WHERE h.IsDischarged = 1 
-              AND CAST(h.SessionDate AS DATE) = CAST(GETDATE() AS DATE)
-            ORDER BY h.SessionDate DESC, h.ScheduleID DESC";
+            WHERE h.SessionStatus = 'Completed'
+              AND h.IsDischarged = 1 
+              AND h.UpdatedAt >= DATEADD(day, -7, GETDATE())
+            ORDER BY h.UpdatedAt DESC, h.ScheduleID DESC";
         using var connection = _context.CreateConnection();
         var patients = await connection.QueryAsync<Patient>(query);
         return patients.ToList();
@@ -174,9 +175,10 @@ public class PatientRepository : IPatientRepository
             INNER JOIN HDSchedule h ON p.PatientID = h.PatientID
             LEFT JOIN Staff d ON h.AssignedDoctor = d.StaffID
             LEFT JOIN Staff n ON h.AssignedNurse = n.StaffID
-            WHERE h.SessionStatus = 'Completed' 
-              AND CAST(h.SessionDate AS DATE) BETWEEN @StartDate AND @EndDate
-            ORDER BY h.SessionDate DESC, h.ScheduleID DESC";
+            WHERE h.SessionStatus = 'Completed'
+              AND h.IsDischarged = 1
+              AND CAST(h.UpdatedAt AS DATE) BETWEEN @StartDate AND @EndDate
+            ORDER BY h.UpdatedAt DESC, h.ScheduleID DESC";
         using var connection = _context.CreateConnection();
         var patients = await connection.QueryAsync<Patient>(query, new { StartDate = startDate, EndDate = endDate });
         return patients.ToList();

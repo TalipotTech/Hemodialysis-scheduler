@@ -1,0 +1,169 @@
+<div class="conflict-dashboard-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>warning</mat-icon>
+        Bed Assignment Conflict Dashboard
+      </mat-card-title>
+      <mat-card-subtitle>
+        Scan for bed assignment conflicts and inconsistencies
+      </mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <!-- Date Range Filter -->
+      <div class="filter-section">
+        <mat-form-field appearance="outline">
+          <mat-label>Start Date</mat-label>
+          <input matInput [matDatepicker]="startPicker" [(ngModel)]="startDate">
+          <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
+          <mat-datepicker #startPicker></mat-datepicker>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>End Date</mat-label>
+          <input matInput [matDatepicker]="endPicker" [(ngModel)]="endDate">
+          <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
+          <mat-datepicker #endPicker></mat-datepicker>
+        </mat-form-field>
+
+        <button mat-raised-button color="primary" (click)="scanConflicts()">
+          <mat-icon>search</mat-icon>
+          Scan Conflicts
+        </button>
+
+        <button mat-raised-button (click)="refreshConflicts()" [disabled]="loading">
+          <mat-icon>refresh</mat-icon>
+          Refresh
+        </button>
+
+        <button mat-raised-button (click)="exportConflicts()" [disabled]="conflicts.length === 0">
+          <mat-icon>download</mat-icon>
+          Export CSV
+        </button>
+      </div>
+
+      <!-- Loading Spinner -->
+      <div *ngIf="loading" class="loading-container">
+        <mat-spinner diameter="50"></mat-spinner>
+        <p>Scanning for conflicts...</p>
+      </div>
+
+      <!-- Error Message -->
+      <div *ngIf="errorMessage && !loading" class="error-message">
+        <mat-icon>error</mat-icon>
+        {{ errorMessage }}
+      </div>
+
+      <!-- Conflicts Summary -->
+      <div *ngIf="!loading && !errorMessage" class="summary-section">
+        <div class="summary-card" [class.has-conflicts]="conflicts.length > 0">
+          <mat-icon [class.success]="conflicts.length === 0" [class.warning]="conflicts.length > 0">
+            {{ conflicts.length === 0 ? 'check_circle' : 'warning' }}
+          </mat-icon>
+          <div class="summary-text">
+            <h2>{{ conflicts.length }}</h2>
+            <p>{{ conflicts.length === 1 ? 'Conflict Found' : 'Conflicts Found' }}</p>
+          </div>
+        </div>
+
+        <div class="summary-card">
+          <mat-icon>event_busy</mat-icon>
+          <div class="summary-text">
+            <h2>{{ getDoubleBookingCount() }}</h2>
+            <p>Double Bookings</p>
+          </div>
+        </div>
+
+        <div class="summary-card">
+          <mat-icon>hotel</mat-icon>
+          <div class="summary-text">
+            <h2>{{ getMissingBedCount() }}</h2>
+            <p>Missing Beds</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Conflicts Table -->
+      <div *ngIf="!loading && conflicts.length > 0" class="conflicts-table">
+        <table mat-table [dataSource]="conflicts" class="mat-elevation-z2">
+          
+          <!-- Conflict Type Column -->
+          <ng-container matColumnDef="conflictType">
+            <th mat-header-cell *matHeaderCellDef>Type</th>
+            <td mat-cell *matCellDef="let conflict">
+              <mat-chip-set>
+                <mat-chip [class]="getConflictTypeClass(conflict.conflictType)">
+                  <mat-icon>{{ getConflictTypeIcon(conflict.conflictType) }}</mat-icon>
+                  {{ getConflictTypeLabel(conflict.conflictType) }}
+                </mat-chip>
+              </mat-chip-set>
+            </td>
+          </ng-container>
+
+          <!-- Date Column -->
+          <ng-container matColumnDef="sessionDate">
+            <th mat-header-cell *matHeaderCellDef>Date</th>
+            <td mat-cell *matCellDef="let conflict">{{ formatDate(conflict.sessionDate) }}</td>
+          </ng-container>
+
+          <!-- Patient Column -->
+          <ng-container matColumnDef="patientName">
+            <th mat-header-cell *matHeaderCellDef>Patient</th>
+            <td mat-cell *matCellDef="let conflict">
+              <strong>{{ conflict.patientName }}</strong>
+              <br>
+              <small class="text-muted">ID: {{ conflict.patientId }}</small>
+            </td>
+          </ng-container>
+
+          <!-- Slot Column -->
+          <ng-container matColumnDef="slot">
+            <th mat-header-cell *matHeaderCellDef>Slot</th>
+            <td mat-cell *matCellDef="let conflict">{{ conflict.slotName }}</td>
+          </ng-container>
+
+          <!-- Bed Column -->
+          <ng-container matColumnDef="bed">
+            <th mat-header-cell *matHeaderCellDef>Bed</th>
+            <td mat-cell *matCellDef="let conflict">
+              <span [class.missing-bed]="!conflict.bedNumber">
+                {{ getBedDisplay(conflict.bedNumber) }}
+              </span>
+            </td>
+          </ng-container>
+
+          <!-- Details Column -->
+          <ng-container matColumnDef="details">
+            <th mat-header-cell *matHeaderCellDef>Details</th>
+            <td mat-cell *matCellDef="let conflict">
+              <span class="conflict-details">{{ conflict.conflictDetails }}</span>
+            </td>
+          </ng-container>
+
+          <!-- Actions Column -->
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Actions</th>
+            <td mat-cell *matCellDef="let conflict">
+              <button mat-icon-button color="primary" 
+                      (click)="viewSchedule(conflict.scheduleId)"
+                      matTooltip="View and fix schedule">
+                <mat-icon>edit</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+        </table>
+      </div>
+
+      <!-- No Conflicts Message -->
+      <div *ngIf="!loading && !errorMessage && conflicts.length === 0" class="no-conflicts">
+        <mat-icon>check_circle</mat-icon>
+        <h3>No Conflicts Found</h3>
+        <p>All bed assignments are valid and consistent!</p>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

@@ -66,6 +66,7 @@ export class HdSessionScheduleComponent implements OnInit {
   autoSaveTimer: any = null;
   saveStatus: 'idle' | 'saving' | 'saved' = 'idle';
   lastSavedTime: Date | null = null;
+  authCheckTimer: any = null; // NEW: Timer to check auth status periodically
   
   patient: any = null;
   patientHistory: any[] = [];
@@ -237,6 +238,24 @@ export class HdSessionScheduleComponent implements OnInit {
     this.monitoringTimeInterval = setInterval(() => {
       this.updateCurrentTime();
     }, 1000); // Update every second
+
+    // Check authentication status every 30 seconds
+    this.authCheckTimer = setInterval(() => {
+      const wasAuthenticated = this.isAuthenticated;
+      this.isAuthenticated = this.authService.isAuthenticated();
+      
+      // If authentication status changed from true to false, notify user
+      if (wasAuthenticated && !this.isAuthenticated) {
+        console.warn('⚠️ Authentication expired during session');
+        this.snackBar.open('🔐 Your session has expired. Please log in again to continue.', 'Login', { 
+          duration: 10000,
+          horizontalPosition: 'center',
+          verticalPosition: 'top'
+        }).onAction().subscribe(() => {
+          this.router.navigate(['/login'], { queryParams: { returnUrl: this.router.url } });
+        });
+      }
+    }, 30000); // Check every 30 seconds
 
     this.route.params.subscribe(params => {
       if (params['patientId']) {
@@ -1309,6 +1328,53 @@ export class HdSessionScheduleComponent implements OnInit {
       return;
     }
 
+    // Validate bed assignment before creating session
+    const formValue = this.sessionForm.value;
+    
+    if (formValue.bedNumber && formValue.slotID && formValue.treatmentDate) {
+      this.validateBedAssignment(formValue.bedNumber, formValue.slotID, formValue.treatmentDate, () => {
+        this.createNewSession();
+      });
+    } else {
+      this.createNewSession();
+    }
+  }
+
+  private validateBedAssignment(bedNumber: number, slotId: number, sessionDate: Date, onSuccess: () => void): void {
+    const scheduleId = this.isEditMode ? (this.scheduleId || 0) : 0;
+    
+    this.scheduleService.validateBedAssignment(scheduleId, slotId, bedNumber, sessionDate).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          if (response.data.isValid) {
+            console.log('✅ Bed assignment validated successfully');
+            onSuccess();
+          } else {
+            this.loading = false;
+            const message = response.data.conflictingPatientName 
+              ? `❌ Bed ${bedNumber} is already assigned to ${response.data.conflictingPatientName}`
+              : `❌ ${response.data.message}`;
+            
+            this.snackBar.open(message, 'Close', { duration: 5000 });
+          }
+        } else {
+          this.loading = false;
+          this.snackBar.open('Bed validation failed. Please try again.', 'Close', { duration: 3000 });
+        }
+      },
+      error: (error) => {
+        console.error('Error validating bed assignment:', error);
+        // Allow proceeding if validation check fails (backward compatibility)
+        if (confirm('Unable to validate bed assignment. Do you want to proceed anyway?')) {
+          onSuccess();
+        } else {
+          this.loading = false;
+        }
+      }
+    });
+  }
+
+  private createNewSession(): void {
     const formValue = this.sessionForm.value;
     
     // Helper function to convert empty strings to null for numeric fields
@@ -1494,6 +1560,20 @@ export class HdSessionScheduleComponent implements OnInit {
   private updateExistingSession(): void {
     const formValue = this.sessionForm.getRawValue(); // Get all values including disabled
     
+    // Validate bed assignment if bed or slot changed
+    const bedChanged = formValue.bedNumber && this.sessionForm.get('bedNumber')?.dirty;
+    const slotChanged = formValue.slotID && this.sessionForm.get('slotID')?.dirty;
+    
+    if ((bedChanged || slotChanged) && formValue.bedNumber && formValue.slotID && formValue.treatmentDate) {
+      this.validateBedAssignment(formValue.bedNumber, formValue.slotID, formValue.treatmentDate, () => {
+        this.proceedWithUpdate(formValue);
+      });
+    } else {
+      this.proceedWithUpdate(formValue);
+    }
+  }
+
+  private proceedWithUpdate(formValue: any): void {
     // Helper function to convert empty strings to null for numeric fields
     const toNumber = (value: any): number | null => {
       if (value === '' || value === null || value === undefined) return null;
@@ -1843,6 +1923,19 @@ export class HdSessionScheduleComponent implements OnInit {
   }
 
   addMonitoringRecord(): void {
+    // Check authentication FIRST
+    if (!this.isAuthenticated || !this.authService.isAuthenticated()) {
+      this.snackBar.open('🔐 You must log in to save monitoring records', 'Login', { 
+        duration: 6000,
+        horizontalPosition: 'center',
+        verticalPosition: 'top'
+      }).onAction().subscribe(() => {
+        this.router.navigate(['/login'], { queryParams: { returnUrl: this.router.url } });
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     if (!this.scheduleId) {
       this.snackBar.open('⚠ Please save the HD session first (click "Save HD Session" button) before adding monitoring records', 'Close', { duration: 6000 });
       // Scroll to top to show the save button
@@ -1922,16 +2015,23 @@ export class HdSessionScheduleComponent implements OnInit {
         
         // Handle authentication error specifically
         if (error.status === 401) {
-          this.snackBar.open('⚠️ Session expired. Please log in again.', 'Login', { 
-            duration: 5000,
+          // Update authentication status
+          this.isAuthenticated = false;
+          this.authService.logout(); // Clear invalid token
+          
+          this.snackBar.open('🔐 Session expired. Please log in again.', 'Login', { 
+            duration: 8000,
             horizontalPosition: 'center',
             verticalPosition: 'top'
           }).onAction().subscribe(() => {
             this.router.navigate(['/login'], { queryParams: { returnUrl: this.router.url } });
           });
+          
+          // Scroll to top to show authentication banner
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         } else {
           const errorMsg = error.error?.message || error.message || 'Unknown error';
-          this.snackBar.open(`Error: ${errorMsg}`, 'Close', { duration: 5000 });
+          this.snackBar.open(`❌ Error saving monitoring record: ${errorMsg}`, 'Close', { duration: 5000 });
         }
         this.loading = false;
       }
@@ -2238,6 +2338,9 @@ export class HdSessionScheduleComponent implements OnInit {
     }
     if (this.monitoringTimeInterval) {
       clearInterval(this.monitoringTimeInterval);
+    }
+    if (this.authCheckTimer) {
+      clearInterval(this.authCheckTimer);
     }
   }
 }

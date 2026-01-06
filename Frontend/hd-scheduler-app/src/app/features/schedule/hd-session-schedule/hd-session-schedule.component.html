@@ -816,11 +816,15 @@
                 </div>
 
                 <div class="monitoring-actions">
-                  <button mat-raised-button color="accent" (click)="addMonitoringRecord()" type="button" [disabled]="loading || !scheduleId">
+                  <button mat-raised-button color="accent" (click)="addMonitoringRecord()" type="button" [disabled]="loading || !scheduleId || !isAuthenticated">
                     <mat-icon>add_circle</mat-icon>
                     Save Monitoring Entry #{{ (monitoringRecords?.length || 0) + 1 }}
                   </button>
-                  <span class="hint-text">Save this reading and add another if needed</span>
+                  @if (!isAuthenticated) {
+                    <span class="error-text">⚠️ Please log in to save monitoring records</span>
+                  } @else {
+                    <span class="hint-text">Save this reading and add another if needed</span>
+                  }
                 </div>
               </div>
 

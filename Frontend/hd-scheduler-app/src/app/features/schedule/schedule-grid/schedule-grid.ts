@@ -57,7 +57,7 @@ export class ScheduleGrid implements OnInit, OnDestroy {
   // Auto-refresh settings
   autoRefreshEnabled = false;
   private refreshInterval: any;
-  private readonly REFRESH_INTERVAL_MS = 30000; // 30 seconds
+  private readonly REFRESH_INTERVAL_MS = 300000; // 5 minutes (300 seconds)
   private timeUpdateInterval: any;
 
   // Future scheduled sessions (Bed Schedule)
@@ -79,7 +79,6 @@ export class ScheduleGrid implements OnInit, OnDestroy {
       .subscribe((event: NavigationEnd) => {
         // If navigating to /schedule (this component), refresh the data
         if (event.url === '/schedule' || event.url.startsWith('/schedule?')) {
-          console.log('🔄 Navigated back to schedule grid, refreshing data...');
           setTimeout(() => {
             this.loadSchedule();
             this.loadFutureScheduledSessions();
@@ -126,7 +125,7 @@ export class ScheduleGrid implements OnInit, OnDestroy {
   toggleAutoRefresh(): void {
     if (this.autoRefreshEnabled) {
       this.startAutoRefresh();
-      this.showToast('Auto-refresh enabled (every 30 seconds)', 'Information');
+      this.showToast('Auto-refresh enabled (every 5 minutes)', 'Information');
     } else {
       this.stopAutoRefresh();
       this.showToast('Auto-refresh disabled', 'Information');
@@ -172,38 +171,10 @@ export class ScheduleGrid implements OnInit, OnDestroy {
     this.loading = true;
     this.errorMessage = '';
     
-    console.log('🔄 Loading schedule for date:', this.selectedDate);
-    
     this.scheduleService.getDailySchedule(this.selectedDate).subscribe({
       next: (response: any) => {
-        console.log('📦 Schedule API response:', response);
         if (response.success && response.data) {
           this.schedule = response.data;
-          console.log('✅ Schedule data loaded successfully');
-          
-          // Debug: Log slot capacity and beds with detailed information
-          if (this.schedule && this.schedule.slots) {
-            console.log(`📊 Total slots: ${this.schedule.slots.length}`);
-            this.schedule.slots.forEach((slot: any) => {
-              const occupiedBeds = slot.beds.filter((b: any) => b.status === 'occupied' || b.status === 'pre-scheduled').length;
-              const availableBeds = (slot.maxBeds || 10) - occupiedBeds;
-              console.log(`\n🏥 Slot ${slot.slotName} (ID: ${slot.slotID}):`);
-              console.log(`   📊 Capacity: ${occupiedBeds} occupied / ${slot.maxBeds || 10} total beds (${availableBeds} available)`);
-              console.log(`   📋 Beds array length: ${slot.beds.length}`);
-              
-              slot.beds.forEach((bed: any) => {
-                if (bed.status !== 'available') {
-                  console.log(`   🛏️ Bed ${bed.bedNumber}:`);
-                  console.log(`      Status: "${bed.status}"`);
-                  console.log(`      Session Status: "${bed.sessionStatus || 'N/A'}"`);
-                  console.log(`      Schedule ID: ${bed.scheduleId || 'N/A'}`);
-                  console.log(`      Patient: ${bed.patient?.name || 'N/A'}`);
-                  console.log(`      HD Cycle: ${bed.patient?.hdCycle || 'N/A'}`);
-                  console.log(`      Is Discharged: ${bed.patient?.isDischarged || false}`);
-                }
-              });
-            });
-          }
         } else {
           this.errorMessage = response.message || 'Failed to load schedule';
           console.error('❌ Schedule load failed:', this.errorMessage);
@@ -219,7 +190,6 @@ export class ScheduleGrid implements OnInit, OnDestroy {
   }
 
   onDateChange(): void {
-    console.log('Date changed to:', this.selectedDate);
     this.loadSchedule();
   }
 
@@ -248,7 +218,6 @@ export class ScheduleGrid implements OnInit, OnDestroy {
 
   getBedsForSlot(slot: SlotSchedule): number[] {
     const maxBeds = slot.maxBeds || 10; // Default to 10 if not provided
-    console.log(`getBedsForSlot: ${slot.slotName}, maxBeds=${maxBeds}, slot.maxBeds=${slot.maxBeds}`);
     return Array.from({ length: maxBeds }, (_, i) => i + 1);
   }
 
@@ -272,7 +241,6 @@ export class ScheduleGrid implements OnInit, OnDestroy {
       if (!this.shouldShowBed('pre-scheduled')) {
         className += ' bed-filtered';
       }
-      console.log(`🎨 Bed ${bedNumber} in slot ${slotId}: scheduleId=0 → ${className}`);
       return className;
     }
     
@@ -299,7 +267,6 @@ export class ScheduleGrid implements OnInit, OnDestroy {
       className += ' bed-filtered';
     }
     
-    console.log(`🎨 Bed ${bedNumber} in slot ${slotId}: status="${bed.status}", sessionStatus="${bed.sessionStatus}" → ${className}`);
     return className;
   }
 
@@ -361,7 +328,6 @@ export class ScheduleGrid implements OnInit, OnDestroy {
       next: (response: any) => {
         if (response.success && response.data) {
           this.futureSessions = response.data;
-          console.log('Future scheduled sessions:', this.futureSessions);
         }
         this.loadingFuture = false;
       },
@@ -488,9 +454,7 @@ export class ScheduleGrid implements OnInit, OnDestroy {
         }
       });
     });
-    const uniqueCycles = Array.from(cycles).sort();
-    console.log('Unique HD Cycles found:', uniqueCycles);
-    return uniqueCycles;
+    return Array.from(cycles).sort();
   }
 
   getTotalCapacity(): number {
@@ -507,8 +471,6 @@ export class ScheduleGrid implements OnInit, OnDestroy {
   onBedClick(slotId: number, bedNumber: number): void {
     const bed = this.getBed(slotId, bedNumber);
     
-    console.log('Bed clicked:', { slotId, bedNumber, bed });
-    
     if (!bed) {
       this.showToast('Bed information not available', 'Warning');
       return;
@@ -517,7 +479,6 @@ export class ScheduleGrid implements OnInit, OnDestroy {
     if ((bed.status === 'occupied' || bed.status === 'pre-scheduled' || bed.status === 'completed') && bed.patient && bed.scheduleId) {
       // Navigate to HD session form in EDIT mode - shows all fields (filled and empty)
       // For completed sessions, staff can view the historical data
-      console.log('Navigating to edit session:', bed.scheduleId);
       this.router.navigate(['/schedule/hd-session/edit', bed.scheduleId]);
     } else if (bed.status === 'available') {
       this.showToast('This bed is available. Please select a patient first.', 'Information');
@@ -536,18 +497,13 @@ export class ScheduleGrid implements OnInit, OnDestroy {
   }
   
   onQuickAssign(slotId: number, bedNumber: number): void {
-    console.log('Quick assign clicked for slot:', slotId, 'bed:', bedNumber);
     this.showToast('Quick assign feature - Coming soon! Navigate to Patient Management to assign a patient.', 'Information');
-    // TODO: Implement quick assign modal or navigate to patient assignment
   }
   
   confirmSuggestedSession(slotId: number, bedNumber: number): void {
-    console.log('🟢 Activate button clicked for slot:', slotId, 'bed:', bedNumber);
-    
     const bed = this.getBed(slotId, bedNumber);
     
     if (!bed || !bed.patient) {
-      console.error('❌ No bed or patient data', bed);
       this.showToast('Invalid bed data', 'Error');
       return;
     }
@@ -561,38 +517,29 @@ export class ScheduleGrid implements OnInit, OnDestroy {
       return;
     }
     
-    console.log('📋 Activating patient:', { patientName, patientId, scheduleId, slotId, bedNumber });
-    
     // For real scheduleId (not auto-generated 0), activate using ReservationService
     if (scheduleId && scheduleId > 0) {
       // Use the same activation method as Patient List for consistency
       this.reservationService.activateReservedPatient(patientId).subscribe({
         next: (response) => {
           if (response.success) {
-            console.log('✅ Patient activated successfully:', response);
             this.showToast(`${patientName} activated - Treatment started`, 'Success');
             
             // Reload schedule to show updated status (occupied/red)
             setTimeout(() => {
-              console.log('🔄 Reloading schedule to show activated patient...');
               this.loadSchedule();
             }, 300);
           } else {
-            console.error('❌ Failed to activate patient:', response);
             this.showToast('Failed to activate patient', 'Error');
           }
         },
         error: (error) => {
-          console.error('❌ Error activating patient:', error);
           const errorMsg = error.error?.message || error.message || 'Failed to activate patient';
           this.showToast(errorMsg, 'Error');
         }
       });
     } else {
       // Auto-generated (scheduleId === 0): Create the session first, then activate it
-      console.log('📝 Creating auto-suggested session before activation...');
-      
-      // Create a schedule object for the auto-suggested session
       const scheduleData = {
         patientId: patientId,
         sessionDate: this.selectedDate.toISOString().split('T')[0],
@@ -601,29 +548,21 @@ export class ScheduleGrid implements OnInit, OnDestroy {
         sessionStatus: 'In Progress' // Set to In Progress directly (occupied/red)
       };
       
-      console.log('Creating schedule with data:', scheduleData);
-      
       // Create the session using createHDSession
       this.scheduleService.createHDSession(scheduleData).subscribe({
         next: (response: ApiResponse<number>) => {
           if (response.success && response.data) {
-            const newScheduleId = response.data;
-            console.log('✅ Session created with ID:', newScheduleId);
             this.showToast(`${patientName} activated - Treatment started`, 'Success');
             
             // Reload schedule to show the new session with red (occupied) status
-            // DO NOT navigate to workflow - just update the color
             setTimeout(() => {
-              console.log('🔄 Reloading schedule to show red (occupied) status...');
               this.loadSchedule();
             }, 300);
           } else {
-            console.error('❌ Failed to create session:', response);
             this.showToast('Failed to create session', 'Error');
           }
         },
         error: (error: any) => {
-          console.error('❌ Error creating session:', error);
           this.showToast('Error creating session', 'Error');
         }
       });
@@ -631,10 +570,7 @@ export class ScheduleGrid implements OnInit, OnDestroy {
   }
   
   completeActiveSession(bed: any): void {
-    console.log('✅ Complete button clicked for active session!', bed);
-    
     if (!bed || !bed.scheduleId) {
-      console.error('❌ No bed or schedule data', bed);
       this.showToast('Invalid bed data', 'Error');
       return;
     }
@@ -647,37 +583,28 @@ export class ScheduleGrid implements OnInit, OnDestroy {
       return;
     }
     
-    console.log('📋 Marking session as completed:', scheduleId);
-    
     // Call the force-discharge endpoint to mark as completed
     this.scheduleService.forceDischargeSession(scheduleId).subscribe({
       next: (response) => {
-        console.log('✅ Session marked as completed:', response);
         this.showToast(`Treatment completed for ${patientName}`, 'Success');
         // Reload the schedule to show updated status
         this.loadSchedule();
       },
       error: (error) => {
-        console.error('❌ Error completing session:', error);
         this.showToast('Failed to complete session. Please try again.', 'Error');
       }
     });
   }
   
   editSuggestedSession(slotId: number, bedNumber: number): void {
-    console.log('🟡 Edit button clicked for slot:', slotId, 'bed:', bedNumber);
-    
     const bed = this.getBed(slotId, bedNumber);
     
     if (!bed || !bed.patient) {
-      console.error('❌ No bed or patient data', bed);
       this.showToast('Invalid bed data', 'Error');
       return;
     }
     
     const patientId = bed.patient.patientId;
-    
-    console.log('✏️ Navigating to edit for patient:', patientId);
     
     // Navigate to HD Schedule form for editing
     this.router.navigate(['/schedule/hd-session/new', patientId], {

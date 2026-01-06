@@ -296,8 +296,24 @@ export class PatientList implements OnInit {
       next: (response) => {
         if (response.success && response.data) {
           // Backend filters for today's manually activated sessions only
-          this.patients = response.data;
+          let activePatients = response.data;
+          
+          // Remove duplicates based on patient ID
+          const uniqueActive = new Map();
+          activePatients.forEach((p: any) => {
+            const patientId = p.patientID || p.patientId || p.PatientId;
+            if (patientId && !uniqueActive.has(patientId)) {
+              uniqueActive.set(patientId, p);
+            }
+          });
+          
+          this.patients = Array.from(uniqueActive.values());
           this.filteredPatients = this.patients;
+          
+          if (uniqueActive.size < activePatients.length) {
+            console.log(`⚠️ Removed ${activePatients.length - uniqueActive.size} duplicate active patient entries`);
+          }
+          
           console.log('Active patients with today\'s sessions:', this.patients.length);
           console.log('📋 DETAILED ACTIVE PATIENTS:', this.patients.map(p => ({
             id: p.patientID,
@@ -973,6 +989,7 @@ export class PatientList implements OnInit {
           console.log(`✅ Total reserved patients from API: ${allReserved.length}`);
           console.log('📋 Reserved patient details:', allReserved.map((p: any) => ({
             name: p.name,
+            patientId: p.patientId || p.PatientID || p.patientID,
             status: p.status,
             isAutoSuggested: p.isAutoSuggested,
             shouldBeScheduledToday: p.shouldBeScheduledToday,
@@ -980,6 +997,21 @@ export class PatientList implements OnInit {
             todaySession: p.todaySession,
             nextScheduledDate: p.nextScheduledDate
           })));
+          
+          // Remove duplicates based on patient ID (keep first occurrence)
+          const uniquePatients = new Map();
+          allReserved.forEach((p: any) => {
+            const patientId = p.patientId || p.PatientID || p.patientID || p.PatientId;
+            if (patientId && !uniquePatients.has(patientId)) {
+              uniquePatients.set(patientId, p);
+            }
+          });
+          allReserved = Array.from(uniquePatients.values());
+          
+          if (uniquePatients.size < allReserved.length) {
+            console.log(`⚠️ Removed ${allReserved.length - uniquePatients.size} duplicate patient entries`);
+          }
+          console.log(`✅ Unique reserved patients: ${allReserved.length}`);
           
           // Apply date filter
           this.reservedPatients = this.filterReservedByDate(allReserved, dateFilter);
@@ -1134,8 +1166,24 @@ export class PatientList implements OnInit {
       next: (response) => {
         console.log('Completed sessions response:', response);
         if (response.success && response.data) {
-          this.completedSessions = response.data;
+          let completedData = response.data;
+          
+          // Remove duplicates based on patient ID
+          const uniqueCompleted = new Map();
+          completedData.forEach((p: any) => {
+            const patientId = p.patientID || p.patientId || p.PatientId;
+            if (patientId && !uniqueCompleted.has(patientId)) {
+              uniqueCompleted.set(patientId, p);
+            }
+          });
+          
+          this.completedSessions = Array.from(uniqueCompleted.values());
           this.filteredCompletedSessions = this.completedSessions;
+          
+          if (uniqueCompleted.size < completedData.length) {
+            console.log(`⚠️ Removed ${completedData.length - uniqueCompleted.size} duplicate completed session entries`);
+          }
+          
           console.log(`Completed sessions loaded: ${this.completedSessions.length} patients`);
         } else {
           this.completedSessions = [];
@@ -1160,8 +1208,10 @@ export class PatientList implements OnInit {
 
     switch (filterType) {
       case 'today':
-        startDate = today;
-        endDate = today;
+        // Include current day from midnight to end of day
+        startDate = new Date(today);
+        endDate = new Date(today);
+        endDate.setHours(23, 59, 59, 999); // End of today
         break;
       case 'last24h':
         startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -1358,11 +1408,15 @@ export class PatientList implements OnInit {
     // Handle all possible patient ID field name variations from API
     const patientId = patient.patientId || patient.PatientID || patient.patientID || patient.PatientId;
     const patientName = patient.name || patient.Name || 'Unknown Patient';
-    const nextSession = patient.nextScheduledDay || patient.nextScheduledDate || 'Unknown';
+    
+    // Use nextScheduledDate (YYYY-MM-DD format) for comparison, nextScheduledDay for display
+    const nextSessionDate = patient.nextScheduledDate; // "2026-01-06"
+    const nextSessionDisplay = patient.nextScheduledDay || nextSessionDate || 'Unknown'; // "Tuesday, Jan 06"
     
     console.log('🔵 Extracted patient ID:', patientId);
     console.log('🔵 Extracted patient name:', patientName);
-    console.log('🔵 Next scheduled session:', nextSession);
+    console.log('🔵 Next session date (YYYY-MM-DD):', nextSessionDate);
+    console.log('🔵 Next session display:', nextSessionDisplay);
     
     if (!patientId) {
       console.error('❌ Invalid patient data - missing ID');
@@ -1373,30 +1427,48 @@ export class PatientList implements OnInit {
     
     // Check if patient has a session scheduled for TODAY
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-    const nextSessionDate = nextSession ? new Date(nextSession).toISOString().split('T')[0] : null;
+    const todayDate = new Date(today);
     
     console.log('🔵 Today:', today);
-    console.log('🔵 Next session date:', nextSessionDate);
+    console.log('🔵 Comparing dates...');
     
-    if (nextSessionDate && nextSessionDate !== today) {
-      const message = `⚠️ Cannot Activate ${patientName}\n\n` +
-                     `This patient's next session is scheduled for:\n` +
-                     `${nextSession}\n\n` +
-                     `You can only activate patients who have sessions scheduled for TODAY.\n\n` +
-                     `What would you like to do?\n\n` +
-                     `• Click OK to schedule a session for TODAY\n` +
-                     `• Click Cancel to do nothing`;
+    // Check if next session date is valid and not in the past
+    if (nextSessionDate) {
+      const nextDate = new Date(nextSessionDate);
+      const isPastDate = nextDate < todayDate;
       
-      if (confirm(message)) {
-        // Redirect to schedule page to create today's session
-        console.log('🔵 Redirecting to schedule HD session for patient:', patientId);
-        this.router.navigate(['/schedule/hd-session/new', patientId]);
+      console.log('🔵 Next session as Date object:', nextDate);
+      console.log('🔵 Is past date?', isPastDate);
+      console.log('🔵 Is today?', nextSessionDate === today);
+      
+      if (isPastDate) {
+        console.warn('⚠️ Patient has past session date - treating as needs new session');
+        const message = `⚠️ Cannot Activate ${patientName}\n\n` +
+                       `This patient has an outdated session date: ${nextSessionDisplay}\n\n` +
+                       `Please create a new HD session for TODAY from the schedule grid.\n\n` +
+                       `Go to: Schedule Grid → Select today's date → Assign bed`;
+        
+        alert(message);
+        console.log('🚫 Activation blocked: Patient has past/invalid session date');
+        return;
+      } else if (nextSessionDate !== today) {
+        const message = `⚠️ Cannot Activate ${patientName}\n\n` +
+                       `This patient's next session is scheduled for:\n` +
+                       `${nextSessionDisplay}\n\n` +
+                       `You can only activate patients who have sessions scheduled for TODAY.\n\n` +
+                       `Please check the schedule grid or create a session for today.`;
+        
+        alert(message);
+        console.log('🚫 Activation blocked: Patient session not scheduled for today');
+        return;
       }
-      return;
+    } else {
+      // No nextSessionDate found - check if patient should be scheduled today based on HD Cycle
+      console.warn('⚠️ No nextScheduledDate found - may need to create session');
     }
     
     // Confirmation prompt for patients with today's session
-    const confirmMessage = `Activate ${patientName} (ID: ${patientId}) for today's dialysis session?\n\nThis will move the patient to Active Patients tab.`;
+    const confirmMessage = `✅ Activate ${patientName} for today's dialysis session?\n\nThis will:\n• Change status from Pre-Scheduled to Active\n• Make patient appear in Active Patients tab\n• Change bed color to red in schedule grid`;
     console.log('🔵 Showing confirmation dialog:', confirmMessage);
     
     if (!confirm(confirmMessage)) {
@@ -1406,11 +1478,12 @@ export class PatientList implements OnInit {
     
     console.log('✅ User confirmed activation');
     console.log('🔵 Calling activation API for patient:', { id: patientId, name: patientName });
-    this.loading = true;
+    this.loadingReserved = true;
     
     this.reservationService.activateReservedPatient(patientId).subscribe({
       next: (response) => {
-        console.log('✅ Patient activated successfully:', response);
+        console.log('✅ ========== ACTIVATION SUCCESS ==========');
+        console.log('✅ API Response:', response);
         
         // Update local patient data to trigger row color change
         patient.sessionStatus = 'Active';
@@ -1421,13 +1494,17 @@ export class PatientList implements OnInit {
         // Force grid refresh to show color change
         this.refreshGrids();
         
-        this.showToast(`${patientName} activated successfully!`, 'Success');
+        this.showToast(`✅ ${patientName} activated successfully! Moving to Active Patients tab...`, 'Success');
         
         // Add small delay to ensure database transaction completes
         setTimeout(() => {
+          console.log('🔄 Refreshing active patients list...');
+          
           // Refresh the active patients list
           this.patientService.getActivePatients().subscribe({
             next: (activeResponse) => {
+              console.log('✅ Active patients API response:', activeResponse);
+              
               if (activeResponse.success && activeResponse.data) {
                 this.patients = activeResponse.data;
                 this.filteredPatients = this.patients;
@@ -1445,30 +1522,39 @@ export class PatientList implements OnInit {
               this.skipTabReload = true;
               
               // Then switch to Active Patients tab (index 1)
+              console.log('📍 Switching to Active Patients tab (index 1)...');
               this.selectedTabIndex = 1;
-              this.loading = false;
+              this.loadingReserved = false;
               
               // Refresh pre-schedule list in background to remove activated patient
-              this.loadReservedPatients();
+              console.log('🔄 Refreshing pre-schedule list...');
+              this.loadReservedPatients(this.selectedPreScheduleDateFilter);
             },
             error: (error) => {
               console.error('❌ Error refreshing active patients:', error);
-              this.loading = false;
+              this.loadingReserved = false;
               // Still switch to active tab even if refresh fails
               this.skipTabReload = true;
               this.selectedTabIndex = 1;
+              this.showToast('⚠️ Patient activated but failed to refresh list. Please refresh page.', 'Warning');
             }
           });
-        }, 500); // Wait 500ms for database transaction to complete
+        }, 800); // Wait 800ms for database transaction to complete
       },
       error: (error) => {
-        console.error('❌ Error activating patient:', error);
-        console.error('❌ Full error object:', JSON.stringify(error, null, 2));
+        console.error('❌ ========== ACTIVATION ERROR ==========');
+        console.error('❌ Full error object:', error);
+        console.error('❌ Error status:', error.status);
+        console.error('❌ Error message:', error.message);
+        console.error('❌ Error response:', error.error);
         
         // Extract error message from various possible locations
         let errorMsg = 'Failed to activate patient';
         
-        if (error.error?.message) {
+        if (error.status === 404) {
+          // API endpoint not found - backend might not be running
+          errorMsg = 'API endpoint not found. Please ensure the backend server is running on http://localhost:5000';
+        } else if (error.error?.message) {
           errorMsg = error.error.message;
         } else if (error.error?.errors) {
           errorMsg = Object.values(error.error.errors).flat().join(', ');
@@ -1478,22 +1564,36 @@ export class PatientList implements OnInit {
           errorMsg = error.statusText;
         }
         
-        // Show detailed error message to user
-        const fullErrorMsg = `❌ Cannot Activate ${patientName}\n\n` +
-                            `Error: ${errorMsg}\n\n` +
-                            `This usually means:\n` +
-                            `• No session scheduled for TODAY\n` +
-                            `• Session is already active\n` +
-                            `• Session was cancelled or completed\n\n` +
-                            `Would you like to schedule a new session for TODAY?`;
+        console.error('❌ Extracted error message:', errorMsg);
         
-        if (confirm(fullErrorMsg)) {
-          console.log('🔵 User wants to schedule new session - redirecting...');
-          this.router.navigate(['/schedule/hd-session/new', patientId]);
+        // Show detailed error message to user
+        let fullErrorMsg = `❌ Cannot Activate ${patientName}\n\n` +
+                          `Error: ${errorMsg}\n\n`;
+        
+        if (error.status === 404) {
+          fullErrorMsg += `The backend API is not responding.\n\n` +
+                         `Please check:\n` +
+                         `• Backend server is running (dotnet run in Backend folder)\n` +
+                         `• Backend is listening on http://localhost:5000\n` +
+                         `• No firewall is blocking port 5000`;
+        } else {
+          fullErrorMsg += `Common reasons:\n` +
+                         `• No session scheduled for TODAY\n` +
+                         `• Session is already active\n` +
+                         `• Session was cancelled or completed\n` +
+                         `• Authentication required (please log in)\n\n` +
+                         `Would you like to schedule a new session for TODAY?`;
         }
         
-        this.showToast(errorMsg, 'Error');
-        this.loading = false;
+        if (error.status !== 404 && confirm(fullErrorMsg)) {
+          console.log('🔵 User wants to schedule new session - redirecting...');
+          this.router.navigate(['/schedule/hd-session/new', patientId]);
+        } else if (error.status === 404) {
+          alert(fullErrorMsg);
+        }
+        
+        this.showToast(`❌ ${errorMsg}`, 'Error');
+        this.loadingReserved = false;
       }
     });
   }
